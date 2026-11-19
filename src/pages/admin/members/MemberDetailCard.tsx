@@ -1,0 +1,113 @@
+import { Shield } from 'lucide-react'
+import { Avatar, Button, Card, Chip, Select } from '../../../components/ui'
+import type { AdminMembersData, AdminRow } from '../../../api/admin'
+import { RoleChip } from '../RoleChip'
+import type { SelectedMember } from './types'
+import a from '../admin.module.css'
+import s from './MemberDetailCard.module.css'
+
+const ROLE_GROUPS = ['FEATURE', 'SERVICE', 'ADMIN'] as const
+
+type Props = {
+  member: SelectedMember
+  /** 지금 고치는 중인 역할 (저장 전) */
+  roles: string[]
+  allRoles: AdminMembersData['roles']
+  presets: AdminMembersData['presets']
+  presetPick: string
+  onPresetPick: (id: string) => void
+  err: string
+  dirty: boolean
+  onMemberType: (v: AdminRow['memberType']) => void
+  onToggleRole: (code: string) => void
+  onApplyPreset: () => void
+  onSaveRoles: () => void
+}
+
+/** 고른 구성원: 구분 · 로그인 상태 · 적용 프리셋 · 역할 고르기 */
+export function MemberDetailCard({
+  member: sel,
+  roles,
+  allRoles,
+  presets,
+  presetPick,
+  onPresetPick,
+  err,
+  dirty,
+  onMemberType,
+  onToggleRole,
+  onApplyPreset,
+  onSaveRoles,
+}: Props) {
+  return (
+    <Card className={s.detail}>
+      <div className={s.detailHead}>
+        <Avatar name={sel.name} size={48} />
+        <div>
+          <h2>{sel.name}</h2>
+          <small>
+            {sel.loginId} · {sel.memberNo}
+          </small>
+        </div>
+        <span className={`${a.state} ${sel.state === 'ACTIVE' ? a.ok : sel.state === 'LOCKED' ? a.bad : a.off}`}>
+          {sel.state === 'ACTIVE' ? '재실' : sel.state === 'LOCKED' ? '잠김' : '비활성'}
+        </span>
+      </div>
+      <dl className={s.props}>
+        <dt>구분</dt>
+        <dd>
+          <Select
+            value={sel.memberType}
+            width={110}
+            label="구분"
+            options={['교수', '학생', '인턴'].map((v) => ({ value: v as AdminRow['memberType'], label: v }))}
+            onChange={onMemberType}
+          />
+        </dd>
+        <dt>로그인</dt>
+        <dd>
+          {sel.state === 'LOCKED' ? '잠김' : '정상'} · 실패 {sel.failCount}회
+        </dd>
+        <dt>적용 프리셋</dt>
+        <dd className={a.roles}>
+          {sel.presets.map((p) => (
+            <Chip key={p} tone="tint">
+              {p}
+            </Chip>
+          ))}
+        </dd>
+      </dl>
+      <div className={a.groupLabel}>역할</div>
+      {ROLE_GROUPS.map((g) => (
+        <div key={g}>
+          <div className={a.groupLabel}>
+            {g === 'FEATURE' ? '기능' : g === 'SERVICE' ? (
+              <>
+                서비스 · <b>Vault · Jenkins</b> 읽기/쓰기는 프로젝트에서 줘요
+              </>
+            ) : '관리'}
+          </div>
+          <div className={a.roles}>
+            {allRoles
+              .filter((r) => r.group === g)
+              .map((r) => (
+                <RoleChip key={r.code} code={r.code} on={roles.includes(r.code)} onToggle={() => onToggleRole(r.code)} title={r.desc} />
+              ))}
+          </div>
+        </div>
+      ))}
+      {err && <p className={a.err}>{err}</p>}
+      <div className={s.detailActions}>
+        {presets.length > 0 && (
+          <Select value={presetPick} width={140} label="적용할 프리셋" options={presets.map((p) => ({ value: p.id, label: p.name }))} onChange={onPresetPick} />
+        )}
+        <Button variant="tint" icon={Shield} onClick={onApplyPreset} disabled={presets.length === 0}>
+          프리셋 적용
+        </Button>
+        <Button onClick={onSaveRoles} disabled={!dirty}>
+          역할 저장
+        </Button>
+      </div>
+    </Card>
+  )
+}
