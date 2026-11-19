@@ -21,6 +21,7 @@ import { checkProjectKey } from '../api/projectSettings'
 import { useTaskCreateRequests, type TaskCreateOpen } from '../api/tasks'
 import { openUpload } from '../api/documents'
 import { TaskCreateModal } from '../pages/projects/TaskCreateModal'
+import { openMilestoneCreate } from '../api/milestones'
 import s from './layout.module.css'
 
 const TABS: { to: string; label: string; icon: LucideIcon; action?: string; actionTo?: string; subtitle?: string; hideTabs?: boolean }[] = [
@@ -81,7 +82,9 @@ export function ProjectLayout() {
                   ? setCreating({})
                   : tab.action === '자료 올리기'
                     ? openUpload({ projectKey: key ?? p.projectKey })
-                    : tab.actionTo && navigate(`${base}/${tab.actionTo}`)
+                    : tab.action === '마일스톤 만들기'
+                      ? openMilestoneCreate()
+                      : tab.actionTo && navigate(`${base}/${tab.actionTo}`)
               }
             >
               {tab.action}

@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { Button, Card, Columns, Loadable, Segmented } from '../../components/ui'
 import { PageHeader } from '../../layouts/PageHeader'
@@ -7,6 +8,8 @@ import type { CalEvent, EventLayer } from '../../mocks/calendar'
 import { ApiError } from '../../api/client'
 import { whenLive } from '../../api/useResource'
 import { saveCalendarSettings, useCalendarEvents, useCalendarSettings, type CalendarSettings } from '../../api/communication'
+import { openEventEditor, useEventsChanged } from '../../api/calendarEvents'
+import { EventEditorHost } from './EventModal'
 import { KindLegendCard, LayerFilterCard, SelectedDayCard } from './view/CalendarSideCards'
 import { DayList, MonthList } from './view/EventLists'
 import { MonthGrid } from './view/MonthGrid'
@@ -22,16 +25,30 @@ const VIEWS: { value: View; label: string }[] = [
 
 export function CalendarPage() {
   const settings = useCalendarSettings()
+  // 머리의 '새로 만들기' 메뉴는 /calendar?new=1 로 보낸다: 일정 추가 창을 열고 주소에서 new 를 지운다
+  const [params, setParams] = useSearchParams()
+  useEffect(() => {
+    if (params.get('new') !== '1') return
+    openEventEditor({})
+    const next = new URLSearchParams(params)
+    next.delete('new')
+    setParams(next, { replace: true })
+  }, [params, setParams])
   return (
     <>
       <PageHeader
         title="캘린더"
         subtitle="연구실 공용 일정과 내 일정"
-        action={<Button icon={Plus}>일정 추가</Button>}
+        action={
+          <Button icon={Plus} onClick={() => openEventEditor({})}>
+            일정 추가
+          </Button>
+        }
       />
       <Loadable resource={settings} label="캘린더 설정">
         {(st) => <CalendarView settings={st} />}
       </Loadable>
+      <EventEditorHost />
     </>
   )
 }
@@ -77,6 +94,8 @@ function CalendarView({ settings }: { settings: CalendarSettings }) {
   const weeks = monthWeeks(cursor.getFullYear(), cursor.getMonth())
   // 달력에 보이는 칸 전체 기간으로 부른다 (최대 6주)
   const range = useCalendarEvents(ymd(weeks[0][0]), ymd(weeks[weeks.length - 1][6]))
+  // 일정을 만들거나 고치면 다시 불러온다
+  useEventsChanged(range.reload)
   const events = range.data
 
   const visible = useMemo(

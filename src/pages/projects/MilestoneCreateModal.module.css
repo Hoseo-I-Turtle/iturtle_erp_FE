@@ -1,0 +1,185 @@
+/* 마일스톤 만들기 창 (06 Screens · 추가 › Screen · 마일스톤 만들기) */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.label {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.req {
+  color: var(--status-negative);
+  font-weight: 600;
+}
+.input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--brand-500);
+}
+.input:focus-within,
+.textarea:focus {
+  border-color: var(--brand-300);
+  box-shadow: 0 0 0 3px rgba(128, 170, 211, 0.25);
+}
+.input input {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+}
+.input small {
+  font-size: var(--fs-overline);
+  color: var(--text-muted);
+}
+.textarea {
+  min-height: 84px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  outline: 0;
+  resize: vertical;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--brand-500);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 14px;
+}
+.hint,
+.hintBad {
+  font-size: var(--fs-overline);
+  color: var(--text-muted);
+}
+.hintBad {
+  color: var(--status-negative);
+}
+
+.tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+}
+.tasksHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--brand-500);
+}
+.tasksHead strong {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.count {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--brand-400);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.taskChip,
+.addChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--fs-caption);
+}
+.taskChip {
+  background: var(--surface-card);
+  color: var(--brand-500);
+}
+.taskChip b {
+  font-weight: 600;
+}
+.taskChip:hover {
+  color: var(--status-negative);
+}
+.addChip {
+  background: var(--surface-tint);
+  color: var(--brand-400);
+  font-weight: 500;
+}
+.addChip:disabled {
+  color: var(--text-disabled);
+  cursor: default;
+}
+.pick {
+  max-width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  font: inherit;
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+  background: var(--surface-card);
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--status-negative-bg);
+  font-size: var(--fs-caption);
+  color: var(--status-negative);
+}
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.footNote {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.grow {
+  flex: 1;
+}
+.foot button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (max-width: 720px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .foot {
+    flex-wrap: wrap;
+  }
+}

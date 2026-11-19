@@ -122,6 +122,16 @@
   border-radius: 10px;
   background: var(--surface-sunken);
 }
+.rowButton {
+  width: 100%;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rowButton:hover {
+  background: var(--surface-tint);
+}
 .rowBar {
   width: 4px;
   height: 34px;
