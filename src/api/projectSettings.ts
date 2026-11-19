@@ -257,21 +257,6 @@ export const addProjectMember = (key: string, memberId: number, role: 'MANAGER' 
 export const changeMemberRole = (key: string, memberId: number, role: 'MANAGER' | 'MEMBER') =>
   api(`/projects/${enc(key)}/members/${memberId}`, { method: 'PATCH', body: { role } })
 
-type HandoverDto = { projects: { project: { projectKey: string }; openTasks: { taskKey: string }[] }[] }
-
-/**
- * 빼기 (P-8): 끝나지 않은 담당 작업을 모두 넘겨야 해서(P011) 먼저 P-9a 로 작업을 받고 담당 없음으로 넘긴다.
- * 작업을 다른 사람에게 넘기려면 작업 목록에서 담당자를 먼저 바꾼다.
- */
-export async function removeProjectMember(key: string, memberId: number) {
-  const handover = await api<HandoverDto>('/projects/handover', { query: { memberId, projectKey: key } })
-  const tasks = handover.projects.find((p) => p.project.projectKey === key)?.openTasks ?? []
-  return api(`/projects/${enc(key)}/members/${memberId}/remove`, {
-    method: 'POST',
-    body: { taskReassignments: tasks.map((t) => ({ taskKey: t.taskKey, assigneeMemberId: null })) },
-  })
-}
-
 // ───────────────────────── 라벨 (P-25 ~ P-27) ─────────────────────────
 
 export type LabelInput = { name: string; color: string; description: string }

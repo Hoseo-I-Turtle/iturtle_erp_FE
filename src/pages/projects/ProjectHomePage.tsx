@@ -103,7 +103,7 @@ function ProjectHomeView({ d }: { d: ProjectHome }) {
       }
       side={
         <>
-          <LinkedServices services={d.services} manageTo={`${base}/settings?tab=service`} />
+          <LinkedServices services={d.services} manageTo={`${base}/settings?tab=links`} />
 
           <Card>
             <SectionHead icon={Shield} title="프로젝트 서비스 권한" link={{ to: `${base}/settings?tab=service`, label: '설정' }} />
