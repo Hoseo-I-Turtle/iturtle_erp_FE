@@ -112,14 +112,35 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.share {
-  display: flex;
-  padding: 4px;
-  border-radius: 8px;
-  color: var(--text-secondary);
+.svcLink {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
 }
-.share:hover {
+/* 눌러 들어가는 카드: 올라오면서 조금 커진다 */
+.svcLink:hover,
+.svcLink:focus-visible {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 20px rgba(0, 15, 34, 0.12);
   background: var(--surface-tint);
+}
+.svcLink:active {
+  transform: translateY(-1px) scale(1.01);
+}
+.svcLink:focus-visible {
+  outline: 2px solid var(--brand-400);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .svcLink {
+    transition: none;
+  }
+  .svcLink:hover,
+  .svcLink:focus-visible,
+  .svcLink:active {
+    transform: none;
+  }
 }
 .svcBottom {
   display: flex;

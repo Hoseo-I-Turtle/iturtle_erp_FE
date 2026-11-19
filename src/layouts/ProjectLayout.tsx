@@ -23,7 +23,7 @@ const TABS: { to: string; label: string; icon: LucideIcon; action?: string; acti
   { to: 'tasks', label: '작업 목록', icon: ListChecks, action: '작업 만들기' },
   { to: 'milestones', label: '마일스톤', icon: FlaskConical, action: '마일스톤 만들기' },
   { to: 'threads', label: '스레드', icon: MessageSquare, action: '글 쓰기', actionTo: 'threads/new', subtitle: '글과 답글로 이야기하고, 고정 글은 게시판처럼 모아 봐요' },
-  { to: 'minutes', label: '회의록', icon: ClipboardList, action: '회의록 쓰기', subtitle: '회의록 · 할 일은 바로 작업이 돼요', hideTabs: true },
+  { to: 'minutes', label: '회의록', icon: ClipboardList, action: '회의록 쓰기', subtitle: '회의록 · 할 일은 바로 작업이 돼요' },
   { to: 'files', label: '자료', icon: Folder, action: '자료 올리기' },
   { to: 'settings', label: '설정', icon: Settings, subtitle: '설정 · 프로젝트 관리자만 바꿀 수 있어요' },
 ]

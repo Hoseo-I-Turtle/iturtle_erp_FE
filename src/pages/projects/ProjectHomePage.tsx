@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom'
-import { Calendar, Check, Clock, FlaskConical, GitCommitHorizontal, LayoutGrid, ListChecks, Lock, Share2, Shield, Users } from 'lucide-react'
+import { Calendar, Check, Clock, FlaskConical, GitCommitHorizontal, LayoutGrid, ListChecks, Lock, Shield, Users } from 'lucide-react'
 import { Avatar, Card, Chip, Columns, Empty, ListItem, Loadable, Progress, SectionHead } from '../../components/ui'
 import { useProjectHome, type ProjectHome } from '../../api/projects'
 import { ServiceIcon, StatusChip } from './common'
@@ -106,22 +106,20 @@ function ProjectHomeView({ d }: { d: ProjectHome }) {
             <SectionHead icon={LayoutGrid} title="연동 서비스" link={{ to: `${base}/settings`, label: '관리' }} />
             {d.services.length === 0 && <Empty>연결한 서비스가 없어요.</Empty>}
             {d.services.map((sv, i) => {
+              // 카드 자체가 그 서비스로 가는 버튼이다 (주소가 없으면 그냥 카드)
+              const Tag = sv.url ? 'a' : 'div'
               return (
-                <div key={`${sv.code}-${i}`} className={s.svc}>
+                <Tag
+                  key={`${sv.code}-${i}`}
+                  className={sv.url ? `${s.svc} ${s.svcLink}` : s.svc}
+                  {...(sv.url ? { href: sv.url, target: '_blank', rel: 'noopener noreferrer', title: `${sv.name} 열기` } : {})}
+                >
                   <div className={s.svcTop}>
                     <ServiceIcon code={sv.code} size={20} />
                     <span className={s.svcText}>
                       <strong>{sv.name}</strong>
                       <small>{sv.target}</small>
                     </span>
-                    <button
-                      type="button"
-                      className={s.share}
-                      aria-label={`${sv.name} 열기`}
-                      onClick={() => sv.url && window.open(sv.url, '_blank', 'noopener')}
-                    >
-                      <Share2 size={16} />
-                    </button>
                   </div>
                   <div className={s.svcBottom}>
                     <span className={sv.status.ok ? `${s.svcStatus} ${s.svcOk}` : s.svcStatus}>
@@ -132,7 +130,7 @@ function ProjectHomeView({ d }: { d: ProjectHome }) {
                     </span>
                     {sv.myPerm && <span className={s.svcPerm}>{sv.myPerm}</span>}
                   </div>
-                </div>
+                </Tag>
               )
             })}
           </Card>

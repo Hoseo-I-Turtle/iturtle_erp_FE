@@ -18,7 +18,7 @@ export const NAV: NavSection[] = [
   {
     items: [
       { to: '/', label: '홈', icon: House },
-      { to: '/notices', label: '공지사항', icon: Megaphone, badge: 2 },
+      { to: '/notices', label: '공지사항', icon: Megaphone },
       { to: '/calendar', label: '캘린더', icon: Calendar },
     ],
   },
