@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { Calendar, ClipboardList, Clock, FileText, ListChecks, MapPin, Pencil, Plus, Save, TriangleAlert, Kanban, X } from 'lucide-react'
-import { Avatar, Breadcrumb, Button, Card, Checkbox, Chip, Columns, Empty, ListItem, Loadable, Note, SectionHead } from '../../components/ui'
+import { useParams } from 'react-router-dom'
+import { Breadcrumb, Card, Columns, Empty, Loadable } from '../../components/ui'
 import type { Minute } from '../../mocks/minutes'
 import { whenLive, type Resource } from '../../api/useResource'
 import {
@@ -13,18 +12,15 @@ import {
   useMinuteList,
   type MinuteConflict,
   type MinuteList,
-  type MinuteSection,
   type MinuteView,
 } from '../../api/content'
-import s from './MinutesPage.module.css'
 import { useProjectHeader } from '../../api/projects'
-
-type SectionKey = MinuteSection
-const SECTIONS: { key: SectionKey; label: string }[] = [
-  { key: 'agenda', label: '안건' },
-  { key: 'discussion', label: '논의 내용' },
-  { key: 'decisions', label: '결정 사항' },
-]
+import { MinuteHeader } from './minutes/MinuteHeader'
+import { MinuteSections } from './minutes/MinuteSections'
+import { ConflictAlert, HistoryCard, OtherMinutesCard } from './minutes/MinuteSideCards'
+import { MinuteTodos } from './minutes/MinuteTodos'
+import type { MinuteDraft } from './minutes/sections'
+import s from './MinutesPage.module.css'
 
 export function MinutesPage() {
   const { key } = useParams()
@@ -88,7 +84,7 @@ function MinuteColumns({ detail, d, list, isLatest, onOpen, projectKey, projectN
   const latest = list.latest!
   const [selected, setSelected] = useState<number[]>(() => m.todos.filter((t) => !t.task).map((t) => t.id))
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState<Record<SectionKey, string>>({ agenda: '', discussion: '', decisions: '' })
+  const [draft, setDraft] = useState<MinuteDraft>({ agenda: '', discussion: '', decisions: '' })
   const [conflict, setConflict] = useState<MinuteConflict | null>(d.initialConflict)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -154,152 +150,16 @@ function MinuteColumns({ detail, d, list, isLatest, onOpen, projectKey, projectN
       main={
         <Card className={s.main}>
           <Breadcrumb items={[{ label: projectName, to: `/projects/${projectKey}` }, { label: '회의록' }]} />
-          <div className={s.titleRow}>
-            <h2>{m.title}</h2>
-            {editing ? (
-              <>
-                <Button variant="secondary" icon={X} onClick={() => setEditing(false)}>
-                  취소
-                </Button>
-                <Button icon={Save} onClick={save} disabled={saving}>
-                  저장
-                </Button>
-              </>
-            ) : (
-              <Button variant="secondary" icon={Pencil} onClick={startEdit}>
-                수정
-              </Button>
-            )}
-          </div>
-          {error && (
-            <Note icon={TriangleAlert} tone="warning">
-              {error}
-            </Note>
-          )}
-          <div className={s.chips}>
-            <Chip tone="tint" icon={Clock}>
-              {m.when}
-            </Chip>
-            <Chip tone="tint" icon={MapPin}>
-              {m.place}
-            </Chip>
-            <Chip tone="tint" icon={Calendar}>
-              {m.event}
-            </Chip>
-            <span className={s.template}>
-              <FileText size={14} /> {m.template}
-            </span>
-          </div>
-          <div className={s.people}>
-            <span className={s.peopleLabel}>참석</span>
-            {m.attendees.map((n) => (
-              <span key={n} className={s.person}>
-                <Avatar name={n} size={20} /> {n}
-              </span>
-            ))}
-            {m.absent.length > 0 && <span className={s.peopleLabel}>불참</span>}
-            {m.absent.map((n) => (
-              <span key={n} className={`${s.person} ${s.absent}`}>
-                <Avatar name={n} size={20} /> {n}
-              </span>
-            ))}
-          </div>
-
-          {SECTIONS.map(({ key: k, label }) => (
-            <section key={k} className={s.section}>
-              <h3>{label}</h3>
-              {editing ? (
-                <textarea
-                  className={s.textarea}
-                  value={draft[k]}
-                  rows={Math.max(3, draft[k].split('\n').length + 1)}
-                  onChange={(e) => setDraft({ ...draft, [k]: e.target.value })}
-                  placeholder="한 줄에 하나씩"
-                />
-              ) : (
-                <ul>
-                  {m[k].map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          ))}
-
-          <div className={s.todos}>
-            <div className={s.todoHead}>
-              <ListChecks size={18} />
-              <span>할 일 {m.todos.length}</span>
-              <span className={s.grow} />
-              <Button icon={Plus} onClick={makeTasks} disabled={selected.length === 0}>
-                선택한 {selected.length}개 작업으로 만들기
-              </Button>
-            </div>
-            {m.todos.map((t) => (
-              <div key={t.id} className={selected.includes(t.id) ? `${s.todo} ${s.todoOn}` : s.todo}>
-                {t.task ? (
-                  <Kanban size={16} className={s.taskIcon} />
-                ) : (
-                  <Checkbox
-                    checked={selected.includes(t.id)}
-                    onChange={(v) => setSelected((xs) => (v ? [...xs, t.id] : xs.filter((x) => x !== t.id)))}
-                  />
-                )}
-                <span className={s.todoText}>{t.text}</span>
-                <Avatar name={t.assignee} size={22} />
-                <span className={s.due}>
-                  <Clock size={14} /> {t.dueOn}
-                </span>
-                {t.task && (
-                  <Link to={`/projects/${projectKey}/tasks/${t.task.taskKey}`} className={s.taskLink}>
-                    <strong>{t.task.taskKey}</strong> · {t.task.status}
-                  </Link>
-                )}
-              </div>
-            ))}
-          </div>
+          <MinuteHeader m={m} editing={editing} saving={saving} error={error} onEdit={startEdit} onCancel={() => setEditing(false)} onSave={save} />
+          <MinuteSections m={m} editing={editing} draft={draft} onDraft={setDraft} />
+          <MinuteTodos m={m} projectKey={projectKey} selected={selected} onSelected={setSelected} onMakeTasks={makeTasks} />
         </Card>
       }
       side={
         <>
-          {conflict && editing && (
-            <div className={s.conflict} role="alert">
-              <TriangleAlert size={18} />
-              <div>
-                <strong>다른 사람이 먼저 저장했어요</strong>
-                <p>
-                  {conflict.who} · {conflict.ago}. 내 수정은 덮어쓰지 않았어요. 새 내용을 보고 다시 고쳐 주세요.
-                </p>
-              </div>
-            </div>
-          )}
-          <Card>
-            <SectionHead icon={Clock} title="수정 이력" />
-            {d.history.map((h) => (
-              <ListItem
-                key={h.who + h.ago + h.what}
-                plain
-                leading={<Avatar name={h.who} size={26} />}
-                title={<small className={s.histWho}>{h.who}</small>}
-                meta={`${h.ago} · ${h.what}`}
-                // TODO: 이전 버전 보기 (MM-7 GET /meeting-minutes/{id}/revisions/{version}) — 보여 줄 화면이 아직 없다
-                trailing={<button type="button" className={s.view}>보기</button>}
-              />
-            ))}
-          </Card>
-          <Card>
-            <SectionHead icon={ClipboardList} title="다른 회의록" link={{ to: `/projects/${projectKey}/minutes`, label: '전체' }} />
-            {list.others.map((o) => (
-              <ListItem
-                key={o.title}
-                plain
-                onClick={o.id ? () => onOpen(o.id) : undefined}
-                title={o.title}
-                meta={o.meta}
-              />
-            ))}
-            {!isLatest && <ListItem plain onClick={() => onOpen(latest.id)} title={latest.title} meta="최근 회의록으로 돌아가기" />}
-          </Card>
+          {conflict && editing && <ConflictAlert conflict={conflict} />}
+          <HistoryCard history={d.history} />
+          <OtherMinutesCard projectKey={projectKey} others={list.others} latest={latest} isLatest={isLatest} onOpen={onOpen} />
         </>
       }
     />
