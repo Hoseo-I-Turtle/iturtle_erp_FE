@@ -37,3 +37,26 @@
   gap: 8px;
   margin-top: 8px;
 }
+
+/* 같이 가질 수 없는 역할 경고 (MEM-5-12) */
+.conflict {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--status-warning-bg, #fff1dc);
+  color: var(--status-warning-text, #b26a00);
+}
+.conflict div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.conflict strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+.conflict small {
+  font-size: 12px;
+}

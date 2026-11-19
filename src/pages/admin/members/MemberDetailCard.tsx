@@ -1,6 +1,6 @@
-import { Shield } from 'lucide-react'
+import { Shield, TriangleAlert } from 'lucide-react'
 import { Avatar, Button, Card, Chip, Select } from '../../../components/ui'
-import type { AdminMembersData, AdminRow } from '../../../api/admin'
+import { violatedRules, type AdminMembersData, type AdminRow, type RoleConflictRule } from '../../../api/admin'
 import { RoleChip } from '../RoleChip'
 import type { SelectedMember } from './types'
 import a from '../admin.module.css'
@@ -22,6 +22,8 @@ type Props = {
   onToggleRole: (code: string) => void
   onApplyPreset: () => void
   onSaveRoles: () => void
+  /** 같이 가질 수 없는 역할 규칙 (공통코드 ROLE_CONFLICT) */
+  conflictRules?: RoleConflictRule[]
 }
 
 /** 고른 구성원: 구분 · 로그인 상태 · 적용 프리셋 · 역할 고르기 */
@@ -38,7 +40,10 @@ export function MemberDetailCard({
   onToggleRole,
   onApplyPreset,
   onSaveRoles,
+  conflictRules = [],
 }: Props) {
+  // 지금 보이는 역할(저장된 것 또는 고치는 중)이 어기는 규칙. 저장된 것이면 경고만, 고치는 중이면 저장을 막는다 (서버도 M043 으로 막음)
+  const violated = violatedRules(roles, conflictRules)
   return (
     <Card className={s.detail}>
       <div className={s.detailHead}>
@@ -96,6 +101,18 @@ export function MemberDetailCard({
           </div>
         </div>
       ))}
+      {violated.length > 0 && (
+        <div className={s.conflict} role="alert">
+          <TriangleAlert size={16} />
+          <div>
+            <strong>같이 가질 수 없는 역할: {violated.map((r) => `${r.roleA} · ${r.roleB}`).join(', ')}</strong>
+            <small>
+              {violated[0].reason}.{' '}
+              {dirty ? '이대로는 저장할 수 없어요 — 하나를 빼 주세요.' : '자동으로 빼지 않아요. 하나를 빼고 저장해 주세요.'}
+            </small>
+          </div>
+        </div>
+      )}
       {err && <p className={a.err}>{err}</p>}
       <div className={s.detailActions}>
         {presets.length > 0 && (
@@ -104,7 +121,7 @@ export function MemberDetailCard({
         <Button variant="tint" icon={Shield} onClick={onApplyPreset} disabled={presets.length === 0}>
           프리셋 적용
         </Button>
-        <Button onClick={onSaveRoles} disabled={!dirty}>
+        <Button onClick={onSaveRoles} disabled={!dirty || violated.length > 0}>
           역할 저장
         </Button>
       </div>

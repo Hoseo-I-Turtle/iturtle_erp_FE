@@ -23,10 +23,12 @@ type Props = {
   onQuery: (q: string) => void
   selectedId: number
   onSelect: (id: number) => void
+  /** 같이 가질 수 없는 역할을 둘 다 가진 구성원 (경고 표시) */
+  conflictIds?: number[]
 }
 
 /** 구성원 표: 검색 · 상태 필터 · 행 (누르면 오른쪽 상세) */
-export function MemberTable({ list, counts, filter, onFilter, q, onQuery, selectedId, onSelect }: Props) {
+export function MemberTable({ list, counts, filter, onFilter, q, onQuery, selectedId, onSelect, conflictIds = [] }: Props) {
   return (
     <Card className={s.tableCard}>
       <div className={a.toolbar}>
@@ -57,7 +59,14 @@ export function MemberTable({ list, counts, filter, onFilter, q, onQuery, select
           <span className={s.who}>
             <Avatar name={m.name} size={32} />
             <span>
-              <strong>{m.name}</strong>
+              <strong>
+                {m.name}
+                {conflictIds.includes(m.memberId) && (
+                  <span className={s.conflictMark} title="같이 가질 수 없는 역할을 둘 다 가지고 있어요">
+                    겹치는 권한
+                  </span>
+                )}
+              </strong>
               <small>{m.loginId}</small>
             </span>
           </span>

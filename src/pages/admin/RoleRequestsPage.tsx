@@ -122,6 +122,11 @@ function RoleRequestsView({ data }: { data: RoleRequestsData }) {
                     <Button variant="secondary" onClick={() => open(r)} disabled={busy}>
                       검토
                     </Button>
+                  ) : r.own ? (
+                    // 자기 신청은 자기가 처리하지 못한다 (A013) — 다른 관리자가 한다
+                    <span className={a.muted} title="자기 신청은 직접 승인 · 거절할 수 없어요">
+                      내 신청 · 다른 관리자가 처리
+                    </span>
                   ) : (
                     // role-manage 는 프로젝트 신청을 보기만 한다 (승인은 그 프로젝트 관리자)
                     <span className={a.muted}>승인: {r.approverLabel}</span>
