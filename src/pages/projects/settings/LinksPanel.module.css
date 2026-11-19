@@ -1,0 +1,86 @@
+/* 설정 › 연동 서비스: 프로젝트 홈 연동 서비스 카드와 같은 서비스별 묶음 */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--surface-sunken);
+}
+.groupHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 4px 4px;
+}
+.groupHead strong {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.badge {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: var(--brand-500);
+}
+.count {
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  background: var(--surface-tint);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--brand-400);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+}
+.text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.text strong {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.text .desc {
+  color: var(--text-muted);
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-tint);
+}
+.services {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.on {
+  border-color: var(--brand-500) !important;
+  background: var(--brand-500) !important;
+  color: #fff !important;
+}
