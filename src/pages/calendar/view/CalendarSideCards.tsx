@@ -1,6 +1,7 @@
-import { Calendar, ClipboardList, LayoutGrid } from 'lucide-react'
+import { Calendar, CalendarPlus, ClipboardList, LayoutGrid } from 'lucide-react'
+import { openEventEditor } from '../../../api/calendarEvents'
 import { Button, Card, Checkbox, SectionHead } from '../../../components/ui'
-import { formatLongDay } from '../../../lib/date'
+import { formatLongDay, ymd } from '../../../lib/date'
 import { KIND_META, LAYER_META, type CalEvent, type EventLayer } from '../../../mocks/calendar'
 import { EventRow } from './EventRow'
 import s from '../CalendarPage.module.css'
@@ -70,6 +71,9 @@ export function SelectedDayCard({ selected, selectedEvents }: { selected: Date; 
       {selectedEvents.map((e) => (
         <EventRow key={e.id} e={e} compact />
       ))}
+      <Button variant="tint" icon={CalendarPlus} className={s.minutesBtn} onClick={() => openEventEditor({ date: ymd(selected) })}>
+        이 날 일정 추가
+      </Button>
       {/* 백엔드 POST /meeting-minutes 는 projectKey 없이 연구실 회의록도 받지만(참석자 목록은 필수) 이 앱에 연구실 회의록 화면 경로가 없어 아직 연결하지 않음 */}
       <Button variant="tint" icon={ClipboardList} className={s.minutesBtn}>
         이 날 회의록 만들기

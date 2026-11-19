@@ -27,6 +27,7 @@ import { WeeklyReportPage } from './pages/reports/WeeklyReportPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { TaskListPage } from './pages/projects/TaskListPage'
 import { SchedulePage } from './pages/projects/SchedulePage'
+import { MilestonesPage } from './pages/projects/MilestonesPage'
 import { StartPage } from './pages/start/StartPage'
 import { ModeGate } from './layouts/ModeGate'
 import { LoginPage } from './pages/account/LoginPage'
@@ -77,7 +78,7 @@ const router = createBrowserRouter([
           { path: 'schedule', element: <SchedulePage /> },
           { path: 'tasks', element: <TaskListPage /> },
           { path: 'tasks/:taskKey', element: <TaskDetailPage /> },
-          { path: 'milestones', element: <PlaceholderPage title="마일스톤" bare /> },
+          { path: 'milestones', element: <MilestonesPage /> },
           { path: 'threads', element: <ThreadPage /> },
           { path: 'threads/new', element: <ThreadPage /> },
           { path: 'minutes', element: <MinutesPage /> },

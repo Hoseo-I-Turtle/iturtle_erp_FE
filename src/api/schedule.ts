@@ -412,7 +412,7 @@ export async function deleteView(projectKey: string, view: ScheduleView) {
 
 // ───────────────────────── 달력: 프로젝트 일정 ─────────────────────────
 
-export type SchedEvent = { id: string; day: number; endDay: number; title: string; time: string | null; color: string | null }
+export type SchedEvent = { id: string; day: number; endDay: number; title: string; time: string | null; color: string | null; typeCode: string | null }
 
 /** OccurrenceResponse (필요한 것만) */
 type OccurrenceDto = {
@@ -421,6 +421,7 @@ type OccurrenceDto = {
   title?: string
   busyOnly: boolean
   color: string | null
+  eventTypeCode: string | null
   allDay: boolean
   startsAt: string
   startsOn?: string
@@ -431,15 +432,15 @@ const kstTime = (iso: string) => new Date(iso).toLocaleTimeString('sv-SE', { tim
 
 function mockEvents(): SchedEvent[] {
   const T = todayNum()
-  const e = (id: string, d: number, title: string, time: string | null, color: string | null = null): SchedEvent => ({ id, day: T + d, endDay: T + d, title, time, color })
+  const e = (id: string, d: number, title: string, time: string | null, typeCode = 'MEETING', color: string | null = null): SchedEvent => ({ id, day: T + d, endDay: T + d, title, time, color, typeCode })
   return [
     e('e1', -2, '주간 회의', '10:00'),
     e('e2', 5, '주간 회의', '10:00'),
-    e('e3', 7, '중간 점검', '14:00', '#3F6593'),
+    e('e3', 7, '중간 점검 회의', '14:00', 'MEETING', '#3F6593'),
     e('e4', 12, '주간 회의', '10:00'),
-    e('e5', 1, '코드 리뷰 세션', '16:00'),
-    e('e6', 1, '배포 리허설', '19:00'),
-    { id: 'e7', day: T + 15, endDay: T + 17, title: '연구실 워크숍', time: null, color: '#34C27A' },
+    e('e5', 0, '11월 기술 세미나', '16:00', 'SEMINAR'),
+    e('e6', 6, '논문 초록 마감', null, 'DEADLINE'),
+    { id: 'e7', day: T + 14, endDay: T + 14, title: '김민서 휴가', time: null, color: null, typeCode: 'LEAVE' },
   ]
 }
 
@@ -456,12 +457,14 @@ export function useProjectEvents(projectId: number, from: number, to: number) {
         const start = o.allDay && o.startsOn ? dayNum(o.startsOn) : kstDay(o.occurrenceStartsAt ?? o.startsAt)
         const end = o.allDay && o.endsOn ? dayNum(o.endsOn) : start
         return {
-          id: `${o.eventId}-${o.occurrenceStartsAt}`,
+          // 고치기 창을 열 때 eventRefOf 로 나눈다 (캘린더와 같은 모양)
+          id: `${o.eventId}@${o.occurrenceStartsAt}`,
           day: start,
           endDay: Math.max(end, start),
           title: o.busyOnly || !o.title ? '일정 있음' : o.title,
           time: o.allDay ? null : kstTime(o.occurrenceStartsAt ?? o.startsAt),
           color: o.color,
+          typeCode: o.eventTypeCode,
         }
       })
     },

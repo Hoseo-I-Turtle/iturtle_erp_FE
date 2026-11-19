@@ -965,7 +965,19 @@
   gap: 4px;
   padding: 6px 6px 8px;
   border-right: 1px solid var(--border-default);
-  cursor: default;
+  cursor: pointer;
+  outline: 0;
+}
+.calCell:hover {
+  background: #f8fbfe;
+}
+.calCell:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--brand-300);
+}
+.calDrop,
+.calDrop:hover {
+  background: var(--brand-100);
+  box-shadow: inset 0 0 0 2px var(--brand-400);
 }
 .calCell:last-child {
   border-right: 0;
@@ -991,13 +1003,21 @@
   font-variant-numeric: tabular-nums;
 }
 .calDate em {
-  padding: 1px 6px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--status-negative);
+}
+/* 오늘: 날짜를 빨간 동그라미로 */
+.calDateToday {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
   border-radius: var(--radius-full);
   background: var(--status-negative);
   color: #fff;
-  font-style: normal;
-  font-size: 10px;
-  font-weight: 600;
 }
 .calItems {
   display: flex;
@@ -1041,19 +1061,30 @@
 }
 .calMs {
   overflow: hidden;
-  text-overflow: ellipsis;
   font-weight: 600;
-  color: var(--brand-500);
-  background: var(--surface-card);
-  box-shadow: inset 0 0 0 1px var(--brand-200);
+  color: #fff;
+  background: var(--brand-500);
+}
+.calMs span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .calMsDone {
   color: #1e7d4f;
-  box-shadow: inset 0 0 0 1px #bfe9d2;
+  background: #e3f6ec;
+}
+.calTask span {
+  font-weight: 500;
+}
+.calTaskLate {
+  background: var(--status-negative-bg);
 }
 .calTaskLate,
 .calTaskLate small {
   color: var(--status-negative);
+}
+.calTask[draggable='true'] {
+  cursor: grab;
 }
 .calTaskDone span {
   color: var(--brand-300);
@@ -1085,11 +1116,33 @@
   transform: rotate(45deg);
 }
 .calEvent {
+  width: 100%;
+  border: 0;
   border-left: 3px solid var(--brand-400);
   border-radius: 4px;
   background: var(--surface-tint);
+  font: inherit;
+  font-size: 12px;
   color: var(--brand-500);
   font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.calEvent:hover {
+  filter: brightness(0.97);
+}
+.calEvent svg {
+  flex: none;
+}
+.calEventDeadline {
+  border-left-color: #f5b451;
+  background: #fff1dc;
+  color: #b26a00;
+}
+.calEventLeave {
+  border-left-color: var(--brand-200);
+  background: var(--surface-sunken);
+  color: var(--brand-400);
 }
 .calEvent small {
   flex: none;
@@ -1114,6 +1167,24 @@
   border-left: 3px solid var(--brand-400);
   border-radius: 2px;
   background: var(--surface-tint);
+}
+.lg .lgDeadline {
+  border-left-color: #f5b451;
+  background: #fff1dc;
+}
+.lg .lgLeave {
+  border-left-color: var(--brand-200);
+  background: var(--surface-sunken);
+}
+.lg .lgLate {
+  border-left-color: var(--status-negative);
+  background: var(--status-negative-bg);
+}
+.lgMs {
+  width: 18px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--brand-500);
 }
 .viewSave {
   flex: none;

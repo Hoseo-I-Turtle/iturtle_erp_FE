@@ -48,15 +48,23 @@ import {
   type ViewScale,
   type ViewType,
 } from '../../api/schedule'
+import { eventRefOf, openEventEditor, useEventsChanged } from '../../api/calendarEvents'
+import { EventEditorHost } from '../calendar/EventModal'
 import s from './SchedulePage.module.css'
+
+/** 달력에서 작업을 끌어 옮길 때의 dataTransfer 종류 */
+const TASK_DRAG = 'text/x-iturtle-task'
 
 export function SchedulePage() {
   const { key } = useParams()
   const res = useSchedule(key)
   return (
-    <Loadable resource={res} label="일정표">
-      {(d) => <ScheduleView d={d} res={res} />}
-    </Loadable>
+    <>
+      <Loadable resource={res} label="일정표">
+        {(d) => <ScheduleView d={d} res={res} />}
+      </Loadable>
+      <EventEditorHost />
+    </>
   )
 }
 
@@ -292,7 +300,15 @@ function ScheduleView({ d, res }: { d: ScheduleData; res: Resource<ScheduleData>
           }}
         />
       )}
-      {calendar && <CalendarView d={d} tasks={tasks} anchor={anchor} today={today} />}
+      {calendar && (
+        <CalendarView
+          d={d}
+          tasks={tasks}
+          anchor={anchor}
+          today={today}
+          onMoveTask={(t, due) => void commit(t, { start: t.start === null ? null : t.start + (due - (t.due ?? due)), due })}
+        />
+      )}
 
       <Legend viewType={viewType} d={d} />
       <span className={s.srOnly} aria-live="polite">
@@ -502,20 +518,26 @@ function Legend({ viewType, d }: { viewType: ViewType; d: ScheduleData }) {
     return (
       <div className={s.legend}>
         <span className={s.lg}>
-          <b className={s.dot} /> 작업 기한
+          <b className={s.dot} /> 작업 기한 (점 = 상태)
         </span>
         <span className={s.lg}>
-          <b className={`${s.dot} ${s.dotLate}`} /> 기한 지남
+          <b className={s.lgMs} /> 마일스톤 기한
         </span>
         <span className={s.lg}>
-          <b className={s.lgDiamond} /> 마일스톤 기한
+          <i className={s.lgEvent} /> 회의 · 세미나
         </span>
         <span className={s.lg}>
-          <i className={s.lgEvent} /> 프로젝트 일정
+          <i className={`${s.lgEvent} ${s.lgDeadline}`} /> 마감
+        </span>
+        <span className={s.lg}>
+          <i className={`${s.lgEvent} ${s.lgLeave}`} /> 휴가
+        </span>
+        <span className={s.lg}>
+          <i className={`${s.lgEvent} ${s.lgLate}`} /> 기한 지남
         </span>
         <span className={s.grow} />
         <span className={s.legendNote}>
-          <Info size={14} /> 칸을 눌러 일정을 더하는 기능은 곧 생겨요. 지금은 연구실 캘린더에서 더해 주세요
+          <Info size={14} /> 칸을 누르면 그날 일정을 추가해요.{d.canEdit ? ' 작업을 다른 날로 끌면 기한이 바뀌어요' : ''}
         </span>
       </div>
     )
@@ -963,10 +985,26 @@ function SavedViews({ projectKey, current, onApply }: { projectKey: string; curr
 const CAL_WEEK = ['월', '화', '수', '목', '금', '토', '일']
 /** 한 칸에 바로 보이는 개수. 넘치면 '+N개 더' */
 const CAL_MAX = 3
+/** 일정 종류별 모양 (공통코드 CALENDAR_EVENT_TYPE) */
+const EVENT_LOOK: Record<string, { icon: LucideIcon; cls: 'calEventDeadline' | 'calEventLeave' | null }> = {
+  MEETING: { icon: Users, cls: null },
+  SEMINAR: { icon: Users, cls: null },
+  DEADLINE: { icon: Clock, cls: 'calEventDeadline' },
+  LEAVE: { icon: CalendarDays, cls: 'calEventLeave' },
+}
 
 type CalItem = { id: string; node: ReactNode }
 
-function CalendarView({ d, tasks, anchor, today }: { d: ScheduleData; tasks: SchedTask[]; anchor: number; today: number }) {
+type CalendarProps = {
+  d: ScheduleData
+  tasks: SchedTask[]
+  anchor: number
+  today: number
+  /** 작업을 다른 날로 끌어 놓았다 (기한 바꾸기) */
+  onMoveTask: (t: SchedTask, due: number) => void
+}
+
+function CalendarView({ d, tasks, anchor, today, onMoveTask }: CalendarProps) {
   const [y, m] = ymd(anchor)
   const first = monthStart(y, m)
   const next = addMonths(first, 1)
@@ -974,7 +1012,10 @@ function CalendarView({ d, tasks, anchor, today }: { d: ScheduleData; tasks: Sch
   const weeks = Math.ceil((next - gridStart) / 7)
   const gridEnd = gridStart + weeks * 7 - 1
   const ev = useProjectEvents(d.projectId, gridStart, gridEnd)
+  // 일정을 더하거나 고치면 다시 불러온다
+  useEventsChanged(ev.reload)
   const [expanded, setExpanded] = useState<number | null>(null)
+  const [dropDay, setDropDay] = useState<number | null>(null)
 
   const itemsOf = (day: number): CalItem[] => {
     const ms = d.milestones
@@ -983,7 +1024,10 @@ function CalendarView({ d, tasks, anchor, today }: { d: ScheduleData; tasks: Sch
         id: `m${x.id}`,
         node: (
           <span className={x.closed ? `${s.calMs} ${s.calMsDone}` : s.calMs} title={`마일스톤 기한 · ${x.name}`}>
-            <b className={s.calDiamond} /> {x.name}
+            <b className={s.calDiamond} />
+            <span>
+              {x.name} {x.closed ? '닫힘' : '기한'}
+            </span>
           </span>
         ),
       }))
@@ -995,29 +1039,51 @@ function CalendarView({ d, tasks, anchor, today }: { d: ScheduleData; tasks: Sch
         <Link
           to={`../tasks/${t.taskKey}`}
           relative="path"
+          draggable={d.canEdit}
+          onDragStart={(e) => {
+            e.dataTransfer.setData(TASK_DRAG, t.taskKey)
+            e.dataTransfer.effectAllowed = 'move'
+          }}
+          onClick={(e) => e.stopPropagation()}
           className={isLate(t) ? `${s.calTask} ${s.calTaskLate}` : t.status === 'DONE' ? `${s.calTask} ${s.calTaskDone}` : s.calTask}
-          title={`${t.taskKey} ${t.title} · ${SCHED_STATUS_NAME[t.status]}${t.assignee ? ` · ${t.assignee}` : ''}`}
+          title={`${t.taskKey} ${t.title} · ${SCHED_STATUS_NAME[t.status]}${t.assignee ? ` · ${t.assignee}` : ''}${d.canEdit ? ' · 다른 날로 끌면 기한이 바뀌어요' : ''}`}
         >
           <b className={`${s.dot} ${STATUS_CLASS[t.status]} ${isLate(t) ? s.dotLate : ''}`} />
-          <small>{t.taskKey}</small>
-          <span>{t.title}</span>
+          <span>{t.taskKey}</span>
         </Link>
       ),
     })
     const events = (ev.data ?? [])
       .filter((e) => e.day <= day && day <= e.endDay)
-      .map((e: SchedEvent) => ({
-        id: `e${e.id}`,
-        node: (
-          <span className={s.calEvent} style={e.color ? { borderLeftColor: e.color } : undefined} title={`프로젝트 일정 · ${e.title}`}>
-            {e.time && <small>{e.time}</small>}
-            <span>{e.title}</span>
-          </span>
-        ),
-      }))
+      .map((e: SchedEvent) => {
+        const look = EVENT_LOOK[e.typeCode ?? ''] ?? EVENT_LOOK.MEETING
+        const Icon = look.icon
+        const ref = eventRefOf(e.id)
+        return {
+          id: `e${e.id}`,
+          node: (
+            <button
+              type="button"
+              className={look.cls ? `${s.calEvent} ${s[look.cls]}` : s.calEvent}
+              style={!look.cls && e.color ? { borderLeftColor: e.color } : undefined}
+              title={`프로젝트 일정 · ${e.title}`}
+              onClick={(click) => {
+                click.stopPropagation()
+                if (ref) openEventEditor(ref)
+              }}
+            >
+              <Icon size={12} />
+              {e.time && <small>{e.time}</small>}
+              <span>{e.title}</span>
+            </button>
+          ),
+        }
+      })
     // 마일스톤 → 기한 지난 작업 → 프로젝트 일정 → 나머지 작업
     return [...ms, ...own.filter(isLate).map(taskItem), ...events, ...own.filter((t) => !isLate(t)).map(taskItem)]
   }
+
+  const addOn = (day: number) => openEventEditor({ date: dayStr(day), projectId: d.projectId })
 
   return (
     <div className={s.calendar}>
@@ -1045,11 +1111,31 @@ function CalendarView({ d, tasks, anchor, today }: { d: ScheduleData; tasks: Sch
               const open = expanded === day
               const shown = open ? items : items.slice(0, CAL_MAX)
               const out = day < first || day >= next
-              const cls = [s.calCell, out && s.calOut, day === today && s.calToday].filter(Boolean).join(' ')
+              const cls = [s.calCell, out && s.calOut, day === today && s.calToday, dropDay === day && s.calDrop].filter(Boolean).join(' ')
               return (
-                <div key={day} className={cls} role="gridcell" aria-disabled title="칸을 눌러 일정 더하기는 곧 생겨요">
+                <div
+                  key={day}
+                  className={cls}
+                  role="gridcell"
+                  tabIndex={0}
+                  title="눌러서 이 날 일정 추가"
+                  onClick={() => addOn(day)}
+                  onKeyDown={(e) => e.key === 'Enter' && e.target === e.currentTarget && addOn(day)}
+                  onDragOver={(e) => {
+                    if (!d.canEdit || !e.dataTransfer.types.includes(TASK_DRAG)) return
+                    e.preventDefault()
+                    setDropDay(day)
+                  }}
+                  onDragLeave={() => setDropDay((x) => (x === day ? null : x))}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    setDropDay(null)
+                    const t = tasks.find((x) => x.taskKey === e.dataTransfer.getData(TASK_DRAG))
+                    if (t && t.due !== day) onMoveTask(t, day)
+                  }}
+                >
                   <span className={i === 6 ? `${s.calDate} ${s.sun}` : s.calDate}>
-                    {ymd(day)[2] === 1 ? dayMd(day) : ymd(day)[2]}
+                    <span className={day === today ? s.calDateToday : undefined}>{ymd(day)[2] === 1 ? dayMd(day) : ymd(day)[2]}</span>
                     {day === today && <em>오늘</em>}
                   </span>
                   <div className={s.calItems}>
@@ -1057,7 +1143,15 @@ function CalendarView({ d, tasks, anchor, today }: { d: ScheduleData; tasks: Sch
                       <div key={it.id}>{it.node}</div>
                     ))}
                     {items.length > CAL_MAX && (
-                      <button type="button" className={s.calMore} onClick={() => setExpanded(open ? null : day)} aria-expanded={open}>
+                      <button
+                        type="button"
+                        className={s.calMore}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setExpanded(open ? null : day)
+                        }}
+                        aria-expanded={open}
+                      >
                         {open ? '접기' : `+${items.length - CAL_MAX}개 더`}
                       </button>
                     )}

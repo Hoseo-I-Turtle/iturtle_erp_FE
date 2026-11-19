@@ -1,4 +1,5 @@
 import { WEEKDAYS, ymd } from '../../../lib/date'
+import { openEventEditor } from '../../../api/calendarEvents'
 import type { CalEvent } from '../../../mocks/calendar'
 import { chipStyle } from './eventStyle'
 import s from '../CalendarPage.module.css'
@@ -44,6 +45,7 @@ export function MonthGrid({ weeks, cursor, view, todayKey, selectedKey, byDate, 
                   key={key}
                   className={cls}
                   onClick={() => onSelect(d)}
+                  onDoubleClick={() => openEventEditor({ date: key })}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => e.key === 'Enter' && onSelect(d)}

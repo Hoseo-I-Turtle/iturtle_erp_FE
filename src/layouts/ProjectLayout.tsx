@@ -19,6 +19,7 @@ import { findProject, MY_ROLE_NAME } from '../mocks/projects'
 import { projectCategoryName, useProjectHeader } from '../api/projects'
 import { useTaskCreateRequests, type TaskCreateOpen } from '../api/tasks'
 import { TaskCreateModal } from '../pages/projects/TaskCreateModal'
+import { openMilestoneCreate } from '../api/milestones'
 import s from './layout.module.css'
 
 const TABS: { to: string; label: string; icon: LucideIcon; action?: string; actionTo?: string; subtitle?: string; hideTabs?: boolean }[] = [
@@ -67,7 +68,9 @@ export function ProjectLayout() {
           tab.action ? (
             <Button
               icon={Plus}
-              onClick={() => (tab.action === '작업 만들기' ? setCreating({}) : tab.actionTo && navigate(`${base}/${tab.actionTo}`))}
+              onClick={() =>
+                tab.action === '작업 만들기' ? setCreating({}) : tab.action === '마일스톤 만들기' ? openMilestoneCreate() : tab.actionTo && navigate(`${base}/${tab.actionTo}`)
+              }
             >
               {tab.action}
             </Button>
