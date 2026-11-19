@@ -178,7 +178,7 @@ export function useProjectList(f: ProjectListFilter) {
 
 type ProjectMemberRefDto = { member: MemberRef; role: 'MANAGER' | 'MEMBER' | 'FORMER'; joinedAt: string; leftAt: string | null }
 /** ProjectDetailResponse */
-type ProjectDetailDto = {
+export type ProjectDetailDto = {
   projectId: number
   projectKey: string
   name: string
@@ -195,10 +195,10 @@ type ProjectDetailDto = {
   permissions: { canManage: boolean; canWriteTasks: boolean; canComment: boolean; canArchive: boolean; canDelete: boolean }
 }
 
-const getProject = (key: string) => api<ProjectDetailDto>(`/projects/${encodeURIComponent(key)}`)
+export const getProject = (key: string) => api<ProjectDetailDto>(`/projects/${encodeURIComponent(key)}`)
 
 /** 이전 참여자를 뺀 참여자 (PM 먼저 — 서버 순서 그대로) */
-const toMembers = (d: ProjectDetailDto): (ProjectMember & { memberId: number })[] =>
+export const toMembers = (d: ProjectDetailDto): (ProjectMember & { memberId: number })[] =>
   d.members
     .filter((m) => m.role !== 'FORMER')
     .map((m) => ({
@@ -444,7 +444,7 @@ type ServiceAccessDto = {
   notice: string
 }
 /** TaskCardResponse. taskKey 는 '{projectKey}-{번호}' */
-type TaskCardDto = {
+export type TaskCardDto = {
   taskId: number
   taskKey: string
   projectKey: string
@@ -456,6 +456,8 @@ type TaskCardDto = {
   priority: TaskPriority
   assignee: MemberRef | null
   requester: MemberRef
+  /** 시작일 (일정표 막대의 앞, 없으면 null) */
+  startOn?: string | null
   dueOn: string | null
   overdue: boolean
   labels: { labelId: number; name: string; color: string }[]
@@ -467,7 +469,7 @@ type TaskCardDto = {
   updatedAt: string
   version: number
 }
-type TaskListResponse = { page: PageResponse<TaskCardDto>; deletedTaskKeys: string[] | null; serverTime: string }
+export type TaskListResponse = { page: PageResponse<TaskCardDto>; deletedTaskKeys: string[] | null; serverTime: string }
 /** calendar OccurrenceResponse — 바쁨만 보이는 일정은 title 이 빠진다 */
 type OccurrenceDto = { eventId: number; title?: string; busyOnly: boolean; allDay: boolean; startsAt: string; startsOn?: string; color: string | null }
 
@@ -636,7 +638,7 @@ const TASK_TYPES: TaskType[] = ['TASK', 'BUG', 'RESEARCH']
  */
 export type BoardTask = Task & { taskId?: number; version?: number; typeName?: string; cancelled?: boolean }
 
-function toTask(x: TaskCardDto): BoardTask {
+export function toTask(x: TaskCardDto): BoardTask {
   const left = x.dueOn ? daysUntil(x.dueOn) : null
   const done = x.status === 'DONE' || x.status === 'CANCELLED'
   return {
@@ -653,6 +655,7 @@ function toTask(x: TaskCardDto): BoardTask {
     priority: x.priority,
     labels: x.labels.map((l) => l.name),
     milestone: x.milestone?.name ?? null,
+    startOn: x.startOn ? monthDay(x.startOn) : null,
     dueOn: x.dueOn ? monthDay(x.dueOn) : null,
     dueState: x.overdue ? 'overdue' : !done && left !== null && left <= 2 ? 'soon' : undefined,
     checklist: x.checklist.total > 0 ? x.checklist : null,

@@ -6,6 +6,7 @@ import { PRIORITY_NAME, STATUS_NAME, TYPE_NAME, type Task, type TaskPriority, ty
 import { ApiError } from '../../api/client'
 import { whenLive, type Resource } from '../../api/useResource'
 import { moveTaskInColumn, transitionRule, transitionTask, useBoard, type BoardData, type BoardPosition, type BoardTask } from '../../api/projects'
+import { openTaskCreate, useTasksChanged } from '../../api/tasks'
 import s from './BoardPage.module.css'
 
 const COLUMNS: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE']
@@ -23,6 +24,7 @@ const PRIORITY_TONE: Record<TaskPriority, string> = {
 export function BoardPage() {
   const { key } = useParams()
   const board = useBoard(key)
+  useTasksChanged(board.reload)
   return (
     <Loadable resource={board} label="보드">
       {(d) => <BoardView d={d} board={board} />}
@@ -195,7 +197,12 @@ function BoardView({ d, board }: { d: BoardData; board: Resource<BoardData> }) {
               <header className={s.colHead}>
                 <span className={`${s.colChip} ${s[`c${col}`]}`}>{STATUS_NAME[col]}</span>
                 <span className={s.colCount}>{list.length}</span>
-                <button type="button" className={s.add} aria-label={`${STATUS_NAME[col]}에 작업 추가`}>
+                <button
+                  type="button"
+                  className={s.add}
+                  aria-label={`${STATUS_NAME[col]}에 작업 추가`}
+                  onClick={() => openTaskCreate({ initialStatus: col === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'TODO' })}
+                >
                   <Plus size={16} />
                 </button>
               </header>

@@ -24,6 +24,7 @@ import { MinutesPage } from './pages/projects/MinutesPage'
 import { ProjectSettingsPage } from './pages/projects/ProjectSettingsPage'
 import { WeeklyReportPage } from './pages/reports/WeeklyReportPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
+import { TaskListPage } from './pages/projects/TaskListPage'
 import { StartPage } from './pages/start/StartPage'
 import { ModeGate } from './layouts/ModeGate'
 import { LoginPage } from './pages/account/LoginPage'
@@ -71,7 +72,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <ProjectHomePage /> },
           { path: 'board', element: <BoardPage /> },
-          { path: 'tasks', element: <PlaceholderPage title="작업 목록" bare /> },
+          { path: 'tasks', element: <TaskListPage /> },
           { path: 'tasks/:taskKey', element: <TaskDetailPage /> },
           { path: 'milestones', element: <PlaceholderPage title="마일스톤" bare /> },
           { path: 'threads', element: <ThreadPage /> },
