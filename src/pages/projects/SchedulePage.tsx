@@ -21,7 +21,6 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { Card, FilterSelect, Loadable, Switch } from '../../components/ui'
-import { ApiError } from '../../api/client'
 import { whenLive, type Resource } from '../../api/useResource'
 import {
   createView,
@@ -34,9 +33,13 @@ import {
   saveTaskAssignee,
   saveTaskDates,
   SCHED_STATUS_NAME,
+  scheduleError,
+  updateView,
+  useProjectEvents,
   todayNum,
   useSchedule,
   type ScheduleData,
+  type SchedEvent,
   type ScheduleView,
   type SchedMilestone,
   type SchedStatus,
@@ -111,6 +114,11 @@ function makeAxis(scale: ViewScale, anchor: number): Axis {
 /** 이전 · 다음: 주 = 4주, 월 = 3달, 분기 = 한 분기 */
 const shiftAnchor = (scale: ViewScale, anchor: number, dir: number) => (scale === 'WEEK' ? anchor + dir * 28 : addMonths(anchor, dir * 3))
 
+const monthLabel = (n: number) => {
+  const [y, m] = ymd(n)
+  return `${y}년 ${m}월`
+}
+
 const rangeLabel = (a: Axis) => {
   const [y1, m1, d1] = ymd(a.start)
   const [y2, m2, d2] = ymd(a.start + a.days - 1)
@@ -151,6 +159,7 @@ function ScheduleView({ d, res }: { d: ScheduleData; res: Resource<ScheduleData>
   const [preview, setPreview] = useState<Preview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const axis = useMemo(() => makeAxis(scale, anchor), [scale, anchor])
+  const calendar = viewType === 'CALENDAR'
 
   const milestoneName = (id: number | null | undefined) => d.milestones.find((m) => m.id === id)?.name ?? ''
   const memberName = (id: number | null | undefined) => d.members.find((m) => m.memberId === id)?.name ?? ''
@@ -197,7 +206,7 @@ function ScheduleView({ d, res }: { d: ScheduleData; res: Resource<ScheduleData>
       res.setData((prev) => ({ ...prev, tasks: prev.tasks.map((x) => (x.taskKey === t.taskKey ? { ...x, version } : x)) }))
       setError(null)
     } catch (e) {
-      setError(`${t.taskKey}: ${e instanceof ApiError ? e.message : '저장하지 못했어요. 잠시 뒤 다시 해 주세요.'}`)
+      setError(`${t.taskKey}: ${scheduleError(e, '저장하지 못했어요. 잠시 뒤 다시 해 주세요.')}`)
       res.reload()
     }
   }
@@ -214,29 +223,31 @@ function ScheduleView({ d, res }: { d: ScheduleData; res: Resource<ScheduleData>
             </button>
           ))}
         </div>
-        {viewType !== 'CALENDAR' && (
-          <>
-            <div className={s.scale} role="tablist" aria-label="눈금">
-              {SCALES.map((o) => (
-                <button key={o.value} type="button" role="tab" aria-selected={scale === o.value} className={scale === o.value ? `${s.seg} ${s.segOn}` : s.seg} onClick={() => setScale(o.value)}>
-                  {o.label}
-                </button>
-              ))}
-            </div>
-            <div className={s.nav}>
-              <button type="button" aria-label="이전" onClick={() => setAnchor((a) => shiftAnchor(scale, a, -1))}>
-                <ChevronLeft size={14} />
+        {calendar ? (
+          <span className={s.scale}>
+            <span className={`${s.seg} ${s.segOn}`}>월</span>
+          </span>
+        ) : (
+          <div className={s.scale} role="tablist" aria-label="눈금">
+            {SCALES.map((o) => (
+              <button key={o.value} type="button" role="tab" aria-selected={scale === o.value} className={scale === o.value ? `${s.seg} ${s.segOn}` : s.seg} onClick={() => setScale(o.value)}>
+                {o.label}
               </button>
-              <button type="button" onClick={() => setAnchor(today)}>
-                오늘
-              </button>
-              <button type="button" aria-label="다음" onClick={() => setAnchor((a) => shiftAnchor(scale, a, 1))}>
-                <ChevronRight size={14} />
-              </button>
-            </div>
-            <strong className={s.range}>{rangeLabel(axis)}</strong>
-          </>
+            ))}
+          </div>
         )}
+        <div className={s.nav}>
+          <button type="button" aria-label="이전" onClick={() => setAnchor((a) => (calendar ? addMonths(a, -1) : shiftAnchor(scale, a, -1)))}>
+            <ChevronLeft size={14} />
+          </button>
+          <button type="button" onClick={() => setAnchor(today)}>
+            오늘
+          </button>
+          <button type="button" aria-label="다음" onClick={() => setAnchor((a) => (calendar ? addMonths(a, 1) : shiftAnchor(scale, a, 1)))}>
+            <ChevronRight size={14} />
+          </button>
+        </div>
+        <strong className={s.range}>{calendar ? monthLabel(anchor) : rangeLabel(axis)}</strong>
         <span className={s.grow} />
         {viewType === 'GANTT' && (
           <FilterSelect
@@ -281,18 +292,9 @@ function ScheduleView({ d, res }: { d: ScheduleData; res: Resource<ScheduleData>
           }}
         />
       )}
-      {viewType === 'CALENDAR' && (
-        <div className={s.calendarSoon}>
-          <CalendarDays size={28} />
-          <strong>달력 보기는 준비 중이에요</strong>
-          <span>작업 · 마일스톤 기한은 지금 연구실 캘린더에서 볼 수 있어요.</span>
-          <Link to="/calendar" className={s.linkBtn}>
-            캘린더 열기 <ChevronRight size={14} />
-          </Link>
-        </div>
-      )}
+      {calendar && <CalendarView d={d} tasks={tasks} anchor={anchor} today={today} />}
 
-      {viewType !== 'CALENDAR' && <Legend viewType={viewType} d={d} />}
+      <Legend viewType={viewType} d={d} />
       <span className={s.srOnly} aria-live="polite">
         {SUBTITLE[viewType]}
       </span>
@@ -496,6 +498,27 @@ function TaskBar({ t, axis, today, drag, preview, laneSwitch, label }: { t: Sche
 }
 
 function Legend({ viewType, d }: { viewType: ViewType; d: ScheduleData }) {
+  if (viewType === 'CALENDAR')
+    return (
+      <div className={s.legend}>
+        <span className={s.lg}>
+          <b className={s.dot} /> 작업 기한
+        </span>
+        <span className={s.lg}>
+          <b className={`${s.dot} ${s.dotLate}`} /> 기한 지남
+        </span>
+        <span className={s.lg}>
+          <b className={s.lgDiamond} /> 마일스톤 기한
+        </span>
+        <span className={s.lg}>
+          <i className={s.lgEvent} /> 프로젝트 일정
+        </span>
+        <span className={s.grow} />
+        <span className={s.legendNote}>
+          <Info size={14} /> 칸을 눌러 일정을 더하는 기능은 곧 생겨요. 지금은 연구실 캘린더에서 더해 주세요
+        </span>
+      </div>
+    )
   const note =
     viewType === 'MILESTONE'
       ? '막대 색은 작업 상태 비율이에요. 2주 안에 기한인데 절반도 못 했으면 위험으로 표시해요. 줄을 누르면 그 마일스톤의 간트로 가요'
@@ -793,6 +816,7 @@ function SavedViews({ projectKey, current, onApply }: { projectKey: string; curr
   const [open, setOpen] = useState(false)
   const [views, setViews] = useState<ScheduleView[]>([])
   const [server, setServer] = useState(false)
+  const [canShare, setCanShare] = useState(false)
   const [picked, setPicked] = useState<ScheduleView['viewId'] | null>(null)
   const [name, setName] = useState('')
   const [scope, setScope] = useState<'PRIVATE' | 'PROJECT'>('PRIVATE')
@@ -806,6 +830,7 @@ function SavedViews({ projectKey, current, onApply }: { projectKey: string; curr
         if (!alive) return
         setViews(r.views)
         setServer(r.serverSupported)
+        setCanShare(r.canShare)
       })
       .catch(() => alive && setMsg('저장한 보기를 불러오지 못했어요.'))
     return () => {
@@ -834,13 +859,13 @@ function SavedViews({ projectKey, current, onApply }: { projectKey: string; curr
     const n = name.trim()
     if (!n) return
     try {
-      const v = await createView(projectKey, { name: n, scope: server ? scope : 'PRIVATE', ...current }, server)
+      const v = await createView(projectKey, { name: n, scope: canShare ? scope : 'PRIVATE', ...current }, server)
       setViews((list) => [...list, v])
       setPicked(v.viewId)
       setName('')
       setMsg(v.local ? '이 브라우저에만 저장했어요 (나만).' : null)
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : '저장하지 못했어요.')
+      setMsg(scheduleError(e, '저장하지 못했어요.'))
     }
   }
   const remove = async (v: ScheduleView) => {
@@ -848,7 +873,17 @@ function SavedViews({ projectKey, current, onApply }: { projectKey: string; curr
       await deleteView(projectKey, v)
       setViews((list) => list.filter((x) => x.viewId !== v.viewId))
     } catch (e) {
-      setMsg(e instanceof ApiError ? e.message : '지우지 못했어요.')
+      setMsg(scheduleError(e, '지우지 못했어요.'))
+    }
+  }
+  /** 고른 보기를 지금 설정으로 덮어쓴다 */
+  const overwrite = async (v: ScheduleView) => {
+    try {
+      const saved = await updateView(projectKey, v, { name: v.name, scope: v.scope, ...current })
+      setViews((list) => list.map((x) => (x.viewId === v.viewId ? saved : x)))
+      setMsg(`'${v.name}' 을 지금 보기로 바꿨어요.`)
+    } catch (e) {
+      setMsg(scheduleError(e, '저장하지 못했어요.'))
     }
   }
 
@@ -883,9 +918,16 @@ function SavedViews({ projectKey, current, onApply }: { projectKey: string; curr
                 </button>
                 <span className={s.scopeChip}>{v.scope === 'PROJECT' ? '프로젝트' : '나만'}</span>
                 {on && <Check size={14} />}
-                <button type="button" className={s.viewDel} aria-label={`${v.name} 지우기`} onClick={() => remove(v)}>
-                  <X size={14} />
-                </button>
+                {on && v.editable && (
+                  <button type="button" className={s.viewSave} onClick={() => overwrite(v)} title="지금 보기 설정으로 덮어쓰기">
+                    덮어쓰기
+                  </button>
+                )}
+                {v.editable && (
+                  <button type="button" className={s.viewDel} aria-label={`${v.name} 지우기`} onClick={() => remove(v)}>
+                    <X size={14} />
+                  </button>
+                )}
               </div>
             )
           })}
@@ -899,7 +941,7 @@ function SavedViews({ projectKey, current, onApply }: { projectKey: string; curr
           >
             <Plus size={14} />
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="지금 보기를 새 이름으로 저장" maxLength={40} aria-label="보기 이름" />
-            <select value={server ? scope : 'PRIVATE'} onChange={(e) => setScope(e.target.value as 'PRIVATE' | 'PROJECT')} aria-label="공개 범위" disabled={!server}>
+            <select value={canShare ? scope : 'PRIVATE'} onChange={(e) => setScope(e.target.value as 'PRIVATE' | 'PROJECT')} aria-label="공개 범위" disabled={!canShare}>
               <option value="PRIVATE">나만</option>
               <option value="PROJECT">프로젝트 공유</option>
             </select>
@@ -907,9 +949,125 @@ function SavedViews({ projectKey, current, onApply }: { projectKey: string; curr
               저장
             </button>
           </form>
-          <p className={s.popHint}>{msg ?? `지금: ${describe(current)}${server ? '' : ' · 프로젝트 공유는 서버 준비 후 쓸 수 있어요'}`}</p>
+          <p className={s.popHint}>
+            {msg ?? `지금: ${describe(current)}${!server ? ' · 이 브라우저에만 저장돼요' : canShare ? '' : ' · 프로젝트 공유는 프로젝트 관리자만 할 수 있어요'}`}
+          </p>
         </div>
       )}
+    </div>
+  )
+}
+
+// ───────────────────────── 달력 ─────────────────────────
+
+const CAL_WEEK = ['월', '화', '수', '목', '금', '토', '일']
+/** 한 칸에 바로 보이는 개수. 넘치면 '+N개 더' */
+const CAL_MAX = 3
+
+type CalItem = { id: string; node: ReactNode }
+
+function CalendarView({ d, tasks, anchor, today }: { d: ScheduleData; tasks: SchedTask[]; anchor: number; today: number }) {
+  const [y, m] = ymd(anchor)
+  const first = monthStart(y, m)
+  const next = addMonths(first, 1)
+  const gridStart = mondayOf(first)
+  const weeks = Math.ceil((next - gridStart) / 7)
+  const gridEnd = gridStart + weeks * 7 - 1
+  const ev = useProjectEvents(d.projectId, gridStart, gridEnd)
+  const [expanded, setExpanded] = useState<number | null>(null)
+
+  const itemsOf = (day: number): CalItem[] => {
+    const ms = d.milestones
+      .filter((x) => x.due === day)
+      .map((x) => ({
+        id: `m${x.id}`,
+        node: (
+          <span className={x.closed ? `${s.calMs} ${s.calMsDone}` : s.calMs} title={`마일스톤 기한 · ${x.name}`}>
+            <b className={s.calDiamond} /> {x.name}
+          </span>
+        ),
+      }))
+    const own = tasks.filter((t) => t.due === day)
+    const isLate = (t: SchedTask) => t.status !== 'DONE' && day < today
+    const taskItem = (t: SchedTask): CalItem => ({
+      id: t.taskKey,
+      node: (
+        <Link
+          to={`../tasks/${t.taskKey}`}
+          relative="path"
+          className={isLate(t) ? `${s.calTask} ${s.calTaskLate}` : t.status === 'DONE' ? `${s.calTask} ${s.calTaskDone}` : s.calTask}
+          title={`${t.taskKey} ${t.title} · ${SCHED_STATUS_NAME[t.status]}${t.assignee ? ` · ${t.assignee}` : ''}`}
+        >
+          <b className={`${s.dot} ${STATUS_CLASS[t.status]} ${isLate(t) ? s.dotLate : ''}`} />
+          <small>{t.taskKey}</small>
+          <span>{t.title}</span>
+        </Link>
+      ),
+    })
+    const events = (ev.data ?? [])
+      .filter((e) => e.day <= day && day <= e.endDay)
+      .map((e: SchedEvent) => ({
+        id: `e${e.id}`,
+        node: (
+          <span className={s.calEvent} style={e.color ? { borderLeftColor: e.color } : undefined} title={`프로젝트 일정 · ${e.title}`}>
+            {e.time && <small>{e.time}</small>}
+            <span>{e.title}</span>
+          </span>
+        ),
+      }))
+    // 마일스톤 → 기한 지난 작업 → 프로젝트 일정 → 나머지 작업
+    return [...ms, ...own.filter(isLate).map(taskItem), ...events, ...own.filter((t) => !isLate(t)).map(taskItem)]
+  }
+
+  return (
+    <div className={s.calendar}>
+      {ev.error && (
+        <p className={s.calError} role="alert">
+          <TriangleAlert size={14} /> 프로젝트 일정을 불러오지 못했어요.
+          <button type="button" onClick={ev.reload}>
+            다시 시도
+          </button>
+        </p>
+      )}
+      <div className={s.calHead} aria-hidden>
+        {CAL_WEEK.map((w, i) => (
+          <span key={w} className={i === 6 ? s.sun : undefined}>
+            {w}
+          </span>
+        ))}
+      </div>
+      <div className={s.calGrid} role="grid" aria-label={`${monthLabel(anchor)} 달력`}>
+        {Array.from({ length: weeks }, (_, w) => (
+          <div key={w} className={s.calWeek} role="row">
+            {Array.from({ length: 7 }, (_, i) => {
+              const day = gridStart + w * 7 + i
+              const items = itemsOf(day)
+              const open = expanded === day
+              const shown = open ? items : items.slice(0, CAL_MAX)
+              const out = day < first || day >= next
+              const cls = [s.calCell, out && s.calOut, day === today && s.calToday].filter(Boolean).join(' ')
+              return (
+                <div key={day} className={cls} role="gridcell" aria-disabled title="칸을 눌러 일정 더하기는 곧 생겨요">
+                  <span className={i === 6 ? `${s.calDate} ${s.sun}` : s.calDate}>
+                    {ymd(day)[2] === 1 ? dayMd(day) : ymd(day)[2]}
+                    {day === today && <em>오늘</em>}
+                  </span>
+                  <div className={s.calItems}>
+                    {shown.map((it) => (
+                      <div key={it.id}>{it.node}</div>
+                    ))}
+                    {items.length > CAL_MAX && (
+                      <button type="button" className={s.calMore} onClick={() => setExpanded(open ? null : day)} aria-expanded={open}>
+                        {open ? '접기' : `+${items.length - CAL_MAX}개 더`}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

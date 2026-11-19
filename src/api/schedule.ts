@@ -1,8 +1,10 @@
 // 프로젝트 일정표 (간트 · 담당자별 · 마일스톤) — P-3 프로젝트 상세 + 마일스톤 목록 + T-1 작업 목록을 한 화면 모양으로 묶는다.
 // 백엔드 기준: ProjectController GET /projects/{key}, MilestoneController GET /projects/{key}/milestones,
 // TaskController GET /tasks · PATCH /tasks/{taskKey}.
-// 작업 시작일(startOn)은 백엔드에 아직 없을 수 있다. 응답에 startOn 키가 있으면 쓰고, 없으면 기한 하루짜리로 그린다.
-// 저장한 보기는 GET · POST · DELETE /projects/{key}/views. 서버에 없으면(404) 이 브라우저에만 남긴다 (나만).
+// 작업 · 마일스톤 시작일(startOn, 선택). 작업에 시작일이 없으면 기한 하루짜리로 그린다 (옛 서버는 키 자체가 없다).
+// 기간 끌기는 PATCH /tasks/{key} 에 startOn · dueOn · version (기한 < 시작이면 P128).
+// 저장한 보기는 GET · POST · PUT · DELETE /projects/{key}/views. 보기 API 가 없는 서버(404, P 코드 아님)면 이 브라우저에만 남긴다 (나만).
+// 달력 보기의 프로젝트 일정은 GET /calendar-events?from&to&projectId.
 import { api, ApiError } from './client'
 import type { MemberRef, PageResponse } from './types'
 import { useResource } from './useResource'
@@ -63,6 +65,7 @@ export type SchedMilestone = {
 export type SchedMember = { memberId: number; name: string; role: 'MANAGER' | 'MEMBER'; note?: string }
 
 export type ScheduleData = {
+  projectId: number
   projectKey: string
   projectStart: number | null
   projectEnd: number | null
@@ -78,6 +81,7 @@ export type ScheduleData = {
 // ───────────────────────── 서버 응답 ─────────────────────────
 
 type ProjectDto = {
+  projectId: number
   projectKey: string
   startsOn: string | null
   endsOn: string | null
@@ -171,6 +175,7 @@ async function fetchSchedule(key: string): Promise<ScheduleData> {
   const tasks = cards.map(toTask)
   const projectStart = p.startsOn ? dayNum(p.startsOn) : null
   return {
+    projectId: p.projectId,
     projectKey: p.projectKey,
     projectStart,
     projectEnd: p.endsOn ? dayNum(p.endsOn) : null,
@@ -238,6 +243,7 @@ function mockSchedule(key: string | undefined): ScheduleData {
     { id: 14, name: 'v1.3 — 프로젝트 화면', start: T + 25, due: T + 57, closed: false, overdue: false, done: 0, total: 6 },
   ]
   return {
+    projectId: 1,
     projectKey: key ?? 'DEFME',
     projectStart: T - 79,
     projectEnd: T + 101,
@@ -257,6 +263,18 @@ export function useSchedule(key: string | undefined) {
 // ───────────────────────── 고치기 ─────────────────────────
 
 type TaskDetailDto = { version: number }
+
+/** 서버 오류 코드 → 화면 문구 (서버 문구가 비어 있을 때만) */
+const CODE_MESSAGE: Record<string, string> = {
+  P128: '작업 기한은 시작일과 같거나 뒤여야 해요.',
+  P042: '마일스톤 기한은 시작일과 같거나 뒤여야 해요.',
+  P043: '저장한 보기를 찾을 수 없어요. 지워졌을 수 있어요.',
+  P044: '내 보기만 고칠 수 있어요. 프로젝트에 공유한 보기는 프로젝트 관리자가 만들고 고쳐요.',
+  P045: '같은 이름의 보기가 있어요. 다른 이름을 써 주세요.',
+  P046: '보기는 한 사람이 프로젝트마다 30개, 공유 보기는 프로젝트마다 30개까지 저장할 수 있어요.',
+}
+/** 화면에 보여 줄 오류 문구 */
+export const scheduleError = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message || CODE_MESSAGE[e.code] || fallback : fallback)
 
 /** 작업 기간 바꾸기 (PATCH /tasks/{key}). 시작일은 서버가 받을 때만 보낸다. 새 version 을 돌려준다 */
 export async function saveTaskDates(taskKey: string, version: number, dates: { start: number | null; due: number | null }, withStart: boolean) {
@@ -285,16 +303,21 @@ export type ScheduleView = {
   viewType: ViewType
   scale: ViewScale
   filters: ViewFilters
+  /** 내가 만든 보기 */
+  mine: boolean
+  /** 내가 고치거나 지울 수 있는지 (공유 보기는 프로젝트 관리자) */
+  editable: boolean
   /** 서버에 없어 이 브라우저에만 저장됨 */
   local?: boolean
 }
-export type NewScheduleView = Omit<ScheduleView, 'viewId' | 'local'>
+export type NewScheduleView = Pick<ScheduleView, 'name' | 'scope' | 'viewType' | 'scale' | 'filters'>
+export type ViewList = { views: ScheduleView[]; serverSupported: boolean; canShare: boolean }
 
 const localKey = (projectKey: string) => `iturtle.scheduleViews.${projectKey}`
 function readLocal(projectKey: string): ScheduleView[] {
   try {
     const raw = localStorage.getItem(localKey(projectKey))
-    return raw ? (JSON.parse(raw) as ScheduleView[]).map((v) => ({ ...v, local: true })) : []
+    return raw ? (JSON.parse(raw) as ScheduleView[]).map((v) => ({ ...v, mine: true, editable: true, local: true })) : []
   } catch {
     return []
   }
@@ -306,37 +329,77 @@ function writeLocal(projectKey: string, views: ScheduleView[]) {
     // 저장소를 못 쓰는 브라우저(사생활 보호 창 등)는 이번 화면에서만 기억한다
   }
 }
-const notFound = (e: unknown) => e instanceof ApiError && (e.status === 404 || e.status === 405)
+/** 보기 API 자체가 없는 서버. P043 처럼 '그 보기가 없다' 는 진짜 오류라 대체하지 않는다 */
+const noViewApi = (e: unknown) => e instanceof ApiError && (e.status === 404 || e.status === 405) && !e.code.startsWith('P')
 
-type ViewDto = { viewId: number; name: string; scope: 'PRIVATE' | 'PROJECT'; viewType: ViewType; scale: ViewScale; filters: ViewFilters | null }
-const fromDto = (v: ViewDto): ScheduleView => ({ ...v, filters: v.filters ?? {} })
-
-/** 서버 보기 + 이 브라우저에만 있는 보기. 서버가 보기 API 를 아직 안 주면(404) 브라우저 것만 */
-export async function listViews(projectKey: string): Promise<{ views: ScheduleView[]; serverSupported: boolean }> {
-  const local = readLocal(projectKey)
-  if (getDataMode() !== 'live') return { views: local, serverSupported: false }
+/** SavedViewResponse — filters 는 JSON 객체 문자열 */
+type ViewDto = {
+  viewId: number
+  name: string
+  scope: 'PRIVATE' | 'PROJECT'
+  viewType: ViewType
+  scale: ViewScale
+  filters: string | null
+  ownerMemberId: number
+  mine: boolean
+  editable: boolean
+  updatedAt: string
+}
+function parseFilters(raw: string | null): ViewFilters {
+  if (!raw) return {}
   try {
-    const r = await api<ViewDto[] | { views: ViewDto[] }>(`/projects/${encodeURIComponent(projectKey)}/views`)
-    const list = Array.isArray(r) ? r : (r.views ?? [])
-    return { views: [...list.map(fromDto), ...local], serverSupported: true }
+    const f = JSON.parse(raw) as unknown
+    return f && typeof f === 'object' && !Array.isArray(f) ? (f as ViewFilters) : {}
+  } catch {
+    return {}
+  }
+}
+const fromDto = (v: ViewDto): ScheduleView => ({
+  viewId: v.viewId,
+  name: v.name,
+  scope: v.scope,
+  viewType: v.viewType,
+  scale: v.scale,
+  filters: parseFilters(v.filters),
+  mine: v.mine,
+  editable: v.editable,
+})
+/** SavedViewRequest — filters 는 빈 값을 빼고 JSON 문자열로 */
+const toBody = (v: NewScheduleView) => {
+  const filters = Object.fromEntries(Object.entries(v.filters).filter(([, x]) => x !== null && x !== undefined))
+  return { name: v.name, scope: v.scope, viewType: v.viewType, scale: v.scale, filters: JSON.stringify(filters) }
+}
+const viewsPath = (projectKey: string) => `/projects/${encodeURIComponent(projectKey)}/views`
+
+/** 서버 보기 + 이 브라우저에만 있는 보기 */
+export async function listViews(projectKey: string): Promise<ViewList> {
+  const local = readLocal(projectKey)
+  if (getDataMode() !== 'live') return { views: local, serverSupported: false, canShare: false }
+  try {
+    const r = await api<{ views: ViewDto[]; canShare: boolean }>(viewsPath(projectKey))
+    return { views: [...r.views.map(fromDto), ...local], serverSupported: true, canShare: r.canShare }
   } catch (e) {
-    if (notFound(e)) return { views: local, serverSupported: false }
+    if (noViewApi(e)) return { views: local, serverSupported: false, canShare: false }
     throw e
   }
 }
 
 export async function createView(projectKey: string, view: NewScheduleView, serverSupported: boolean): Promise<ScheduleView> {
-  if (serverSupported && getDataMode() === 'live') {
-    try {
-      return fromDto(await api<ViewDto>(`/projects/${encodeURIComponent(projectKey)}/views`, { method: 'POST', body: view }))
-    } catch (e) {
-      if (!notFound(e)) throw e
-    }
-  }
+  if (serverSupported && getDataMode() === 'live') return fromDto(await api<ViewDto>(viewsPath(projectKey), { method: 'POST', body: toBody(view) }))
   // 브라우저에만 남기는 보기는 '나만' 으로 둔다 (다른 사람에게 보일 수 없다)
-  const saved: ScheduleView = { ...view, scope: 'PRIVATE', viewId: `local-${Date.now()}`, local: true }
+  const saved: ScheduleView = { ...view, scope: 'PRIVATE', viewId: `local-${Date.now()}`, mine: true, editable: true, local: true }
   writeLocal(projectKey, [...readLocal(projectKey), saved])
   return saved
+}
+
+/** 보기 덮어쓰기 (이름 · 범위 · 보기 설정 전부) */
+export async function updateView(projectKey: string, view: ScheduleView, next: NewScheduleView): Promise<ScheduleView> {
+  if (view.local) {
+    const saved: ScheduleView = { ...view, ...next, scope: 'PRIVATE' }
+    writeLocal(projectKey, readLocal(projectKey).map((v) => (v.viewId === view.viewId ? saved : v)))
+    return saved
+  }
+  return fromDto(await api<ViewDto>(`${viewsPath(projectKey)}/${view.viewId}`, { method: 'PUT', body: toBody(next) }))
 }
 
 export async function deleteView(projectKey: string, view: ScheduleView) {
@@ -344,5 +407,64 @@ export async function deleteView(projectKey: string, view: ScheduleView) {
     writeLocal(projectKey, readLocal(projectKey).filter((v) => v.viewId !== view.viewId))
     return
   }
-  await api<void>(`/projects/${encodeURIComponent(projectKey)}/views/${view.viewId}`, { method: 'DELETE' })
+  await api<void>(`${viewsPath(projectKey)}/${view.viewId}`, { method: 'DELETE' })
 }
+
+// ───────────────────────── 달력: 프로젝트 일정 ─────────────────────────
+
+export type SchedEvent = { id: string; day: number; endDay: number; title: string; time: string | null; color: string | null }
+
+/** OccurrenceResponse (필요한 것만) */
+type OccurrenceDto = {
+  eventId: number
+  occurrenceStartsAt: string
+  title?: string
+  busyOnly: boolean
+  color: string | null
+  allDay: boolean
+  startsAt: string
+  startsOn?: string
+  endsOn?: string
+}
+const kstDay = (iso: string) => dayNum(new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }))
+const kstTime = (iso: string) => new Date(iso).toLocaleTimeString('sv-SE', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })
+
+function mockEvents(): SchedEvent[] {
+  const T = todayNum()
+  const e = (id: string, d: number, title: string, time: string | null, color: string | null = null): SchedEvent => ({ id, day: T + d, endDay: T + d, title, time, color })
+  return [
+    e('e1', -2, '주간 회의', '10:00'),
+    e('e2', 5, '주간 회의', '10:00'),
+    e('e3', 7, '중간 점검', '14:00', '#3F6593'),
+    e('e4', 12, '주간 회의', '10:00'),
+    e('e5', 1, '코드 리뷰 세션', '16:00'),
+    e('e6', 1, '배포 리허설', '19:00'),
+    { id: 'e7', day: T + 15, endDay: T + 17, title: '연구실 워크숍', time: null, color: '#34C27A' },
+  ]
+}
+
+/** 달력 칸에 그릴 이 프로젝트의 일정 (from · to 는 날 수, to 포함) */
+export function useProjectEvents(projectId: number, from: number, to: number) {
+  return useResource<SchedEvent[]>(
+    ['schedule-events', projectId, from, to],
+    () => mockEvents(),
+    async () => {
+      const r = await api<{ occurrences: OccurrenceDto[] }>('/calendar-events', {
+        query: { from: dayStr(from), to: dayStr(to), layers: 'SHARED', projectId },
+      })
+      return r.occurrences.map((o) => {
+        const start = o.allDay && o.startsOn ? dayNum(o.startsOn) : kstDay(o.occurrenceStartsAt ?? o.startsAt)
+        const end = o.allDay && o.endsOn ? dayNum(o.endsOn) : start
+        return {
+          id: `${o.eventId}-${o.occurrenceStartsAt}`,
+          day: start,
+          endDay: Math.max(end, start),
+          title: o.busyOnly || !o.title ? '일정 있음' : o.title,
+          time: o.allDay ? null : kstTime(o.occurrenceStartsAt ?? o.startsAt),
+          color: o.color,
+        }
+      })
+    },
+  )
+}
+
