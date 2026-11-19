@@ -721,7 +721,8 @@ type DocumentItem = {
   title: string
   author: MemberRef
   project: { projectKey: string; name: string } | null
-  visibility: 'LAB' | 'PROJECT_MEMBERS'
+  visibility: 'LAB' | 'PROJECT_MEMBERS' | 'PRIVATE'
+  folder?: { folderId: number; name: string; path: string } | null
   tags: string[]
   fileTypes: string[]
   latestVersion: number | null
@@ -755,6 +756,8 @@ export type LibraryFilter = {
   author: string
   fileType: string
   sort: LibrarySort
+  /** 폴더 바로 안의 자료만 (null 이면 거르지 않음) */
+  folderId?: number | null
 }
 export type LibraryData = {
   documents: LibraryDocument[]
@@ -810,6 +813,7 @@ const toDocument = (d: DocumentItem): LibraryDocument => {
     ageMinutes: Math.max(0, Math.round((Date.now() - new Date(d.createdAt).getTime()) / 60000)),
     project: d.project,
     visibility: d.visibility,
+    folderPath: d.folder?.path ?? null,
     tags: d.tags,
     fileTypes: d.fileTypes,
     latestVersion: d.latestVersion ?? 1,
@@ -832,7 +836,7 @@ const SORT_PARAM: Record<LibrarySort, string> = {
 /** 자료실 목록 · 고정 자료 · 카테고리 개수 · 해결 안 된 질문 · 많이 쓰는 태그 (D-1, D-8) */
 export function useLibrary(f: LibraryFilter) {
   return useResource<LibraryData>(['library', f], mockLibrary, async () => {
-    const filtered = f.category !== 'ALL' || !!f.tag || !!f.project || !!f.author || !!f.fileType
+    const filtered = f.category !== 'ALL' || !!f.tag || !!f.project || !!f.author || !!f.fileType || f.folderId != null
     const [list, unresolvedList, tags, all] = await Promise.all([
       api<DocumentListResponse>('/documents', {
         query: {
@@ -841,6 +845,7 @@ export function useLibrary(f: LibraryFilter) {
           projectKey: f.project ? seenProjects.get(f.project) : undefined,
           authorId: f.author ? seenAuthors.get(f.author) : undefined,
           fileType: f.fileType || undefined,
+          folderId: f.folderId ?? undefined,
           sort: SORT_PARAM[f.sort],
           size: 100,
         },

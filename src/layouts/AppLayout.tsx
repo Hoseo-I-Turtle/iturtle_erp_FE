@@ -4,6 +4,7 @@ import { Info, Lock, X } from 'lucide-react'
 import { Sidebar } from './Sidebar'
 import { getDataMode, MODE_SWITCHABLE } from '../lib/dataMode'
 import { fetchSsoAppName } from '../api/members'
+import { UploadModalHost } from '../pages/library/upload/UploadModalHost'
 import s from './layout.module.css'
 
 const SERVICE_NAME: Record<string, string> = { vault: 'Vault', jenkins: 'Jenkins', penpot: 'Penpot' }
@@ -70,6 +71,7 @@ export function AppLayout() {
         )}
         <Outlet />
       </main>
+      <UploadModalHost />
     </div>
   )
 }

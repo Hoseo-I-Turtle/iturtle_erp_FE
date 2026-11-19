@@ -1296,3 +1296,49 @@ export function githubLinkResult(search: string) {
 /** NT-5 알림 설정 저장 (바꾼 묶음만) */
 export const saveNotiPref = (group: string, enabled: boolean) =>
   api<NotiSettingsDto>('/notifications/settings', { method: 'PUT', body: { groups: [{ group, enabled }] } }).then(toPrefs)
+
+/* ---------- 관리 · 구성원 추가 (3-1, 3-2) ---------- */
+
+type IdStatus = { value: string; valid: boolean; available: boolean } | null
+export type IdentifierCheck = { loginId: IdStatus; studentNumber: IdStatus; suggestedInternNumber: string | null }
+
+/** 3-2 로그인 ID · 구성원 번호 확인 (둘 다 선택). 목업은 형식만 본다 */
+export async function checkIdentifiers(q: { loginId?: string; studentNumber?: string }): Promise<IdentifierCheck> {
+  if (!isLive()) {
+    const id = q.loginId ? { value: q.loginId, valid: /^[a-z][a-z0-9._-]{3,29}$/.test(q.loginId), available: q.loginId !== 'minseo' } : null
+    const no = q.studentNumber ? { value: q.studentNumber, valid: /^[A-Z0-9]{1,20}$/.test(q.studentNumber), available: true } : null
+    return { loginId: id, studentNumber: no, suggestedInternNumber: 'I2026001' }
+  }
+  return api<IdentifierCheck>('/members/identifier-check', { query: { loginId: q.loginId || undefined, studentNumber: q.studentNumber || undefined } })
+}
+
+export type NewMember = {
+  studentNumber: string
+  loginId: string
+  name: string
+  memberType: 'PROFESSOR' | 'STUDENT' | 'INTERN'
+  joinedOn: string
+  email: string | null
+  phone: string | null
+  presetIds: number[]
+  roleCodes: string[]
+}
+
+/** 3-1 구성원 만들기 → 처음 비밀번호 (이 응답에서만 보인다) */
+export async function createMember(m: NewMember) {
+  if (!isLive()) return { memberId: 0, loginId: m.loginId, temporaryPassword: 'Mock-Temp-2026!' }
+  return api<{ memberId: number; loginId: string; temporaryPassword: string }>('/members', { method: 'POST', body: m })
+}
+
+/** 구성원 목록이 다시 불러오게 알린다 (구성원 추가 모달 → 관리 · 구성원) */
+const MEMBERS_CHANGED = 'iturtle:members-changed'
+export const notifyMembersChanged = () => window.dispatchEvent(new Event(MEMBERS_CHANGED))
+export function onMembersChanged(reload: () => void) {
+  window.addEventListener(MEMBERS_CHANGED, reload)
+  return () => window.removeEventListener(MEMBERS_CHANGED, reload)
+}
+
+/** 구성원 추가에 쓰는 프리셋 (켜진 것만, 구분별 기본 프리셋 포함) */
+export function useAddMemberPresets() {
+  return useResource<PresetView[]>('add-member-presets', () => mockPresetViews().filter((p) => p.active), () => fetchPresets(false))
+}

@@ -20,7 +20,9 @@ export type DocumentSummary = {
   /** 정렬용 (작을수록 최신) */
   ageMinutes: number
   project: { projectKey: string; name: string } | null
-  visibility: 'LAB' | 'PROJECT_MEMBERS'
+  visibility: 'LAB' | 'PROJECT_MEMBERS' | 'PRIVATE'
+  /** 폴더 경로 ("상위 / 하위", 폴더 밖이면 없음) */
+  folderPath?: string | null
   tags: string[]
   fileTypes: string[]
   latestVersion: number

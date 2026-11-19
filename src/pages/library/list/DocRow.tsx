@@ -35,11 +35,17 @@ export function DocRow({ d, onTag }: { d: LibraryDocument; onTag: (t: string) =>
             </button>
           ))}
           {d.project && <span className={s.proj}>· {d.project.name}</span>}
+          {d.folderPath && <span className={s.proj}>· {d.folderPath}</span>}
         </div>
       </div>
       {d.visibility === 'PROJECT_MEMBERS' && (
         <Chip tone="warning" icon={Lock}>
           참여자만
+        </Chip>
+      )}
+      {d.visibility === 'PRIVATE' && (
+        <Chip tone="muted" icon={Lock}>
+          나만
         </Chip>
       )}
       <div className={s.who}>

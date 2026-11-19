@@ -1,0 +1,166 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.head h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.headActions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--status-negative);
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+}
+.ext {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--surface-card);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--brand-500);
+}
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+.title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+.title:hover {
+  text-decoration: underline;
+}
+.meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.who {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 13px;
+}
+.who strong {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.who small {
+  color: var(--text-muted);
+}
+.comments {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 34px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* 폴더 목록 */
+.folders {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.folder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--brand-500);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.folder:hover {
+  background: var(--surface-sunken);
+}
+.folderOn {
+  background: var(--surface-tint);
+  font-weight: 600;
+}
+.folderName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.folder small {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.naming {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.naming input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14px;
+}
+.note {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}

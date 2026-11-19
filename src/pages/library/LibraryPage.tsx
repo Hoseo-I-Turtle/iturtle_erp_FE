@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
-import { Lock, Plus } from 'lucide-react'
-import { Button, Card, Columns, Empty, Loadable, Note, PillTabs } from '../../components/ui'
+import { Folder, Lock, Plus } from 'lucide-react'
+import { Button, Card, Columns, Empty, Loadable, Note, PillTabs, Select } from '../../components/ui'
 import { PageHeader } from '../../layouts/PageHeader'
 import { CATEGORY_NAME, type DocumentCategory } from '../../mocks/documents'
 import { useLibrary, type LibraryData, type LibrarySort } from '../../api/content'
+import { openUpload, useDocumentsChanged, useFolders } from '../../api/documents'
 import { DocRow } from './list/DocRow'
 import { LibraryFilters } from './list/LibraryFilters'
 import { PinnedDocsCard, PopularTagsCard, UnresolvedCard } from './list/LibrarySideCards'
@@ -28,9 +29,13 @@ export function LibraryPage() {
   const [author, setAuthor] = useState('')
   const [fileType, setFileType] = useState('')
   const [sort, setSort] = useState<LibrarySort>('최신순')
+  const [folder, setFolder] = useState('')
+  const folders = useFolders(null).data?.folders ?? []
 
   // 거르기 · 정렬은 서버가 하고(실서버), 화면도 같은 조건으로 한 번 더 거른다(목업 · 고정 자료)
-  const lib = useLibrary({ category: tab, tag, project, author, fileType, sort })
+  const lib = useLibrary({ category: tab, tag, project, author, fileType, sort, folderId: folder ? Number(folder) : null })
+  // 올리기 모달에서 자료를 만들면 다시 불러온다
+  useDocumentsChanged(lib.reload)
   // 다시 불러오는 동안에도 앞의 값으로 탭 · 거르기 칸을 그려 둔다
   const { documents, categories, categoryCounts, pinnedDocs, unresolved, popularTags, options } = lib.data ?? EMPTY
 
@@ -69,13 +74,28 @@ export function LibraryPage() {
       <PageHeader
         title="자료실"
         subtitle="논문 · 발표자료 · 문서 · 질문을 카테고리로"
-        action={<Button icon={Plus}>자료 올리기</Button>}
+        action={
+          <Button icon={Plus} onClick={() => openUpload()}>
+            자료 올리기
+          </Button>
+        }
       />
       <Columns
         sideWidth={320}
         main={
           <Card className={s.docs}>
             <PillTabs value={tab} options={tabs} onChange={setTab} />
+            {folders.length > 0 && (
+              <div className={s.folderBar}>
+                <Folder size={16} />
+                <Select
+                  label="폴더"
+                  value={folder}
+                  onChange={setFolder}
+                  options={[{ value: '', label: '모든 폴더' }, ...folders.map((x) => ({ value: String(x.folderId), label: `${x.path} (${x.documentCount})` }))]}
+                />
+              </div>
+            )}
             <LibraryFilters
               f={{ tag, setTag, project, setProject, author, setAuthor, fileType, setFileType, sort, setSort }}
               options={options}
@@ -100,7 +120,7 @@ export function LibraryPage() {
             <PinnedDocsCard pinnedDocs={pinnedDocs} />
             <UnresolvedCard unresolved={unresolved} />
             <PopularTagsCard popularTags={popularTags} tag={tag} onTag={setTag} />
-            <Note icon={Lock}>"참여자만" 자료는 그 프로젝트 참여자에게만 보여요.</Note>
+            <Note icon={Lock}>"참여자만" 자료는 그 프로젝트 참여자에게만, "나만" 자료는 올린 사람에게만 보여요.</Note>
           </>
         }
       />
