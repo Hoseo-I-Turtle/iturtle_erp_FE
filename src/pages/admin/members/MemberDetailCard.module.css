@@ -1,0 +1,39 @@
+.detail {
+  gap: 10px;
+}
+.detailHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.detailHead > div {
+  flex: 1;
+}
+.detailHead h2 {
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+.detailHead small {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.props {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  align-items: center;
+  row-gap: 8px;
+  margin: 0;
+  font-size: var(--fs-caption);
+}
+.props dt {
+  color: var(--text-muted);
+}
+.props dd {
+  margin: 0;
+  color: var(--brand-500);
+}
+.detailActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}

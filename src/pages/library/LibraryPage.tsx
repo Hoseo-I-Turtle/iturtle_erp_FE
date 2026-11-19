@@ -1,15 +1,17 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { CircleHelp, Download, FileText, ListFilter, Lock, MessageCircle, Pin, Plus } from 'lucide-react'
-import { Button, Card, Chip, Columns, Empty, FilterSelect, ListItem, Loadable, Note, PillTabs, SectionHead } from '../../components/ui'
+import { Folder, Lock, Plus } from 'lucide-react'
+import { Button, Card, Columns, Empty, Loadable, Note, PillTabs, Select } from '../../components/ui'
 import { PageHeader } from '../../layouts/PageHeader'
 import { CATEGORY_NAME, type DocumentCategory } from '../../mocks/documents'
-import { documentCategoryName, useLibrary, type LibraryData, type LibraryDocument, type LibrarySort } from '../../api/content'
+import { useLibrary, type LibraryData, type LibrarySort } from '../../api/content'
+import { openUpload, useDocumentsChanged, useFolders } from '../../api/documents'
+import { DocRow } from './list/DocRow'
+import { LibraryFilters } from './list/LibraryFilters'
+import { PinnedDocsCard, PopularTagsCard, UnresolvedCard } from './list/LibrarySideCards'
 import s from './LibraryPage.module.css'
 
 /** 'ALL' 또는 공통코드 DOCUMENT_CATEGORY 코드 (실서버는 기본 7개 밖의 코드도 온다) */
 type Tab = string
-const SORTS: readonly LibrarySort[] = ['최신순', '댓글 많은 순', '제목순']
 const EMPTY: LibraryData = {
   documents: [],
   categories: (Object.keys(CATEGORY_NAME) as DocumentCategory[]).map((code) => ({ code, name: CATEGORY_NAME[code] })),
@@ -20,15 +22,6 @@ const EMPTY: LibraryData = {
   options: { tags: [], projects: [], authors: [], types: [] },
 }
 
-const EXT_COLOR: Record<string, string> = {
-  pdf: 'var(--status-negative)',
-  pptx: 'var(--status-warning-text)',
-  docx: 'var(--text-secondary)',
-  md: 'var(--brand-500)',
-  zip: 'var(--text-muted)',
-}
-const EXT_LABEL: Record<string, string> = { pptx: 'PPT', docx: 'DOC' }
-
 export function LibraryPage() {
   const [tab, setTab] = useState<Tab>('ALL')
   const [tag, setTag] = useState('')
@@ -36,9 +29,13 @@ export function LibraryPage() {
   const [author, setAuthor] = useState('')
   const [fileType, setFileType] = useState('')
   const [sort, setSort] = useState<LibrarySort>('최신순')
+  const [folder, setFolder] = useState('')
+  const folders = useFolders(null).data?.folders ?? []
 
   // 거르기 · 정렬은 서버가 하고(실서버), 화면도 같은 조건으로 한 번 더 거른다(목업 · 고정 자료)
-  const lib = useLibrary({ category: tab, tag, project, author, fileType, sort })
+  const lib = useLibrary({ category: tab, tag, project, author, fileType, sort, folderId: folder ? Number(folder) : null })
+  // 올리기 모달에서 자료를 만들면 다시 불러온다
+  useDocumentsChanged(lib.reload)
   // 다시 불러오는 동안에도 앞의 값으로 탭 · 거르기 칸을 그려 둔다
   const { documents, categories, categoryCounts, pinnedDocs, unresolved, popularTags, options } = lib.data ?? EMPTY
 
@@ -51,8 +48,6 @@ export function LibraryPage() {
       count: categoryCounts[c.code] ?? 0,
     })),
   ]
-
-  const { tags: allTags, projects: allProjects, authors: allAuthors, types: allTypes } = options
 
   const list = useMemo(() => {
     const filtered = documents.filter(
@@ -79,27 +74,32 @@ export function LibraryPage() {
       <PageHeader
         title="자료실"
         subtitle="논문 · 발표자료 · 문서 · 질문을 카테고리로"
-        action={<Button icon={Plus}>자료 올리기</Button>}
+        action={
+          <Button icon={Plus} onClick={() => openUpload()}>
+            자료 올리기
+          </Button>
+        }
       />
       <Columns
         sideWidth={320}
         main={
           <Card className={s.docs}>
             <PillTabs value={tab} options={tabs} onChange={setTab} />
-            <div className={s.filters}>
-              <FilterSelect label="태그" value={tag} options={allTags} onChange={setTag} />
-              <FilterSelect label="프로젝트" value={project} options={allProjects} onChange={setProject} />
-              <FilterSelect label="작성자" value={author} options={allAuthors} onChange={setAuthor} />
-              <FilterSelect label="파일 형식" value={fileType} options={allTypes} onChange={setFileType} />
-              <button
-                type="button"
-                className={s.sort}
-                onClick={() => setSort(SORTS[(SORTS.indexOf(sort) + 1) % SORTS.length])}
-              >
-                <ListFilter size={16} />
-                {sort}
-              </button>
-            </div>
+            {folders.length > 0 && (
+              <div className={s.folderBar}>
+                <Folder size={16} />
+                <Select
+                  label="폴더"
+                  value={folder}
+                  onChange={setFolder}
+                  options={[{ value: '', label: '모든 폴더' }, ...folders.map((x) => ({ value: String(x.folderId), label: `${x.path} (${x.documentCount})` }))]}
+                />
+              </div>
+            )}
+            <LibraryFilters
+              f={{ tag, setTag, project, setProject, author, setAuthor, fileType, setFileType, sort, setSort }}
+              options={options}
+            />
             <Loadable resource={lib} label="자료 목록">
               {() =>
                 list.length === 0 ? (
@@ -117,93 +117,13 @@ export function LibraryPage() {
         }
         side={
           <>
-            <Card>
-              <SectionHead icon={Pin} title="고정 자료" />
-              {pinnedDocs.map((d) => (
-                <ListItem
-                  key={d.documentId}
-                  to={`/library/${d.documentId}`}
-                  leading={<FileText size={18} />}
-                  title={d.title}
-                  meta={d.meta}
-                />
-              ))}
-            </Card>
-            <Card>
-              <SectionHead icon={CircleHelp} title="해결 안 된 질문" link={{ to: '/library', label: '질문 · 도움' }} />
-              {unresolved.map((d) => (
-                <ListItem
-                  key={d.documentId}
-                  plain
-                  to={`/library/${d.documentId}`}
-                  title={d.title}
-                  meta={`${d.author} · ${d.ago} · 댓글 ${d.commentCount}`}
-                />
-              ))}
-            </Card>
-            <Card>
-              <SectionHead title="많이 쓰는 태그" />
-              <div className={s.tags}>
-                {popularTags.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    className={tag === t ? `${s.tag} ${s.tagOn}` : s.tag}
-                    onClick={() => setTag(tag === t ? '' : t)}
-                  >
-                    #{t}
-                  </button>
-                ))}
-              </div>
-            </Card>
-            <Note icon={Lock}>"참여자만" 자료는 그 프로젝트 참여자에게만 보여요.</Note>
+            <PinnedDocsCard pinnedDocs={pinnedDocs} />
+            <UnresolvedCard unresolved={unresolved} />
+            <PopularTagsCard popularTags={popularTags} tag={tag} onTag={setTag} />
+            <Note icon={Lock}>"참여자만" 자료는 그 프로젝트 참여자에게만, "나만" 자료는 올린 사람에게만 보여요.</Note>
           </>
         }
       />
     </>
-  )
-}
-
-function DocRow({ d, onTag }: { d: LibraryDocument; onTag: (t: string) => void }) {
-  const ext = d.fileTypes[0]
-  return (
-    <li className={s.doc}>
-      <span className={s.ft} style={{ color: ext ? EXT_COLOR[ext] : 'var(--text-secondary)' }}>
-        {ext ? (EXT_LABEL[ext] ?? ext.toUpperCase()) : '?'}
-      </span>
-      <div className={s.docMain}>
-        <div className={s.docTitle}>
-          {d.pinned && <Pin size={14} />}
-          <Link to={`/library/${d.documentId}`}>{d.title}</Link>
-          {d.latestVersion > 1 && <span className={s.ver}>v{d.latestVersion}</span>}
-        </div>
-        <div className={s.docSub}>
-          <span className={s.cat}>{d.categoryName ?? documentCategoryName(d.categoryCode)}</span>
-          {d.tags.map((t) => (
-            <button key={t} type="button" className={s.hash} onClick={() => onTag(t)}>
-              #{t}
-            </button>
-          ))}
-          {d.project && <span className={s.proj}>· {d.project.name}</span>}
-        </div>
-      </div>
-      {d.visibility === 'PROJECT_MEMBERS' && (
-        <Chip tone="warning" icon={Lock}>
-          참여자만
-        </Chip>
-      )}
-      <div className={s.who}>
-        <strong>{d.author}</strong>
-        <span>{d.ago}</span>
-      </div>
-      <span className={s.comments}>
-        <MessageCircle size={14} />
-        {d.commentCount}
-      </span>
-      {/* 백엔드 DocumentSummaryResponse 에 파일 publicId 가 없어 목록에서 바로 내려받을 수 없다. 상세(D-3 files[].latest.file)에서 받는다 */}
-      <button type="button" className={s.dl} aria-label="내려받기">
-        <Download size={18} />
-      </button>
-    </li>
   )
 }

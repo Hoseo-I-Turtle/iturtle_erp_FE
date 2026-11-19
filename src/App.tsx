@@ -11,9 +11,12 @@ import { CodesPage } from './pages/admin/CodesPage'
 import { GithubPage } from './pages/admin/GithubPage'
 import { HomePage } from './pages/home/HomePage'
 import { NoticeDetailPage } from './pages/notices/NoticeDetailPage'
+import { NoticeListPage } from './pages/notices/NoticeListPage'
 import { CalendarPage } from './pages/calendar/CalendarPage'
 import { SchedulePollPage } from './pages/calendar/SchedulePollPage'
 import { LibraryPage } from './pages/library/LibraryPage'
+import { DocumentDetailPage } from './pages/library/detail/DocumentDetailPage'
+import { ProjectFilesPage } from './pages/projects/files/ProjectFilesPage'
 import { MembersPage } from './pages/members/MembersPage'
 import { ProjectListPage } from './pages/projects/ProjectListPage'
 import { ProjectHomePage } from './pages/projects/ProjectHomePage'
@@ -21,9 +24,14 @@ import { BoardPage } from './pages/projects/BoardPage'
 import { ThreadPage } from './pages/projects/ThreadPage'
 import { TaskDetailPage } from './pages/projects/TaskDetailPage'
 import { MinutesPage } from './pages/projects/MinutesPage'
+import { MinuteListPage } from './pages/projects/MinuteListPage'
+import { MinuteWritePage } from './pages/projects/MinuteWritePage'
 import { ProjectSettingsPage } from './pages/projects/ProjectSettingsPage'
 import { WeeklyReportPage } from './pages/reports/WeeklyReportPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
+import { TaskListPage } from './pages/projects/TaskListPage'
+import { SchedulePage } from './pages/projects/SchedulePage'
+import { MilestonesPage } from './pages/projects/MilestonesPage'
 import { StartPage } from './pages/start/StartPage'
 import { ModeGate } from './layouts/ModeGate'
 import { LoginPage } from './pages/account/LoginPage'
@@ -58,7 +66,8 @@ const router = createBrowserRouter([
     children: [
       { path: '/', element: <HomePage /> },
       // 공지 목록 화면은 디자인에 아직 없어 최신 공지 상세로 보낸다
-      { path: '/notices', element: <Navigate to="/notices/2" replace /> },
+      // 공지 목록 화면은 아직 디자인 전 (docs/missing-screens.md) — 목업 공지로 보내지 않는다
+      { path: '/notices', element: <NoticeListPage /> },
       { path: '/notices/:id', element: <NoticeDetailPage /> },
       { path: '/calendar', element: <CalendarPage /> },
       { path: '/calendar/polls/:id', element: <SchedulePollPage /> },
@@ -70,20 +79,24 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <ProjectHomePage /> },
           { path: 'board', element: <BoardPage /> },
-          { path: 'tasks', element: <PlaceholderPage title="작업 목록" bare /> },
+          { path: 'schedule', element: <SchedulePage /> },
+          { path: 'tasks', element: <TaskListPage /> },
           { path: 'tasks/:taskKey', element: <TaskDetailPage /> },
-          { path: 'milestones', element: <PlaceholderPage title="마일스톤" bare /> },
+          { path: 'milestones', element: <MilestonesPage /> },
           { path: 'threads', element: <ThreadPage /> },
           { path: 'threads/new', element: <ThreadPage /> },
-          { path: 'minutes', element: <MinutesPage /> },
-          { path: 'files', element: <PlaceholderPage title="자료" bare /> },
+          { path: 'minutes', element: <MinuteListPage /> },
+          { path: 'minutes/new', element: <MinuteWritePage /> },
+          { path: 'minutes/:minuteId', element: <MinutesPage /> },
+          { path: 'minutes/:minuteId/edit', element: <MinuteWritePage /> },
+          { path: 'files', element: <ProjectFilesPage /> },
           { path: 'settings', element: <ProjectSettingsPage /> },
         ],
       },
       { path: '/reports', element: <WeeklyReportPage /> },
 
       { path: '/library', element: <LibraryPage /> },
-      { path: '/library/:id', element: <PlaceholderPage title="자료 상세" /> },
+      { path: '/library/:id', element: <DocumentDetailPage /> },
       { path: '/members', element: <MembersPage /> },
       {
         path: '/admin',

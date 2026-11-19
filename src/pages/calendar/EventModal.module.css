@@ -1,0 +1,245 @@
+/* 일정 추가 · 고치기 창 (06 Screens · 추가 › Screen · 일정 추가) */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.label {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.req {
+  color: var(--status-negative);
+  font-weight: 600;
+}
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.allDay {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+
+.input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--brand-500);
+}
+.input:focus-within,
+.textarea:focus {
+  border-color: var(--brand-300);
+  box-shadow: 0 0 0 3px rgba(128, 170, 211, 0.25);
+}
+.input input,
+.input select {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+}
+.input select {
+  cursor: pointer;
+}
+.input small {
+  font-size: var(--fs-overline);
+  color: var(--text-muted);
+}
+.inlineBtn {
+  flex: none;
+  font-size: var(--fs-overline);
+  color: var(--brand-400);
+}
+.inlineBtn:hover {
+  text-decoration: underline;
+}
+.textarea {
+  min-height: 84px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  outline: 0;
+  resize: vertical;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--brand-500);
+}
+
+.when {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) auto minmax(0, 1.35fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.when .input {
+  gap: 6px;
+  padding: 0 10px;
+}
+.whenAllDay {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+.dash {
+  color: var(--text-muted);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 14px;
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.pill:hover:not(:disabled) {
+  background: var(--surface-tint);
+}
+.pillOn,
+.pillOn:hover:not(:disabled) {
+  background: var(--brand-500);
+  color: #fff;
+}
+.pill:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.people {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.person,
+.addPerson {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+}
+.person {
+  background: var(--brand-100);
+  color: var(--brand-500);
+}
+.addPerson {
+  background: var(--surface-sunken);
+  color: var(--brand-400);
+}
+.addPerson:disabled {
+  color: var(--text-disabled);
+  cursor: default;
+}
+.pick {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  font: inherit;
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+  background: var(--surface-card);
+}
+
+.scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-tint);
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+
+.hint,
+.hintBad {
+  font-size: var(--fs-overline);
+  color: var(--text-muted);
+}
+.hintBad {
+  color: var(--status-negative);
+}
+.error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--status-negative-bg);
+  font-size: var(--fs-caption);
+  color: var(--status-negative);
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.footNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.grow {
+  flex: 1;
+}
+.foot button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (max-width: 720px) {
+  .grid,
+  .when,
+  .whenAllDay {
+    grid-template-columns: 1fr;
+  }
+  .dash {
+    display: none;
+  }
+  .foot {
+    flex-wrap: wrap;
+  }
+}

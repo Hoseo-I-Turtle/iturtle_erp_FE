@@ -83,3 +83,32 @@ export const otherNotices = [
   { id: '3', title: '서버 점검 안내 (11/27)', meta: '박지훈 · 3일 전' },
   { id: '4', title: '연구실 보안 수칙 개정', meta: '정교수 · 1주 전' },
 ]
+
+/** 공지 목록 목업 (디자인 06 Screens · 공지 목록) */
+export type NoticeRowMock = {
+  id: string
+  title: string
+  author: string
+  date: string
+  mustRead: boolean
+  pinnedUntil?: string
+  read: boolean
+  commentCount: number
+  attachmentCount: number
+  /** 전체가 아니면 대상 이름 */
+  audience?: string
+  poll?: { closed: boolean; voted: boolean; dday: string; participantCount: number; audienceCount: number }
+}
+export const noticeRows: NoticeRowMock[] = [
+  { id: '1', title: '11월 기술 세미나: 코드 리뷰 문화 도입', author: '이정훈', date: '11/14', mustRead: true, pinnedUntil: '11/30', read: false, commentCount: 3, attachmentCount: 0 },
+  { id: '2', title: '12월 연구실 회식 날짜를 정해요', author: '정교수', date: '11/17', mustRead: true, pinnedUntil: '11/30', read: true, commentCount: 2, attachmentCount: 1, poll: { closed: false, voted: true, dday: 'D-3', participantCount: 9, audienceCount: 11 } },
+  { id: '3', title: '서버 점검 안내 (11/27)', author: '박지훈', date: '11/16', mustRead: false, read: false, commentCount: 0, attachmentCount: 0 },
+  { id: '8', title: 'DEFME 발표 순서 정하기', author: '김민서', date: '11/15', mustRead: false, read: true, commentCount: 1, attachmentCount: 0, audience: 'DEFME 백엔드 참여자', poll: { closed: false, voted: false, dday: 'D-1', participantCount: 3, audienceCount: 5 } },
+  { id: '4', title: '연구실 보안 수칙 개정', author: '정교수', date: '11/10', mustRead: false, read: true, commentCount: 4, attachmentCount: 1 },
+  { id: '5', title: '11월 연구실 간식 신청', author: '한유진', date: '11/07', mustRead: false, read: true, commentCount: 6, attachmentCount: 0, audience: '학생 · 인턴', poll: { closed: true, voted: true, dday: '마감', participantCount: 9, audienceCount: 9 } },
+  { id: '6', title: '장비 예약 규칙 변경 (2일 전까지 예약)', author: '이정훈', date: '10/28', mustRead: false, read: true, commentCount: 1, attachmentCount: 0 },
+  { id: '7', title: '논문 스터디 일정 변경 안내', author: '박지훈', date: '10/25', mustRead: false, read: true, commentCount: 0, attachmentCount: 0 },
+]
+
+/** 내 임시 저장 목업 */
+export const noticeDrafts = [{ id: '901', title: '12월 장비 점검 일정', savedAt: '어제' }]

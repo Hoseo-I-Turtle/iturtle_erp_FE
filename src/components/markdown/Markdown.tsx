@@ -72,13 +72,19 @@ export function Mermaid({ code }: { code: string }) {
   useEffect(() => {
     let alive = true
     import('mermaid').then(async ({ default: mermaid }) => {
-      mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'strict', fontFamily: 'inherit' })
+      // suppressErrorRendering: 문법이 틀려도 mermaid 가 body 끝에 "Syntax error in text" 그림을 붙이지 않게 한다 (오류는 아래 칸에 보여 줌)
+      mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'strict', fontFamily: 'inherit', suppressErrorRendering: true })
+      const id = `mmd-${++seq}`
       try {
-        const { svg } = await mermaid.render(`mmd-${++seq}`, code)
+        const { svg } = await mermaid.render(id, code)
         if (alive) setState({ code, svg })
       } catch (e) {
         const msg = e instanceof Error ? e.message.split('\n').slice(0, 2).join(' ') : String(e)
         if (alive) setState({ code, error: msg })
+      } finally {
+        // 그리다 실패하면 mermaid 가 잠깐 만든 자리(#d{id} · #{id})가 body 에 남을 수 있다 — 화면 밖으로 새지 않게 지운다
+        document.getElementById(`d${id}`)?.remove()
+        document.getElementById(id)?.remove()
       }
     })
     return () => {

@@ -1,5 +1,7 @@
+import { useCallback, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
+  ChartGantt,
   ClipboardList,
   FlaskConical,
   Folder,
@@ -15,15 +17,21 @@ import { Button } from '../components/ui'
 import { PageHeader } from './PageHeader'
 import { findProject, MY_ROLE_NAME } from '../mocks/projects'
 import { projectCategoryName, useProjectHeader } from '../api/projects'
+import { checkProjectKey } from '../api/projectSettings'
+import { useTaskCreateRequests, type TaskCreateOpen } from '../api/tasks'
+import { openUpload } from '../api/documents'
+import { TaskCreateModal } from '../pages/projects/TaskCreateModal'
+import { openMilestoneCreate } from '../api/milestones'
 import s from './layout.module.css'
 
 const TABS: { to: string; label: string; icon: LucideIcon; action?: string; actionTo?: string; subtitle?: string; hideTabs?: boolean }[] = [
   { to: '', label: '개요', icon: House, action: '작업 만들기' },
   { to: 'board', label: '보드', icon: Kanban, action: '작업 만들기', subtitle: '보드 · 상태 흐름은 모든 프로젝트가 같아요' },
+  { to: 'schedule', label: '일정표', icon: ChartGantt, action: '작업 만들기', subtitle: '일정표 · 마일스톤과 작업을 기간으로 봐요' },
   { to: 'tasks', label: '작업 목록', icon: ListChecks, action: '작업 만들기' },
   { to: 'milestones', label: '마일스톤', icon: FlaskConical, action: '마일스톤 만들기' },
   { to: 'threads', label: '스레드', icon: MessageSquare, action: '글 쓰기', actionTo: 'threads/new', subtitle: '글과 답글로 이야기하고, 고정 글은 게시판처럼 모아 봐요' },
-  { to: 'minutes', label: '회의록', icon: ClipboardList, action: '회의록 쓰기', subtitle: '회의록 · 할 일은 바로 작업이 돼요', hideTabs: true },
+  { to: 'minutes', label: '회의록', icon: ClipboardList, action: '회의록 쓰기', actionTo: 'minutes/new', subtitle: '회의록 · 회의에서 나온 할 일은 작업으로 이어져요' },
   { to: 'files', label: '자료', icon: Folder, action: '자료 올리기' },
   { to: 'settings', label: '설정', icon: Settings, subtitle: '설정 · 프로젝트 관리자만 바꿀 수 있어요' },
 ]
@@ -35,6 +43,16 @@ export function ProjectLayout() {
   const navigate = useNavigate()
   // 실서버면 GET /projects/{key}, 목업이면 mocks 에서 찾는다. 불러오는 동안은 이전 값 또는 목업으로 자리만 채운다.
   const header = useProjectHeader(key)
+  // 키가 바뀐 프로젝트(P150)에 옛 주소로 들어오면 새 키 주소로 옮긴다
+  useEffect(() => {
+    if (!header.error || !key) return
+    checkProjectKey(key)
+      .then((r) => r.movedTo && navigate(pathname.replace(`/projects/${key}`, `/projects/${r.movedTo}`) + window.location.search, { replace: true }))
+      .catch(() => undefined)
+  }, [header.error, key, navigate, pathname])
+  // 작업 만들기 창: 머리 버튼과 보드 열의 + 가 연다 (openTaskCreate)
+  const [creating, setCreating] = useState<TaskCreateOpen | null>(null)
+  useTaskCreateRequests(useCallback((d: TaskCreateOpen) => setCreating(d), []))
   const p = header.data ?? findProject(key)
   const loadingHeader = header.data === undefined
   const base = `/projects/${key ?? p.projectKey}`
@@ -57,7 +75,18 @@ export function ProjectLayout() {
         subtitle={loadingHeader ? (header.error ?? '') : isTaskDetail ? '작업 상세' : (tab.subtitle ?? subtitle)}
         action={
           tab.action ? (
-            <Button icon={Plus} onClick={() => tab.actionTo && navigate(`${base}/${tab.actionTo}`)}>
+            <Button
+              icon={Plus}
+              onClick={() =>
+                tab.action === '작업 만들기'
+                  ? setCreating({})
+                  : tab.action === '자료 올리기'
+                    ? openUpload({ projectKey: key ?? p.projectKey })
+                    : tab.action === '마일스톤 만들기'
+                      ? openMilestoneCreate()
+                      : tab.actionTo && navigate(`${base}/${tab.actionTo}`)
+              }
+            >
               {tab.action}
             </Button>
           ) : null
@@ -79,6 +108,7 @@ export function ProjectLayout() {
       </nav>
       )}
       <Outlet />
+      {creating && <TaskCreateModal projectKey={key ?? p.projectKey} open={creating} onClose={() => setCreating(null)} />}
     </>
   )
 }

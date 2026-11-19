@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react'
-import { Check, Copy, Lock, Plus, RefreshCw, X } from 'lucide-react'
-import { Button, Card, Empty, Loadable, Switch } from '../../components/ui'
+import { Plus } from 'lucide-react'
+import { Button, Card, Empty, Loadable } from '../../components/ui'
 import { whenLive } from '../../api/useResource'
 import {
   createCodeDetail,
@@ -9,13 +9,17 @@ import {
   isLive,
   issueClientSecret,
   setCodeEnabled,
-  splitRef,
   useCodeGroups,
   useCodeTable,
   type CodeColumn,
   type CodeGroupView,
   type CodeRowView,
 } from '../../api/admin'
+import { CodeAddForm } from './codes/CodeAddForm'
+import { CodeGroupList } from './codes/CodeGroupList'
+import { CodeTable } from './codes/CodeTable'
+import { EMPTY_DRAFT, type CodeDraft } from './codes/draft'
+import { SecretBox } from './codes/SecretBox'
 import a from './admin.module.css'
 import s from './CodesPage.module.css'
 
@@ -28,9 +32,6 @@ export function CodesPage() {
   )
 }
 
-type Draft = { code: string; name: string; refs: string[] }
-const EMPTY_DRAFT: Draft = { code: '', name: '', refs: ['', '', '', '', ''] }
-
 function CodesView({ groups }: { groups: CodeGroupView[] }) {
   const [group, setGroup] = useState(() => (groups.some((g) => g.code === 'SSO_APP') ? 'SSO_APP' : (groups[0]?.code ?? '')))
   const [selectedRow, setSelectedRow] = useState('penpot')
@@ -39,7 +40,7 @@ function CodesView({ groups }: { groups: CodeGroupView[] }) {
   const [cacheMsg, setCacheMsg] = useState('')
   const [err, setErr] = useState('')
   const [adding, setAdding] = useState(false)
-  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
+  const [draft, setDraft] = useState<CodeDraft>(EMPTY_DRAFT)
   const [busy, setBusy] = useState(false)
 
   const g = groups.find((x) => x.code === group)
@@ -84,7 +85,6 @@ function CodesView({ groups }: { groups: CodeGroupView[] }) {
       setErr(errorText(e, 'secret 을 발급하지 못했어요.'))
     }
   }
-  const masked = (v: string) => v.slice(0, 8) + '•'.repeat(Math.max(0, v.length - 12)) + v.slice(-4)
 
   const evict = async () => {
     setErr('')
@@ -134,22 +134,7 @@ function CodesView({ groups }: { groups: CodeGroupView[] }) {
 
   return (
     <div className={s.layout}>
-      <Card className={s.groups}>
-        <div className={a.muted}>그룹</div>
-        {groups.map((c) => (
-          <button key={c.code} type="button" className={c.code === group ? `${s.group} ${s.groupOn}` : s.group} onClick={() => pickGroup(c.code)}>
-            <strong>
-              {c.code}
-              {c.isNew && <span className={s.new}>새</span>}
-            </strong>
-            <small>{c.name}</small>
-          </button>
-        ))}
-        <Button variant="secondary" icon={RefreshCw} onClick={evict}>
-          캐시 비우기
-        </Button>
-        {cacheMsg && <span className={a.muted}>{cacheMsg}</span>}
-      </Card>
+      <CodeGroupList groups={groups} selected={group} onPick={pickGroup} onEvict={evict} cacheMsg={cacheMsg} />
 
       <Card className={s.detail}>
         {!g ? (
@@ -180,84 +165,18 @@ function CodesView({ groups }: { groups: CodeGroupView[] }) {
                 const cols = { '--ref-cols': `repeat(${Math.max(1, t.columns.length)}, minmax(0, 1fr))` } as CSSProperties
                 return (
                   <>
-                    <div className={s.thead} style={cols}>
-                      <span>코드</span>
-                      <span>표시 이름</span>
-                      {t.columns.length === 0 && <span />}
-                      {t.columns.map((c) => (
-                        <span key={c.index}>{c.label}</span>
-                      ))}
-                      <span>사용</span>
-                      <span />
-                    </div>
-                    {t.rows.length === 0 && <Empty>이 그룹에는 상세 코드가 없어요.</Empty>}
-                    {t.rows.map((r) => (
-                      <div
-                        key={r.code}
-                        className={r.code === selectedRow ? `${s.row} ${s.rowOn}` : s.row}
-                        style={cols}
-                        onClick={() => setSelectedRow(r.code)}
-                      >
-                        <strong>{r.code}</strong>
-                        <span>
-                          {r.name}
-                          {group === 'SSO_APP' && r.secretIssuedAt === null && <span className={s.noSecret}> · secret 발급 전</span>}
-                        </span>
-                        {t.columns.length === 0 && <span />}
-                        {t.columns.map((c) =>
-                          c.list ? (
-                            <span key={c.index} className={s.refs}>
-                              {splitRef(r.refs[c.index]).map((x) => (
-                                <span key={x} className={s.ref}>
-                                  {x}
-                                </span>
-                              ))}
-                            </span>
-                          ) : (
-                            <span key={c.index} className={s.wrap}>
-                              {r.refs[c.index]}
-                            </span>
-                          ),
-                        )}
-                        <Switch checked={r.enabled} onChange={(v) => toggleEnabled(r, v)} label={`${r.code} 사용`} />
-                        {showLock ? (
-                          <button type="button" className={s.lock} onClick={() => issueSecret(r.code)} title="client secret 새로 발급">
-                            <Lock size={16} />
-                          </button>
-                        ) : (
-                          <span />
-                        )}
-                      </div>
-                    ))}
-
+                    <CodeTable
+                      table={t}
+                      cols={cols}
+                      ssoApp={group === 'SSO_APP'}
+                      showLock={showLock}
+                      selectedRow={selectedRow}
+                      onSelect={setSelectedRow}
+                      onToggle={toggleEnabled}
+                      onIssueSecret={issueSecret}
+                    />
                     {adding && (
-                      <div className={s.addForm}>
-                        <label className={a.field}>
-                          상세 코드
-                          <input className={a.input} maxLength={50} value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value })} />
-                        </label>
-                        <label className={a.field}>
-                          표시 이름
-                          <input className={a.input} maxLength={255} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-                        </label>
-                        {t.columns.map((c) => (
-                          <label key={c.index} className={a.field}>
-                            {c.label}
-                            <input
-                              className={a.input}
-                              maxLength={255}
-                              value={draft.refs[c.index]}
-                              onChange={(e) => setDraft({ ...draft, refs: draft.refs.map((v, i) => (i === c.index ? e.target.value : v)) })}
-                            />
-                          </label>
-                        ))}
-                        <Button variant="secondary" icon={X} onClick={closeAdd}>
-                          취소
-                        </Button>
-                        <Button icon={Check} onClick={() => addRow(t.columns, t.rows)} disabled={busy}>
-                          더하기
-                        </Button>
-                      </div>
+                      <CodeAddForm columns={t.columns} draft={draft} onDraft={setDraft} busy={busy} onCancel={closeAdd} onAdd={() => addRow(t.columns, t.rows)} />
                     )}
                   </>
                 )
@@ -267,27 +186,14 @@ function CodesView({ groups }: { groups: CodeGroupView[] }) {
         )}
 
         {secret && group === 'SSO_APP' && (
-          <div className={s.secret}>
-            <strong>
-              <Lock size={16} /> {secret.app} 의 새 client secret
-            </strong>
-            <div className={s.secretBox}>
-              <code>{masked(secret.value)}</code>
-              <Button
-                variant="tint"
-                icon={Copy}
-                onClick={async () => {
-                  await navigator.clipboard?.writeText(secret.value)
-                  setCopied(true)
-                }}
-              >
-                {copied ? '복사함' : '복사'}
-              </Button>
-            </div>
-            <small>
-              이 값은 지금 한 번만 보여요. 서버에는 해시만 저장하고, 감사 로그에도 값을 남기지 않아요. {secret.app} 설정도 함께 바꿔 주세요.
-            </small>
-          </div>
+          <SecretBox
+            secret={secret}
+            copied={copied}
+            onCopy={async () => {
+              await navigator.clipboard?.writeText(secret.value)
+              setCopied(true)
+            }}
+          />
         )}
       </Card>
     </div>
