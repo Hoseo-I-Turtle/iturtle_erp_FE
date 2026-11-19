@@ -1,0 +1,114 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  background: #f4f8fc;
+}
+.tool {
+  display: flex;
+  padding: 6px;
+  border-radius: 8px;
+  color: var(--brand-500);
+}
+.tool:hover {
+  background: var(--surface-card);
+}
+.grow {
+  flex: 1;
+}
+.menuWrap {
+  position: relative;
+}
+.diagramBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--brand-500);
+  color: var(--text-on-dark);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+}
+.menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 10;
+  width: 230px;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-floating);
+  border: 1px solid var(--border-default);
+}
+.menu button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: var(--fs-caption);
+  color: var(--text-primary);
+}
+.menu button:hover {
+  background: var(--surface-tint);
+}
+.menu code {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.panes {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+}
+.split {
+  grid-template-columns: 1fr 1fr;
+}
+.input {
+  width: 100%;
+  min-height: 100%;
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  resize: vertical;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: var(--fs-caption);
+  line-height: 1.75;
+  color: var(--brand-500);
+  outline: none;
+}
+.input:focus {
+  border-color: var(--brand-300);
+}
+.preview {
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: auto;
+}
+.previewLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.emptyPreview {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}

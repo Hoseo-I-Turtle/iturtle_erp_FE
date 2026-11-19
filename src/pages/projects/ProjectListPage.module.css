@@ -1,0 +1,120 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cats,
+.opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cat {
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: var(--surface-card);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.cat:hover {
+  background: var(--surface-tint);
+}
+.catOn,
+.catOn:hover {
+  background: var(--brand-500);
+  color: var(--text-on-dark);
+}
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.toggleOn {
+  background: var(--surface-tint);
+  border-color: transparent;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 20px;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px;
+  border-radius: var(--radius-xl);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.card:hover {
+  box-shadow: var(--shadow-floating);
+  transform: translateY(-2px);
+}
+.cardTop,
+.bottom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.grow {
+  flex: 1;
+}
+.key {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+
+
+
+.name {
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+.summary {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.ms {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.ms strong {
+  margin-left: auto;
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.svc {
+  color: var(--text-secondary);
+}
+.role {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.due {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: #f4f8fc;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-secondary);
+}

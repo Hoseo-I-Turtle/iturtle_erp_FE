@@ -1,0 +1,138 @@
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--gap);
+}
+.stat {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+.stat > span:last-child {
+  display: flex;
+  flex-direction: column;
+}
+.stat strong {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+}
+.stat small {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.statIcon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--surface-tint);
+  color: var(--brand-500);
+}
+.warnVal {
+  color: var(--status-warning-text);
+}
+.okVal {
+  color: #1e8a52;
+}
+.thead,
+.row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 0.8fr 1.2fr 120px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+.thead {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.row {
+  min-height: 52px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+.muted {
+  color: var(--text-muted);
+}
+.issue {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+}
+.issue > span {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.issue strong {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.issue small {
+  font-size: var(--fs-caption);
+}
+.issue button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--surface-card);
+  color: var(--brand-500);
+}
+.issueWarn {
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
+}
+.issueBad {
+  background: var(--status-negative-bg);
+  color: var(--status-negative);
+}
+.spin svg {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.hook {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-caption);
+}
+.hookAt {
+  width: 34px;
+  color: var(--text-secondary);
+}
+.event {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #f4f8fc;
+  font-weight: 500;
+}
+.hookDetail {
+  flex: 1;
+  color: var(--brand-500);
+}
+.ok {
+  color: #1e8a52;
+}
+.bad {
+  color: var(--status-negative);
+}

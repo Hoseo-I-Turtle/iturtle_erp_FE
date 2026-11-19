@@ -1,0 +1,70 @@
+.detail {
+  padding: 24px;
+  gap: 14px;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.head > div {
+  flex: 1;
+}
+.head h2 {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+}
+.head small {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.approve {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.idInput {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  color: var(--brand-500);
+}
+.idInput input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  font-size: var(--fs-body);
+}
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hint {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.done {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: #e3f7ec;
+  color: #1e8a52;
+}
+.done code {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+}

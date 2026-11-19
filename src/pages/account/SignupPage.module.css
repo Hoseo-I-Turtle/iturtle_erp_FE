@@ -1,0 +1,214 @@
+.page {
+  min-height: 100vh;
+  background: var(--surface-page);
+}
+.top {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  background: var(--brand-600);
+  color: var(--text-on-dark);
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+.mark {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--brand-400);
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.1);
+  font-size: var(--fs-caption);
+  color: var(--brand-100);
+}
+.body {
+  max-width: 1044px;
+  margin: 40px auto;
+  padding: 0 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .body {
+    grid-template-columns: 1fr;
+  }
+  .top {
+    padding: 0 16px;
+  }
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 36px;
+  border-radius: var(--radius-2xl);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+}
+.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+  outline: none;
+  resize: vertical;
+}
+.input:focus {
+  border-color: var(--brand-400);
+}
+.withBadge {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.withBadge .input {
+  padding-right: 110px;
+}
+.pill {
+  position: absolute;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.pillOk {
+  background: #e3f7ec;
+  color: #1e8a52;
+}
+.pillBad {
+  background: var(--status-negative-bg);
+  color: var(--status-negative);
+}
+.agree {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.captcha {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 300px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.captchaOk svg {
+  color: #1e8a52;
+}
+.captchaBox {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--brand-200);
+  border-radius: 4px;
+}
+.done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 0;
+  text-align: center;
+  color: var(--text-secondary);
+}
+.done svg {
+  color: #1e8a52;
+}
+.done h1 {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  border-radius: var(--radius-xl);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+}
+.steps h2 {
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+.step {
+  display: flex;
+  gap: 12px;
+}
+.step > span {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-tint);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--brand-500);
+}
+.step strong {
+  font-weight: 500;
+}
+.step small {
+  display: block;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.note {
+  display: flex;
+  gap: 10px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-tint);
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.note svg {
+  flex: none;
+}

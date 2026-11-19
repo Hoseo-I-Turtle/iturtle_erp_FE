@@ -1,0 +1,95 @@
+.card {
+  gap: 6px;
+}
+.thead,
+.row {
+  display: grid;
+  grid-template-columns: 110px 100px 150px 160px minmax(0, 1fr) 90px 70px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+.thead {
+  margin-top: 8px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.row {
+  min-height: 52px;
+  border-radius: var(--radius-md);
+  text-align: left;
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.row:hover {
+  background: var(--surface-sunken);
+}
+.rowOn,
+.rowOn:hover {
+  background: var(--surface-tint);
+}
+.time {
+  color: var(--text-secondary);
+}
+.event {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.cat {
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+}
+.cBlue {
+  background: var(--brand-100);
+  color: var(--brand-500);
+}
+.cPurple {
+  background: #ece9fb;
+  color: #5a4bb5;
+}
+.cGray {
+  background: #eef2f6;
+  color: var(--text-secondary);
+}
+.cOrange {
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
+}
+.cRed {
+  background: var(--status-negative-bg);
+  color: var(--status-negative);
+}
+.change {
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.pager {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.pager button {
+  min-width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--brand-500);
+}
+.pager button:hover {
+  background: var(--surface-sunken);
+}
+.pager .pageOn,
+.pager .pageOn:hover {
+  background: var(--brand-500);
+  color: var(--text-on-dark);
+}

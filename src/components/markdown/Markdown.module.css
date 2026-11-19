@@ -1,0 +1,157 @@
+.md {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--brand-500);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.md :global(h1),
+.md :global(h2),
+.md :global(h3) {
+  color: var(--text-primary);
+  font-size: var(--fs-h3);
+  font-weight: 600;
+  margin: 8px 0 4px;
+}
+.md :global(p) {
+  margin: 0 0 8px;
+}
+.md :global(ul),
+.md :global(ol) {
+  padding-left: 20px;
+  margin: 0 0 8px;
+  list-style: revert;
+}
+.md :global(code) {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: #f4f8fc;
+  font-size: 0.9em;
+}
+.md :global(pre) {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: #f4f8fc;
+  overflow-x: auto;
+}
+.md :global(pre code) {
+  padding: 0;
+  background: none;
+}
+.md :global(a) {
+  color: var(--brand-400);
+  text-decoration: underline;
+}
+.md :global(blockquote) {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--border-default);
+  color: var(--text-secondary);
+}
+.md :global(.md-mention),
+.md :global(.md-task) {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--surface-tint);
+  color: var(--brand-400);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+/* ---------- mermaid ---------- */
+.mmd {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface-card);
+}
+.mmdZoom {
+  position: fixed;
+  inset: 40px;
+  z-index: 50;
+  box-shadow: var(--shadow-floating);
+  display: flex;
+  flex-direction: column;
+}
+.mmdZoom .mmdSvg {
+  flex: 1;
+}
+.mmdBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border-default);
+  background: #f4f8fc;
+  font-size: var(--fs-caption);
+}
+.mmdBar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.mmdBar button:hover {
+  color: var(--brand-500);
+}
+.mmdBar button:disabled {
+  opacity: 0.5;
+}
+.mmdTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--surface-tint);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.mmdKind {
+  color: var(--text-muted);
+}
+.grow {
+  flex: 1;
+}
+.mmdSvg {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  overflow: auto;
+}
+.mmdSvg :global(svg) {
+  max-width: 100%;
+  height: auto;
+}
+.mmdCode {
+  margin: 0;
+  padding: 14px;
+  font-size: var(--fs-caption);
+  overflow-x: auto;
+}
+.mmdLoading {
+  padding: 32px;
+  text-align: center;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.mmdError {
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--status-negative-bg);
+  color: var(--status-negative);
+  font-size: var(--fs-caption);
+}
+.mmdError strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+.mmdError pre {
+  margin: 8px 0 0;
+  color: var(--brand-500);
+  white-space: pre-wrap;
+}

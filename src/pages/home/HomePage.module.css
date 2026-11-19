@@ -1,0 +1,248 @@
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: var(--gap);
+  align-items: start;
+}
+.left,
+.right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-width: 0;
+}
+
+/* 공통 행 */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.listTight {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rowText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rowTitle {
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rowMeta {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- 꼭 확인할 것 ---------- */
+.mustCheck {
+  background: var(--grad-hero);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-card);
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mustItem {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  min-height: 66px;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.08);
+}
+.mustIcon {
+  color: var(--text-on-dark);
+  flex: none;
+}
+.mustTitle {
+  font-weight: 500;
+  color: var(--text-on-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mustMeta {
+  font-size: var(--fs-caption);
+  color: var(--text-on-dark-muted);
+}
+.mustAction {
+  flex: none;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+  color: var(--brand-500);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  transition: background-color 0.15s;
+}
+.mustAction:hover {
+  background: var(--brand-100);
+}
+
+/* ---------- 내 작업 ---------- */
+.tasksCard {
+  padding: 20px 24px;
+  gap: 8px;
+}
+.task {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  min-height: 66px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+.taskKey {
+  width: 84px;
+  flex: none;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* ---------- 내 프로젝트 ---------- */
+.projects {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.project {
+  background: var(--surface-card);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.project:hover {
+  box-shadow: var(--shadow-floating);
+  transform: translateY(-2px);
+}
+.projectTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.projectCode {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.projectName {
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+.projectMs {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.projectMs strong {
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.projectBottom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+/* ---------- 이번 주 일정 ---------- */
+.event {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  min-height: 66px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+.eventBar {
+  width: 4px;
+  height: 36px;
+  border-radius: 2px;
+  flex: none;
+}
+
+/* ---------- 최근 공지 ---------- */
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 0;
+}
+.notice:hover .rowTitle {
+  color: var(--brand-400);
+}
+.noticePin {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  flex: none;
+}
+
+/* ---------- 서비스 바로 가기 ---------- */
+.services {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.service {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-tint);
+  color: var(--text-primary);
+  transition: background-color 0.15s;
+}
+.service:hover {
+  background: var(--brand-100);
+}
+.serviceName {
+  font-weight: 500;
+}
+.serviceDesc {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.serviceDisabled,
+.serviceDisabled:hover {
+  background: var(--surface-disabled);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+.serviceDisabled .serviceDesc {
+  color: var(--text-disabled);
+}
+
+/* ---------- 반응형 ---------- */
+@media (max-width: 1280px) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .right {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+}

@@ -1,0 +1,119 @@
+/* 로그인 · 비밀번호 변경 · 가입 신청 공용 폼 스타일 */
+.title {
+  font-size: var(--fs-h1);
+  font-weight: 600;
+}
+.sub {
+  color: var(--text-secondary);
+}
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-caption);
+}
+.banner svg {
+  flex: none;
+}
+.bError {
+  background: var(--status-negative-bg);
+  color: var(--status-negative);
+}
+.bInfo {
+  background: var(--surface-tint);
+  color: var(--brand-500);
+}
+.bWarn {
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.inputWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  height: 48px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  background: var(--surface-card);
+}
+.inputWrap:focus-within {
+  border-color: var(--brand-400);
+}
+.inputWrap input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+  background: transparent;
+}
+.invalid {
+  border-color: var(--status-negative) !important;
+}
+.eye {
+  display: flex;
+  color: var(--text-secondary);
+}
+.submit {
+  justify-content: center;
+  height: 52px;
+  width: 100%;
+}
+.hint {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.errText {
+  font-size: var(--fs-caption);
+  color: var(--status-negative);
+}
+.divider {
+  width: 100px;
+  border: 0;
+  border-top: 1px solid var(--border-default);
+  margin: 0;
+}
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.link:hover {
+  text-decoration: underline;
+}
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  font-size: var(--fs-caption);
+}
+.rules li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+}
+.ruleOk {
+  color: #1e8a52 !important;
+}
+.ruleBad {
+  color: var(--status-negative) !important;
+}

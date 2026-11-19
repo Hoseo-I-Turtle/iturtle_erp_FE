@@ -1,0 +1,105 @@
+.card {
+  gap: 10px;
+}
+.thead,
+.row {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr 2fr 0.8fr 1.2fr 90px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+}
+.thead {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.req {
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+  border: 1px solid transparent;
+}
+.reqOpen {
+  background: var(--surface-tint);
+  border-color: var(--brand-400);
+}
+.row {
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+  min-height: 60px;
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.who > span {
+  display: flex;
+  flex-direction: column;
+}
+.who strong {
+  font-size: var(--fs-body);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.who small {
+  color: var(--text-muted);
+}
+.reason {
+  line-height: 1.5;
+}
+.project {
+  color: var(--text-secondary);
+}
+.decide {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 12px 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+}
+.until {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.until input {
+  border: 0;
+  outline: 0;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+}
+.reasonInput {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  font-size: var(--fs-caption);
+  outline: none;
+}
+.invalid {
+  border-color: var(--status-negative);
+}
+.invalid::placeholder {
+  color: var(--status-negative);
+}
+.recent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  font-size: var(--fs-caption);
+}
+.recent strong {
+  font-weight: 500;
+}
+.note {
+  flex: 1;
+  color: var(--text-secondary);
+}

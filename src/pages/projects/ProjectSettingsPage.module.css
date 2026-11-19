@@ -1,0 +1,192 @@
+.layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--gap);
+  align-items: start;
+}
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  border-radius: var(--radius-xl);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+}
+.menuItem {
+  padding: 12px 12px;
+  border-radius: var(--radius-md);
+  text-align: left;
+  color: var(--brand-500);
+}
+.menuItem:hover {
+  background: var(--surface-sunken);
+}
+.menuOn,
+.menuOn:hover {
+  background: var(--surface-tint);
+  font-weight: 500;
+}
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+.muted {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+
+.svc {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+}
+.svcIcon {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: var(--brand-500);
+}
+.svcText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.svcText strong {
+  font-weight: 500;
+}
+.svcText small {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.pending {
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--status-warning-bg);
+  font-size: var(--fs-caption);
+  color: var(--status-warning-text);
+}
+.fail {
+  font-size: var(--fs-caption);
+  color: var(--status-negative);
+}
+.fail button {
+  margin-left: 6px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  text-decoration: underline;
+}
+.sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.syncOk {
+  background: #e3f7ec;
+  color: #1e8a52;
+}
+.syncFail {
+  background: var(--status-negative-bg);
+  color: var(--status-negative);
+}
+
+.roleRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+.roleName {
+  flex: 1;
+  font-weight: 500;
+}
+.svcLabel {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+
+.table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.thead,
+.trow {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 200px 200px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+}
+.thead {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.trow {
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+.custom {
+  background: var(--surface-tint);
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 기존 Vault 경로 묶기 신청 (P-21) */
+.pathReq {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.pathReq input {
+  width: 220px;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  font-size: var(--fs-caption);
+}
+.pathReq button {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  text-decoration: underline;
+}
+.pathReq button:disabled {
+  opacity: 0.5;
+}

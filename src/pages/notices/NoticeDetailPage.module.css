@@ -1,0 +1,248 @@
+/* ---------- 본문 ---------- */
+.article {
+  padding: 26px 32px;
+  gap: 16px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.title {
+  font-size: var(--fs-h1);
+  font-weight: 600;
+  line-height: 42px;
+}
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.author {
+  font-weight: 500;
+}
+.metaText {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.metaActions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+.body {
+  color: var(--brand-500);
+  line-height: 1.6;
+  white-space: pre-line;
+}
+.attachment {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.attachment:hover {
+  background: var(--surface-sunken);
+}
+.attName {
+  font-weight: 500;
+}
+.attSize {
+  color: var(--text-muted);
+}
+
+/* ---------- 투표 ---------- */
+.vote {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  border-radius: 18px;
+  background: #f4f8fc;
+  border: 1px solid var(--border-default);
+}
+.voteHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.voteHead h3 {
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+.voteHeadChips {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+.whiteChip {
+  background: var(--surface-card);
+}
+.option {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  text-align: left;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s;
+}
+.option:not(:disabled):hover {
+  border-color: var(--brand-300);
+}
+.option:disabled {
+  cursor: default;
+}
+.optionMine {
+  border-color: var(--brand-400);
+}
+.optionTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.box {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--brand-200);
+  background: var(--surface-card);
+  color: var(--text-on-dark);
+}
+.boxOn {
+  background: var(--brand-400);
+  border-color: var(--brand-400);
+}
+.optionLabel {
+  font-weight: 500;
+  flex: 1;
+}
+.optionCount {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.optionVoters {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.voteFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+
+/* ---------- 댓글 ---------- */
+.commentsHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+.comments {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.comment {
+  display: flex;
+  gap: 12px;
+}
+.commentHead {
+  display: flex;
+  gap: 6px;
+  font-size: var(--fs-caption);
+}
+.commentHead strong {
+  font-weight: 500;
+}
+.commentHead span {
+  color: var(--text-muted);
+}
+.comment p {
+  color: var(--brand-500);
+}
+
+/* ---------- 사이드 ---------- */
+.sideCard {
+  gap: 12px;
+}
+.privateChip {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: #f4f8fc;
+  color: var(--text-muted);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+}
+.readNums {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+}
+.readYes {
+  color: #1e8a52;
+}
+.readNo {
+  color: var(--status-negative);
+}
+.overline {
+  font-size: var(--fs-overline);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.people {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.people li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.personName {
+  font-weight: 500;
+  flex: 1;
+}
+.personRole {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+.others {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.others a {
+  display: block;
+  padding: 6px 0;
+}
+.others a:hover .otherTitle {
+  color: var(--brand-400);
+}
+.otherTitle {
+  font-weight: 500;
+}
+.otherMeta {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}

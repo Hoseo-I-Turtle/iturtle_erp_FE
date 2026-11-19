@@ -1,0 +1,147 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: var(--grad-sidebar);
+}
+.box {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 36px;
+  border-radius: var(--radius-2xl);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-floating);
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+.mark {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--brand-400);
+  color: var(--text-on-dark);
+}
+.box h1 {
+  font-size: var(--fs-h1);
+  font-weight: 600;
+  margin-top: 8px;
+}
+.sub {
+  color: var(--text-secondary);
+}
+.options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 20px;
+  border-radius: var(--radius-xl);
+  border: 1.5px solid var(--border-default);
+  text-align: left;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.option:hover {
+  border-color: var(--brand-200);
+}
+.option strong {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.on,
+.on:hover {
+  border-color: var(--brand-400);
+  background: var(--surface-tint);
+}
+.optIcon {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--brand-400);
+}
+.check {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  color: var(--brand-400);
+}
+.server {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+}
+.server label {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.server input {
+  padding: 10px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-card);
+  outline: none;
+}
+.server input:focus {
+  border-color: var(--brand-300);
+}
+.server p {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caption);
+}
+.ok {
+  color: #1e8a52;
+}
+.fail {
+  color: var(--status-negative);
+}
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.enter {
+  justify-content: center;
+  padding: 14px;
+  margin-top: 8px;
+}

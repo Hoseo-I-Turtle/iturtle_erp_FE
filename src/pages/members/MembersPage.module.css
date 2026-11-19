@@ -1,0 +1,154 @@
+.members {
+  gap: 14px;
+}
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.typeChips {
+  display: flex;
+  gap: 6px;
+}
+.typeChip {
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: #f4f8fc;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.typeChip:hover {
+  background: var(--surface-tint);
+}
+.typeChipOn,
+.typeChipOn:hover {
+  background: var(--brand-500);
+  color: var(--text-on-dark);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.groupTitle {
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+.groupTitle span {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-muted);
+  vertical-align: super;
+  margin-left: 2px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--surface-sunken);
+  border: 1px solid transparent;
+  text-align: left;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.card:hover {
+  border-color: var(--border-default);
+}
+.cardOn,
+.cardOn:hover {
+  background: var(--surface-tint);
+  border-color: var(--brand-400);
+}
+.cardTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cardName {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.cardName strong {
+  font-weight: 500;
+}
+.typeBadge {
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--surface-card);
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.cardIntro {
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.cardMeta {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+/* ---------- 프로필 ---------- */
+.profile {
+  align-items: center;
+  padding: 24px 22px;
+  gap: 14px;
+}
+.profileName {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+}
+.profileChips {
+  display: flex;
+  gap: 6px;
+}
+.chipActive {
+  background: #e3f7ec;
+  color: #1e8a52;
+}
+.profileIntro {
+  color: var(--text-secondary);
+}
+.profileKv {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding-top: 14px;
+  font-size: var(--fs-caption);
+}
+.kvRow {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+}
+.kvRow dt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+}
+.kvRow dt svg {
+  color: var(--text-secondary);
+}
+.kvRow dd {
+  margin: 0;
+  font-weight: 500;
+  color: var(--brand-500);
+  overflow-wrap: anywhere;
+}
+.hidden {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+}

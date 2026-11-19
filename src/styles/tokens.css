@@ -1,0 +1,70 @@
+/*
+ * 디자인 토큰 — Penpot "00 Design System" 로컬 라이브러리와 1:1 대응.
+ * 색을 바꿀 땐 이 파일만 고친다.
+ */
+:root {
+  /* brand */
+  --brand-100: #c0e6fd;
+  --brand-200: #80aad3;
+  --brand-300: #5b86b6;
+  --brand-400: #3f6593;
+  --brand-500: #1b3554;
+  --brand-600: #000f22;
+
+  /* surface */
+  --surface-page: #eef5fb;
+  --surface-tint: #dceefb;
+  --surface-card: #ffffff;
+  --surface-sunken: #f7fafd; /* 카드 안 목록 행 */
+  --surface-disabled: #f4f6f8;
+
+  /* border */
+  --border-default: #d6e4f0;
+
+  /* text */
+  --text-primary: #000f22;
+  --text-secondary: #3f6593;
+  --text-muted: #5b86b6;
+  --text-disabled: #9aa8b6;
+  --text-on-dark: #ffffff;
+  --text-on-dark-muted: #80aad3;
+
+  /* status */
+  --status-positive: #34c27a;
+  --status-negative: #e5484d;
+  --status-negative-bg: #fdecec;
+  --status-warning-text: #b26a00;
+  --status-warning-bg: #fff1dc;
+
+  /* gradients */
+  --grad-sidebar: linear-gradient(180deg, var(--brand-600), var(--brand-500));
+  --grad-hero: linear-gradient(90deg, var(--brand-500), var(--brand-400));
+
+  /* shadow */
+  --shadow-card: 0 4px 16px rgba(0, 15, 34, 0.08);
+  --shadow-floating: 0 12px 32px rgba(0, 15, 34, 0.16);
+
+  /* radius */
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-full: 999px;
+
+  /* typography — Inter(라틴) + Pretendard(한글) */
+  --font-sans: 'Inter Variable', 'Pretendard Variable', Pretendard, system-ui, sans-serif;
+
+  --fs-display: 48px;
+  --fs-h1: 32px;
+  --fs-h2: 22px;
+  --fs-h3: 18px;
+  --fs-body: 16px;
+  --fs-caption: 13px;
+  --fs-overline: 12px;
+
+  /* layout */
+  --sidebar-width: 264px;
+  --page-padding: 28px;
+  --gap: 20px;
+}

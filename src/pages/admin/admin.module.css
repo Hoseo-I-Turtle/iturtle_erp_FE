@@ -1,0 +1,247 @@
+/* 관리 화면 공용 스타일 */
+.role {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.role:not(:disabled):hover {
+  border-color: var(--brand-300);
+}
+.role:disabled {
+  cursor: default;
+}
+.roleOn {
+  border-color: transparent;
+  background: var(--brand-100);
+  color: var(--brand-500);
+  font-weight: 500;
+}
+.roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.groupLabel {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+.groupLabel b {
+  font-weight: 600;
+  color: var(--brand-500);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: var(--gap);
+  align-items: start;
+}
+.layoutList {
+  display: grid;
+  grid-template-columns: 440px minmax(0, 1fr);
+  gap: var(--gap);
+  align-items: start;
+}
+.layoutNarrow {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: var(--gap);
+  align-items: start;
+}
+@media (max-width: 1200px) {
+  .layout,
+  .layoutList,
+  .layoutNarrow {
+    grid-template-columns: 1fr;
+  }
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-width: 0;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  width: 280px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  color: var(--text-muted);
+}
+.search input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  font-size: var(--fs-caption);
+}
+.chipBtn {
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: #f4f8fc;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.chipBtnOn {
+  background: var(--brand-500);
+  color: var(--text-on-dark);
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.grow {
+  flex: 1;
+}
+.muted {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+/* 저장 · 조치 실패 안내 */
+.err {
+  font-size: var(--fs-caption);
+  color: var(--status-negative);
+}
+.h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fs-h2);
+  font-weight: 600;
+}
+.h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+
+/* 상태 칩 */
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.ok {
+  background: #e3f7ec;
+  color: #1e8a52;
+}
+.warn {
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
+}
+.bad {
+  background: var(--status-negative-bg);
+  color: var(--status-negative);
+}
+.off {
+  background: #eef2f6;
+  color: var(--text-disabled);
+}
+.info {
+  background: var(--surface-tint);
+  color: var(--text-secondary);
+}
+
+/* 왼쪽 목록에서 고르는 카드 */
+.pick {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+  border: 1px solid transparent;
+  text-align: left;
+}
+.pick:hover {
+  border-color: var(--border-default);
+}
+.pickOn,
+.pickOn:hover {
+  background: var(--surface-tint);
+  border-color: var(--brand-400);
+}
+.pickText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pickText strong {
+  font-weight: 500;
+}
+.pickText small {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  row-gap: 10px;
+  margin: 0;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+  font-size: var(--fs-caption);
+}
+.kv dt {
+  color: var(--text-muted);
+}
+.kv dd {
+  margin: 0;
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.input {
+  padding: 10px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-card);
+  font-size: var(--fs-body);
+  outline: none;
+}
+.input:focus {
+  border-color: var(--brand-300);
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+.danger {
+  background: var(--status-negative) !important;
+  color: var(--text-on-dark) !important;
+}
+.danger:hover {
+  filter: brightness(0.95);
+}

@@ -1,0 +1,19 @@
+.status {
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.active {
+  background: #e3f7ec;
+  color: #1e8a52;
+}
+.prep {
+  background: var(--surface-tint);
+  color: var(--text-secondary);
+}
+.done {
+  background: #eef2f6;
+  color: var(--text-disabled);
+}
