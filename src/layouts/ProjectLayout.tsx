@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   ChartGantt,
+  ClipboardCheck,
   ClipboardList,
   FlaskConical,
   Folder,
@@ -33,6 +34,7 @@ const TABS: { to: string; label: string; icon: LucideIcon; action?: string; acti
   { to: 'threads', label: '스레드', icon: MessageSquare, action: '글 쓰기', actionTo: 'threads/new', subtitle: '글과 답글로 이야기하고, 고정 글은 게시판처럼 모아 봐요' },
   { to: 'minutes', label: '회의록', icon: ClipboardList, action: '회의록 쓰기', actionTo: 'minutes/new', subtitle: '회의록 · 회의에서 나온 할 일은 작업으로 이어져요' },
   { to: 'files', label: '자료', icon: Folder, action: '자료 올리기' },
+  { to: 'reports', label: '주간 보고', icon: ClipboardCheck, subtitle: '주간 보고 · 참여자가 이 프로젝트 칸에 쓴 내용' },
   { to: 'settings', label: '설정', icon: Settings, subtitle: '설정 · 프로젝트 관리자만 바꿀 수 있어요' },
 ]
 
