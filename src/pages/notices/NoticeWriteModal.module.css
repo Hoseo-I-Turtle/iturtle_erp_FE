@@ -267,3 +267,102 @@
   font-size: var(--fs-caption);
   color: var(--status-negative);
 }
+
+/* ---------- 임시 저장 ---------- */
+.draftBadge {
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  background: var(--status-warning-bg);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--status-warning-text);
+}
+.drafts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--status-warning-bg);
+  font-size: var(--fs-caption);
+  color: var(--status-warning-text);
+}
+.drafts select {
+  min-width: 0;
+  max-width: 320px;
+  padding: 4px 8px;
+  border: 1px solid #f1d4a6;
+  border-radius: 8px;
+  background: var(--surface-card);
+  font: inherit;
+  color: var(--text-primary);
+}
+.draftAction,
+.draftDiscard {
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+}
+.draftAction {
+  background: var(--brand-500);
+  color: var(--text-on-dark);
+}
+.draftDiscard {
+  background: var(--surface-card);
+  color: var(--status-negative);
+}
+.draftAction:disabled,
+.draftDiscard:disabled {
+  opacity: 0.5;
+}
+
+/* ---------- 대상 ---------- */
+.audience {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.audience .label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 4px;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.pill:hover {
+  background: var(--surface-tint);
+}
+.pillOn,
+.pillOn:hover {
+  background: var(--brand-500);
+  color: var(--text-on-dark);
+}
+.audienceSel {
+  padding: 5px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-card);
+  font-size: var(--fs-caption);
+  color: var(--text-primary);
+}
+.audience .toggle {
+  background: var(--surface-sunken);
+}
+.audience .toggleOn {
+  background: var(--brand-400);
+}
+.toggle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

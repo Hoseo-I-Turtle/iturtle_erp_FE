@@ -41,6 +41,20 @@
   font-size: var(--fs-caption);
   color: var(--text-primary);
 }
+.sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.sort select {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
 .search:focus-within {
   border-color: var(--brand-300);
 }
@@ -263,4 +277,15 @@ button.leftItem:hover:not(:disabled) {
   background: #e9eef4;
   font-size: var(--fs-caption);
   color: var(--text-muted);
+}
+.pollBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.pollBar > :first-child {
+  flex: 1;
 }

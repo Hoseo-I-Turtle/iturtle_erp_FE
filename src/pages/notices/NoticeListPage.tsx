@@ -4,6 +4,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  ArrowDownUp,
   Clock,
   Info,
   Megaphone,
@@ -14,17 +15,18 @@ import {
   SquareCheck,
   TriangleAlert,
 } from 'lucide-react'
-import { Card, Chip, Empty, Loadable, PillTabs, SectionHead } from '../../components/ui'
+import { Card, Chip, Empty, Loadable, PillTabs, Progress, SectionHead } from '../../components/ui'
 import { PageHeader } from '../../layouts/PageHeader'
-import { useNoticeList, type NoticeListView, type NoticeRow, type NoticeTab } from '../../api/communication'
+import { useNoticeList, type NoticeListView, type NoticeRow, type NoticeSort, type NoticeTab } from '../../api/communication'
 import { NoticeWriteButton } from './NoticeWriteModal'
 import s from './NoticeListPage.module.css'
 
 export function NoticeListPage() {
   const [tab, setTab] = useState<NoticeTab>('all')
   const [keyword, setKeyword] = useState('')
+  const [sort, setSort] = useState<NoticeSort>('LATEST')
   const [page, setPage] = useState(0)
-  const list = useNoticeList(tab, keyword, page)
+  const list = useNoticeList(tab, keyword, sort, page)
 
   const changeTab = (t: NoticeTab) => {
     setTab(t)
@@ -43,6 +45,7 @@ export function NoticeListPage() {
               options={[
                 { value: 'all', label: '전체', count: list.data?.counts.all },
                 { value: 'mustRead', label: '필독', count: list.data?.counts.mustRead },
+                { value: 'poll', label: '투표', count: list.data?.counts.poll },
                 { value: 'unread', label: '안 읽음', count: list.data?.counts.unread },
               ]}
             />
@@ -57,6 +60,20 @@ export function NoticeListPage() {
                   setPage(0)
                 }}
               />
+            </label>
+            <label className={s.sort}>
+              <ArrowDownUp size={14} />
+              <select
+                value={sort}
+                aria-label="정렬"
+                onChange={(e) => {
+                  setSort(e.target.value as NoticeSort)
+                  setPage(0)
+                }}
+              >
+                <option value="LATEST">최신순</option>
+                <option value="DEADLINE">투표 마감 가까운 순</option>
+              </select>
             </label>
           </div>
           <Loadable resource={list} label="공지">
@@ -100,9 +117,10 @@ function Row({ n, pinned }: { n: NoticeRow; pinned?: boolean }) {
   const meta = [
     n.author,
     n.date,
+    n.audience && `대상 ${n.audience}`,
     pinned && n.pinnedUntil && `고정 ${n.pinnedUntil}까지`,
     n.attachmentCount > 0 && `첨부 ${n.attachmentCount}`,
-    n.poll && !n.poll.closed && `투표 ${n.poll.dday}`,
+    n.poll && !n.poll.closed && `투표 ${n.poll.dday} · ${n.poll.participantCount}명 참여`,
   ]
     .filter(Boolean)
     .join(' · ')
@@ -209,6 +227,12 @@ function SidePanel({ data }: { data: NoticeListView }) {
           {data.openPolls.map((p) => (
             <Link key={p.id} to={`/notices/${p.id}`} className={s.poll}>
               <span className={s.pollTitle}>{p.title}</span>
+              <span className={s.pollBar}>
+                <Progress value={p.audienceCount ? Math.round((p.participantCount / p.audienceCount) * 100) : 0} height={6} />
+                <span>
+                  {p.participantCount} / {p.audienceCount}명
+                </span>
+              </span>
               <span className={s.pollMeta}>
                 <Chip tone="warning" icon={Clock}>
                   마감 {p.dday}

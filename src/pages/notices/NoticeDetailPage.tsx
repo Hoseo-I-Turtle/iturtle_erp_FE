@@ -16,6 +16,7 @@ import {
   TriangleAlert,
 } from 'lucide-react'
 import { Avatar, Breadcrumb, Button, Card, Chip, Columns, Empty, KeyValue, Loadable, Progress, SectionHead } from '../../components/ui'
+import { Markdown } from '../../components/markdown/Markdown'
 import { PageHeader } from '../../layouts/PageHeader'
 import { ApiError } from '../../api/client'
 import { whenLive } from '../../api/useResource'
@@ -61,6 +62,7 @@ function NoticeBody({ notice }: { notice: NoticeView }) {
           <Breadcrumb items={[{ label: '공지사항', to: '/notices' }, { label: '상세' }]} />
 
           <div className={s.chips}>
+            {notice.draft && <Chip tone="warning">임시 저장 · 아직 게시 전</Chip>}
             {notice.important && (
               <Chip tone="danger" icon={TriangleAlert}>
                 필독
@@ -95,7 +97,9 @@ function NoticeBody({ notice }: { notice: NoticeView }) {
             )}
           </div>
 
-          <p className={s.body}>{notice.body}</p>
+          <div className={s.body}>
+            <Markdown source={notice.body} />
+          </div>
 
           {notice.attachments.map((a) => (
             <a key={a.name} href={a.url} className={s.attachment}>
