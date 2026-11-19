@@ -2,6 +2,7 @@ import { Check } from 'lucide-react'
 import { Avatar } from '../../../components/ui'
 import type { SignupRequest } from '../../../mocks/admin'
 import { STATUS_LABEL } from './status'
+import { StateBadge } from '../StateBadge'
 import a from '../admin.module.css'
 import s from '../SignupsPage.module.css'
 
@@ -22,7 +23,7 @@ export function SignupInfo({ sel }: { sel: SignupRequest }) {
       <dl className={a.kv}>
         <dt>구분</dt>
         <dd>
-          <span className={`${a.state} ${a.info}`}>{sel.type}</span>
+          <StateBadge tone="info">{sel.type}</StateBadge>
         </dd>
         <dt>학번 (있으면)</dt>
         <dd>{sel.studentNo ?? '(입력 안 함)'}</dd>
@@ -34,9 +35,9 @@ export function SignupInfo({ sel }: { sel: SignupRequest }) {
         <dd>{sel.phone}</dd>
         <dt>개인정보 동의</dt>
         <dd>
-          <span className={`${a.state} ${a.ok}`}>
+          <StateBadge tone="ok">
             <Check size={12} /> 동의함
-          </span>
+          </StateBadge>
         </dd>
       </dl>
       <div className={a.muted}>신청 사유</div>

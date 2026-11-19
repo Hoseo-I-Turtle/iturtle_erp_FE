@@ -1,6 +1,7 @@
 import { Avatar, Card, Empty, Segmented } from '../../../components/ui'
 import type { SignupRequest } from '../../../mocks/admin'
 import { STATUS_LABEL, type SignupTab } from './status'
+import { StateBadge } from '../StateBadge'
 import a from '../admin.module.css'
 
 type Props = {
@@ -31,7 +32,7 @@ export function SignupList({ tab, onTab, count, list, selectedId, onChoose }: Pr
               {r.type} · {r.wantedId} · {r.ago}
             </small>
           </span>
-          {r.idTaken && <span className={`${a.state} ${a.warn}`}>희망 ID 사용 중</span>}
+          {r.idTaken && <StateBadge tone="warn">희망 ID 사용 중</StateBadge>}
         </button>
       ))}
       <p className={a.muted}>거절했거나 30일 동안 처리하지 않은 신청서는 90일 뒤 지워져요.</p>

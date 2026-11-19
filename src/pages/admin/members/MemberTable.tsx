@@ -1,6 +1,7 @@
 import { Ellipsis, Lock, Search } from 'lucide-react'
 import { Avatar, Card } from '../../../components/ui'
 import { isLive, type AdminRow } from '../../../api/admin'
+import { StateBadge } from '../StateBadge'
 import a from '../admin.module.css'
 import s from './MemberTable.module.css'
 
@@ -62,13 +63,13 @@ export function MemberTable({ list, counts, filter, onFilter, q, onQuery, select
           </span>
           <span>{m.memberNo}</span>
           <span>
-            <span className={`${a.state} ${a.info}`}>{m.memberType}</span>
+            <StateBadge tone="info">{m.memberType}</StateBadge>
           </span>
           <span>
             <MemberStateBadge member={m} />
           </span>
           <span className={s.rolesCell}>
-            {m.presets.join(' + ')} · {m.roleCount}개{m.tempPassword && <span className={`${a.state} ${a.warn}`}>임시 비밀번호</span>}
+            {m.presets.join(' + ')} · {m.roleCount}개{m.tempPassword && <StateBadge tone="warn">임시 비밀번호</StateBadge>}
           </span>
           <span className={s.last}>{m.lastLogin}</span>
           <Ellipsis size={18} className={s.more} />
@@ -80,14 +81,14 @@ export function MemberTable({ list, counts, filter, onFilter, q, onQuery, select
 
 /** 목록의 상태 칸: 졸업 → 휴학 → 잠김 → 비활성 → 재실 순으로 하나만 */
 function MemberStateBadge({ member: m }: { member: AdminRow }) {
-  if (m.graduated) return <span className={`${a.state} ${a.off}`}>졸업</span>
-  if (m.onLeave) return <span className={`${a.state} ${a.warn}`}>휴학</span>
+  if (m.graduated) return <StateBadge tone="off">졸업</StateBadge>
+  if (m.onLeave) return <StateBadge tone="warn">휴학</StateBadge>
   if (m.state === 'LOCKED')
     return (
-      <span className={`${a.state} ${a.bad}`}>
+      <StateBadge tone="bad">
         <Lock size={12} /> 잠김
-      </span>
+      </StateBadge>
     )
-  if (m.state === 'DISABLED') return <span className={`${a.state} ${a.off}`}>비활성</span>
-  return <span className={`${a.state} ${a.ok}`}>재실</span>
+  if (m.state === 'DISABLED') return <StateBadge tone="off">비활성</StateBadge>
+  return <StateBadge tone="ok">재실</StateBadge>
 }

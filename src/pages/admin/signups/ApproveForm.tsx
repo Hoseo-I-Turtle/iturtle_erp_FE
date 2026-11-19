@@ -1,6 +1,7 @@
 import { Calendar, Check, Info, X } from 'lucide-react'
 import { Button, Select } from '../../../components/ui'
 import type { SignupsData } from '../../../api/admin'
+import { StateBadge } from '../StateBadge'
 import a from '../admin.module.css'
 import s from '../SignupsPage.module.css'
 
@@ -53,15 +54,15 @@ export function ApproveForm({
             <input value={loginId} onChange={(e) => onLoginId(e.target.value.toLowerCase())} />
             {loginId &&
               (checking ? (
-                <span className={`${a.state} ${a.info}`}>확인 중</span>
+                <StateBadge tone="info">확인 중</StateBadge>
               ) : taken ? (
-                <span className={`${a.state} ${a.bad}`}>사용 중</span>
+                <StateBadge tone="bad">사용 중</StateBadge>
               ) : !valid ? (
-                <span className={`${a.state} ${a.warn}`}>형식 확인</span>
+                <StateBadge tone="warn">형식 확인</StateBadge>
               ) : (
-                <span className={`${a.state} ${a.ok}`}>
+                <StateBadge tone="ok">
                   <Check size={12} /> 사용 가능
-                </span>
+                </StateBadge>
               ))}
           </span>
         </label>
