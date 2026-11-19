@@ -2,16 +2,20 @@
 // - 스레드: docs/api/31-task.md H-1 ~ H-5, 답글은 60-common.md 댓글 (targetType=PROJECT_THREAD)
 // - 회의록 · 주간 보고: docs/api/32-minute-report.md MM-1 ~ MM-8, WR-1 ~ WR-7
 // - 자료실 · 파일: docs/api/40-document-file.md D-1, D-8, F-1, F-2
+// 백엔드 기준: project 모듈 ThreadController · MinuteController · WeeklyReportController,
+// comment 모듈 CommentController, document 모듈 DocumentController, file 모듈 FileController 와 각 dto.
 // 응답을 화면이 쓰는 mocks/* 의 모양으로 바꾼다.
 import { api, ApiError } from './client'
 import { ago, type MemberRef, type PageResponse, type TaskRef } from './types'
 import { useResource } from './useResource'
 import { getApiBase, getDataMode } from '../lib/dataMode'
+import { projectCategoryName } from './projects'
 import { STATUS_NAME, type TaskStatus } from '../mocks/tasks'
 import { THREAD_TOTAL, threadPosts, type ThreadPost } from '../mocks/threads'
 import { minuteHistory, minutes as mockMinutes, otherMinutes, type Minute, type MinuteTodo } from '../mocks/minutes'
 import { github, lastWeekComment, lastWeekReport, myReport, submissions, weeks, type ReportWeek, type Submission } from '../mocks/reports'
 import {
+  CATEGORY_NAME,
   categoryCounts as mockCategoryCounts,
   documents as mockDocuments,
   pinnedDocs as mockPinnedDocs,
@@ -51,16 +55,21 @@ const mdOf = (date: string | null | undefined) => (date ? `${date.slice(5, 7)}/$
 /* ---------- 댓글 (60-common.md CM-1, CM-2) ---------- */
 
 type CommentTarget = 'PROJECT_THREAD' | 'WEEKLY_REPORT'
+/**
+ * comment 모듈 CommentResponse. @JsonInclude(NON_NULL) 이라 비어 있는 필드(parentId · replies · mentions …)는 빠져 온다.
+ * 작성자가 없어진 경우 author 는 memberId 만 있다.
+ */
 type Comment = {
   commentId: number
-  parentId: number | null
-  author: MemberRef
+  parentId?: number
+  author: { memberId: number; name: string | null }
   body: string | null
   deleted: boolean
-  attachments: FileRef[]
+  kind: 'NORMAL' | 'REJECT_REASON' | 'STATUS_REASON'
+  attachments?: FileRef[]
   editedAt: string | null
   createdAt: string
-  replies: Comment[]
+  replies?: Comment[]
 }
 
 function listComments(targetType: CommentTarget, targetId: number) {
@@ -76,11 +85,13 @@ function postComment(targetType: CommentTarget, targetId: number, body: string, 
 
 /* ---------- 파일 올리기 (40-document-file.md F-1, F-2) ---------- */
 
+/** FileUploadStartResponse */
 type UploadStart = {
   publicId: string
   mode: 'SINGLE' | 'MULTIPART'
-  single: { url: string; method: 'PUT'; headers: Record<string, string> } | null
+  single: { url: string; method: 'PUT'; headers: Record<string, string> | null } | null
   multipart: { partSize: number; parts: { partNumber: number; url: string }[] } | null
+  expiresAt: string
 }
 
 /**
@@ -94,7 +105,7 @@ export async function uploadFile(file: File, purpose: 'ATTACHMENT' | 'INLINE_IMA
   })
   let parts: { partNumber: number; etag: string }[] | undefined
   if (start.mode === 'SINGLE' && start.single) {
-    const res = await fetch(start.single.url, { method: 'PUT', headers: start.single.headers, body: file })
+    const res = await fetch(start.single.url, { method: 'PUT', headers: start.single.headers ?? undefined, body: file })
     if (!res.ok) throw new ApiError(res.status, 'UPLOAD', '파일을 올리지 못했어요.')
   } else if (start.multipart) {
     const { partSize } = start.multipart
@@ -106,6 +117,7 @@ export async function uploadFile(file: File, purpose: 'ATTACHMENT' | 'INLINE_IMA
       parts.push({ partNumber: p.partNumber, etag: res.headers.get('ETag') ?? '' })
     }
   }
+  // 응답은 FileResponse (FileRef 필드 + purpose · status · attachDeadlineAt)
   return api<FileRef>(`/files/uploads/${start.publicId}/complete`, { method: 'POST', body: parts ? { parts } : {} })
 }
 
@@ -113,26 +125,30 @@ export async function uploadFile(file: File, purpose: 'ATTACHMENT' | 'INLINE_IMA
  * 프로젝트 스레드 (31-task.md H-1 ~ H-5)
  * ==================================================================== */
 
+/** ThreadItemResponse */
 type ThreadItem = {
   threadId: number
   title: string | null
   body: string
-  author: MemberRef
+  author: MemberRef | null
   createdAt: string
   editedAt: string | null
   editedBy: MemberRef | null
-  pin: { pinnedAt: string; pinnedBy: MemberRef; order: number } | null
+  pin: { pinnedAt: string; pinnedBy: MemberRef | null; order: number | null } | null
   replyCount: number
   lastActivityAt: string
   attachments: FileRef[]
   convertedTask: TaskRef | null
   permissions: { canEdit: boolean; canDelete: boolean; canPin: boolean }
 }
+/** ThreadListResponse — page 에는 고정 안 된 글만 (최근 활동 순) */
 type ThreadListResponse = {
   pinned: ThreadItem[]
   pinnedLimit: number
   page: PageResponse<ThreadItem>
   totalCount: number
+  /** since 를 줬을 때만 */
+  deletedThreadIds: number[] | null
   serverTime: string
 }
 
@@ -147,14 +163,14 @@ const MOCK_ME_NAME = '김민서'
 const toThreadPost = (t: ThreadItem): ThreadPostView => ({
   postId: t.threadId,
   title: t.title,
-  author: t.author.name,
+  author: t.author?.name ?? '알 수 없음',
   createdAt: ago(t.createdAt),
   ago: ago(t.lastActivityAt),
   editedBy: t.editedBy?.name,
   editedAt: t.editedAt ? ago(t.editedAt) : undefined,
   body: t.body,
   pinnedOrder: t.pin?.order ?? null,
-  pinnedBy: t.pin?.pinnedBy.name,
+  pinnedBy: t.pin?.pinnedBy?.name,
   replyCount: t.replyCount,
   attachments: t.attachments.map((f) => ({
     name: f.name,
@@ -194,13 +210,13 @@ export function useThreadReplies(threadId: number | undefined, mockReplies: Thre
     async () => {
       if (threadId === undefined) return []
       const page = await listComments('PROJECT_THREAD', threadId)
-      return page.content.flatMap((c) => [c, ...c.replies]).map(toReply)
+      return page.content.flatMap((c) => [c, ...(c.replies ?? [])]).map(toReply)
     },
   )
 }
 
 const toReply = (c: Comment): ThreadReply => ({
-  author: c.author.name,
+  author: c.author.name ?? '알 수 없음',
   ago: ago(c.createdAt),
   body: c.deleted || c.body === null ? '_삭제된 댓글입니다_' : c.body,
 })
@@ -250,6 +266,7 @@ type MinuteAction = {
   task: TaskRef | null
   displayOrder: number
 }
+/** MinuteDetailResponse */
 type MinuteDetail = {
   minuteId: number
   project: { projectKey: string; name: string } | null
@@ -269,14 +286,23 @@ type MinuteDetail = {
   attachments: FileRef[]
   version: number
   lastEditor: MemberRef
+  createdAt: string
   updatedAt: string
+  permissions: { edit: boolean; delete: boolean; convertActions: boolean }
 }
+/** MinuteSummaryResponse */
 type MinuteSummary = {
   minuteId: number
   title: string
+  startsAt: string
+  endsAt: string
   project: { projectKey: string; name: string } | null
+  author: MemberRef
+  templateCode: string | null
+  attendeeCount: number
   actionCount: number
   convertedTaskCount: number
+  updatedAt: string
 }
 type MinuteRevision = { version: number; editor: MemberRef; summary: string | null; createdAt: string }
 
@@ -314,8 +340,8 @@ const toMinute = (d: MinuteDetail): Minute => ({
   when: minuteWhen(d.startsAt, d.endsAt),
   place: d.location ?? d.onlineUrl ?? '—',
   event: d.calendarEvent ? `공용 일정 · ${d.calendarEvent.title}` : '연결한 일정 없음',
-  // 명세 확인 필요: 양식 표시 이름(templateName)이 응답에 없어 코드를 그대로 보여 준다
-  template: d.templateCode ? `양식 · ${d.templateCode}` : '양식 없음',
+  // 양식 코드는 공통코드 PROJECT_CATEGORY 코드다 (MinuteFacade.validate). 응답에 이름이 없어 카테고리 이름으로 보여 준다
+  template: d.templateCode ? `양식 · ${projectCategoryName(d.templateCode)}` : '양식 없음',
   attendees: d.attendees.filter((a) => a.attended).map((a) => a.member.name),
   absent: d.attendees.filter((a) => !a.attended).map((a) => a.member.name),
   agenda: mdLines(d.agenda),
@@ -335,13 +361,12 @@ const toTodo = (a: MinuteAction): MinuteTodo => ({
 
 const toHistory = (r: MinuteRevision): MinuteHistoryRow => ({ who: r.editor.name, ago: ago(r.createdAt), what: r.summary ?? `버전 ${r.version}` })
 
-/** 이 프로젝트의 회의록 목록 (MM-1). 맨 위가 최근 회의록 */
+/** 이 프로젝트의 회의록 목록 (MM-1 GET /meeting-minutes?projectKey=). 서버는 회의 시작 시각 최신순 */
 export function useMinuteList(projectKey: string) {
   return useResource<MinuteList>(
     ['minutes', projectKey],
     () => ({ latest: { id: mockMinutes[0].minuteId, title: mockMinutes[0].title }, others: otherMinutes }),
     async () => {
-      // 명세 확인 필요: README 2장은 회의록 목록을 "화면 없음" 으로 두었지만, 이 화면의 "다른 회의록" 칸이 MM-1 을 쓴다
       const page = await api<PageResponse<MinuteSummary>>('/meeting-minutes', { query: { projectKey, size: 10 } })
       const [first, ...rest] = page.content
       return {
@@ -461,9 +486,13 @@ export type MyWeekReport = {
   tasks: ReportTaskChip[]
   /** 작업 연동에서 뺀 작업 (WR-3 의 tasks[].excluded) */
   excludedKeys: string[]
+  /** 뺀 작업 칩 ("작업 넣기"로 되돌릴 수 있는 것) */
+  excluded: ReportTaskChip[]
   submitted: boolean
   editable: boolean
   dueText: string
+  /** 서버가 정한 그 주 마감 (공통코드 WEEKLY_REPORT_POLICY 를 반영한 dueAt). 목업은 없음 */
+  deadline?: string
 }
 export type LastWeek = {
   /** "지난 주 복사" 때 지금 칸에 덮어쓸 값 */
@@ -477,38 +506,59 @@ export type GithubActivity = {
   mergeCount: number
 }
 
+/** ReportTaskResponse (ReportTaskKind: DONE · IN_PROGRESS) */
 type ReportTask = { task: TaskRef; projectKey: string; kind: 'DONE' | 'IN_PROGRESS'; excluded: boolean; note: string | null }
+/** ReportDetailResponse — 저장한 적 없는 주는 reportId 가 null 인 빈 초안 */
 type ReportDetail = {
   reportId: number | null
   member: MemberRef
   weekStartOn: string
+  weekEndOn: string
   dueAt: string
   status: 'DRAFT' | 'SUBMITTED' | 'CONFIRMED'
   late: boolean
+  submittedAt: string | null
+  confirmedAt: string | null
+  confirmedBy: MemberRef | null
   doneText: string | null
   planText: string | null
   issueText: string | null
   tasks: ReportTask[]
-  editable?: boolean
+  hiddenTaskCount: number
+  updatedAt: string | null
+  editable: boolean
+  permissions: { edit: boolean; confirm: boolean; comment: boolean }
 }
+/** ReportSummaryResponse */
 type ReportSummary = {
   reportId: number
   member: MemberRef
+  weekStartOn: string
   status: 'DRAFT' | 'SUBMITTED' | 'CONFIRMED'
   late: boolean
-  doneSummary: string
+  submittedAt: string | null
+  doneSummary: string | null
+  taskCounts: { done: number; inProgress: number }
+  commentCount: number
 }
+/** ReportListResponse — week · counts · missingMembers 는 weekStartOn 으로 불렀을 때만 */
 type ReportListResponse = {
+  week: { weekStartOn: string; weekEndOn: string; dueAt: string } | null
+  counts: { submitted: number; late: number; missing: number } | null
   missingMembers: MemberRef[] | null
   page: PageResponse<ReportSummary>
 }
+/** GithubActivityResponse */
 type GithubActivityResponse = {
+  weekStartOn: string
   lastFetchedAt: string | null
   rows: {
     member: MemberRef | null
+    authorLogin: string | null
     repository: { repositoryId: number; fullName: string; projectKey: string } | null
     hidden: boolean
     commitCount: number
+    mergeCommitCount: number
     additions: number
     deletions: number
     branches: { branch: string; commitCount: number; additions: number; deletions: number }[]
@@ -535,7 +585,8 @@ function weekOf(monday: Date): WeekRef {
     weekStartOn: isoDay(monday),
     label: `${monday.getUTCMonth() + 1}월 ${nth}주차`,
     range: `${md(monday)} – ${md(sunday)}`,
-    // 명세 확인 필요: 마감은 공통코드 WEEKLY_REPORT_POLICY 를 따른다. 목록 머리에서는 기본값(다음 월요일 10:00)으로 보여 준다
+    // 마감은 공통코드 WEEKLY_REPORT_POLICY 를 따른다. 주 목록은 기본값(다음 월요일 10:00)으로 그리고,
+    // 화면 머리는 내 보고(WR-2)의 dueAt 을 받으면 그 값(MyWeekReport.deadline)을 보여 준다
     deadline: `${md(due)}(월) 10:00`,
   }
 }
@@ -556,17 +607,25 @@ function dueText(dueAt: string) {
   return h < 24 ? `마감까지 ${Math.max(1, h)}시간` : `마감까지 ${Math.floor(h / 24)}일`
 }
 
+/** dueAt(ISO) → 'MM/DD(요일) HH:mm' (KST) */
+function deadlineText(iso: string) {
+  const d = kst(iso)
+  return `${md(d)}(${WEEKDAY[d.getUTCDay()]}) ${hm(d)}`
+}
+
+const toChip = (t: ReportTask): ReportTaskChip => ({ key: t.task.taskKey, title: t.task.title, status: taskStatusName(t.task.status) })
+
 const toMyReport = (r: ReportDetail): MyWeekReport => ({
   reportId: r.reportId,
   meId: r.member.memberId,
   fields: { done: r.doneText ?? '', next: r.planText ?? '', issues: r.issueText ?? '' },
-  tasks: r.tasks
-    .filter((t) => !t.excluded)
-    .map((t) => ({ key: t.task.taskKey, title: t.task.title, status: taskStatusName(t.task.status) })),
+  tasks: r.tasks.filter((t) => !t.excluded).map(toChip),
   excludedKeys: r.tasks.filter((t) => t.excluded).map((t) => t.task.taskKey),
+  excluded: r.tasks.filter((t) => t.excluded).map(toChip),
   submitted: r.status !== 'DRAFT',
-  editable: r.editable ?? r.status !== 'CONFIRMED',
+  editable: r.editable,
   dueText: dueText(r.dueAt),
+  deadline: deadlineText(r.dueAt),
 })
 
 // 목업에서 주를 옮겼다 돌아와도 쓰던 내용이 남도록 기억해 둔다
@@ -585,6 +644,7 @@ export function useMyReport(weekStartOn: string, isCurrent: boolean) {
       fields: isCurrent ? { done: myReport.done, next: myReport.next, issues: myReport.issues } : lastWeekReport,
       tasks: isCurrent ? myReport.tasks : [],
       excludedKeys: [],
+      excluded: [],
       submitted: false,
       editable: isCurrent,
       dueText: '마감까지 2시간',
@@ -593,22 +653,29 @@ export function useMyReport(weekStartOn: string, isCurrent: boolean) {
   )
 }
 
-/** WR-3 자동 저장 */
-export async function saveMyReport(weekStartOn: string, fields: ReportFields, excludedKeys: string[]) {
+/**
+ * WR-3 자동 저장 (PUT /weekly-reports/me/{weekStartOn}).
+ * 서버는 보낸 작업만 조정하고, 안 보낸 작업은 앞서 저장한 조정을 그대로 둔다 (WeeklyReportService.adjust).
+ * 그래서 뺀 작업은 excluded: true, 되돌린 작업(includedKeys)은 excluded: false 로 보낸다.
+ * 자동 채우기 대상이 아닌 작업 키는 P238 이라 서버가 준 목록 안의 키만 보낸다.
+ */
+export async function saveMyReport(weekStartOn: string, fields: ReportFields, excludedKeys: string[], includedKeys: string[] = []) {
   const r = await api<ReportDetail>(`/weekly-reports/me/${weekStartOn}`, {
     method: 'PUT',
     body: {
       doneText: fields.done,
       planText: fields.next,
       issueText: fields.issues,
-      // 뺀 작업만 보낸다 (목록에 없는 작업은 자동 채우기 값 그대로)
-      tasks: excludedKeys.map((taskKey) => ({ taskKey, excluded: true, note: null })),
+      tasks: [
+        ...includedKeys.map((taskKey) => ({ taskKey, excluded: false, note: null })),
+        ...excludedKeys.map((taskKey) => ({ taskKey, excluded: true, note: null })),
+      ],
     },
   })
   return toMyReport(r)
 }
 
-/** WR-5 제출. 아직 한 번도 저장하지 않았으면 먼저 WR-3 으로 만든다 */
+/** WR-5 제출 (PATCH /weekly-reports/{id} { status: SUBMITTED }). 아직 한 번도 저장하지 않았으면 먼저 WR-3 으로 만든다 */
 export async function submitMyReport(weekStartOn: string, report: MyWeekReport) {
   const saved = await saveMyReport(weekStartOn, report.fields, report.excludedKeys)
   const id = saved.reportId ?? report.reportId
@@ -628,7 +695,7 @@ export function useWeekSubmissions(weekStartOn: string) {
       const done: Submission[] = res.page.content
         // 작성 중(DRAFT)은 본인 것만 오고, 미제출 명단에도 들어 있다
         .filter((r) => r.status !== 'DRAFT' && !missingIds.has(r.member.memberId))
-        .map((r) => ({ name: r.member.name, state: r.late ? 'LATE' : 'SUBMITTED', summary: r.doneSummary }))
+        .map((r) => ({ name: r.member.name, state: r.late ? 'LATE' : 'SUBMITTED', summary: r.doneSummary ?? '' }))
       return [...done, ...missing.map((m): Submission => ({ name: m.name, state: 'MISSING' }))]
     },
   )
@@ -648,7 +715,7 @@ export function useLastWeek(currentWeekStartOn: string) {
       const c = page.content.find((x) => !x.deleted && x.body)
       return {
         copy,
-        comment: c ? { author: c.author.name, confirmed: last.status === 'CONFIRMED', body: c.body ?? '' } : null,
+        comment: c ? { author: c.author.name ?? '알 수 없음', confirmed: last.status === 'CONFIRMED', body: c.body ?? '' } : null,
       }
     },
   )
@@ -701,10 +768,11 @@ export async function refreshGithubActivity() {
  * 자료실 (40-document-file.md D-1, D-8)
  * ==================================================================== */
 
+/** document 모듈 DocumentSummaryResponse */
 type DocumentItem = {
   documentId: number
   categoryCode: string
-  categoryName: string
+  categoryName: string | null
   title: string
   author: MemberRef
   project: { projectKey: string; name: string } | null
@@ -716,17 +784,27 @@ type DocumentItem = {
   resolved: boolean | null
   pinned: boolean
   createdAt: string
+  updatedAt: string
+  deletedAt: string | null
 }
+/**
+ * DocumentListResponse.
+ * - pinned: 같은 거르기 조건에 맞는 고정 자료 (첫 페이지에서만). page 에는 고정 안 된 자료만 온다
+ * - categoryCounts: 공통코드 DOCUMENT_CATEGORY 전부(표시 순서, 0 포함). ALL 은 없다
+ */
 type DocumentListResponse = {
   pinned: DocumentItem[]
   categoryCounts: Record<string, number>
   page: PageResponse<DocumentItem>
 }
 
+/** 화면 자료 + 서버의 카테고리 이름 (공통코드라 화면 기본 7개 밖의 코드도 온다) */
+export type LibraryDocument = Omit<DocumentSummary, 'categoryCode'> & { categoryCode: string; categoryName?: string }
+
 export type LibrarySort = '최신순' | '댓글 많은 순' | '제목순'
-/** 화면의 거르기 값 (프로젝트 · 작성자는 화면에 보이는 이름) */
+/** 화면의 거르기 값 (프로젝트 · 작성자는 화면에 보이는 이름, category 는 'ALL' 또는 카테고리 코드) */
 export type LibraryFilter = {
-  category: 'ALL' | DocumentCategory
+  category: string
   tag: string
   project: string
   author: string
@@ -734,19 +812,26 @@ export type LibraryFilter = {
   sort: LibrarySort
 }
 export type LibraryData = {
-  documents: DocumentSummary[]
-  categoryCounts: Record<DocumentCategory, number>
+  documents: LibraryDocument[]
+  /** 탭 (서버 순서) */
+  categories: { code: string; name: string }[]
+  categoryCounts: Record<string, number>
   pinnedDocs: { documentId: number; title: string; meta: string }[]
-  unresolved: DocumentSummary[]
+  unresolved: LibraryDocument[]
   popularTags: string[]
   options: { tags: string[]; projects: string[]; authors: string[]; types: string[] }
 }
 
 const uniq = (xs: string[]) => [...new Set(xs)].sort()
 
+// 서버가 준 카테고리 이름 (공통코드 목록 API 는 code-manage 권한만 부를 수 있어 응답에서 기억해 둔다)
+const seenDocCategories = new Map<string, string>()
+export const documentCategoryName = (code: string) => seenDocCategories.get(code) ?? CATEGORY_NAME[code as DocumentCategory] ?? code
+
 function mockLibrary(): LibraryData {
   return {
     documents: mockDocuments,
+    categories: (Object.keys(CATEGORY_NAME) as DocumentCategory[]).map((code) => ({ code, name: CATEGORY_NAME[code] })),
     categoryCounts: mockCategoryCounts,
     pinnedDocs: mockPinnedDocs,
     unresolved: mockDocuments.filter((d) => d.resolved === false),
@@ -765,14 +850,15 @@ const seenProjects = new Map<string, string>()
 const seenAuthors = new Map<string, number>()
 const seenTypes = new Set<string>()
 
-const toDocument = (d: DocumentItem): DocumentSummary => {
+const toDocument = (d: DocumentItem): LibraryDocument => {
   seenAuthors.set(d.author.name, d.author.memberId)
   if (d.project) seenProjects.set(d.project.name, d.project.projectKey)
+  if (d.categoryName) seenDocCategories.set(d.categoryCode, d.categoryName)
   d.fileTypes.forEach((t) => seenTypes.add(t))
   return {
     documentId: d.documentId,
-    // 명세 확인 필요: 카테고리는 공통코드라 화면의 7개 말고 더 생길 수 있다
-    categoryCode: d.categoryCode as DocumentCategory,
+    categoryCode: d.categoryCode,
+    categoryName: d.categoryName ?? documentCategoryName(d.categoryCode),
     title: d.title,
     author: d.author.name,
     ago: ago(d.createdAt),
@@ -788,17 +874,21 @@ const toDocument = (d: DocumentItem): DocumentSummary => {
   }
 }
 
+/**
+ * 서버 정렬 (DocumentService: createdAt · updatedAt 과 commentCount 만 받는다, 모두 내림차순).
+ * 백엔드에 제목 정렬이 없어 제목순은 최신순으로 받고 화면에서 다시 정렬한다 (한 번에 100개까지라 그 안에서만 맞다).
+ */
 const SORT_PARAM: Record<LibrarySort, string> = {
   최신순: 'createdAt,desc',
   '댓글 많은 순': 'commentCount,desc',
-  // 명세 확인 필요: 제목순 정렬 파라미터가 없어 최신순으로 받고 화면에서 다시 정렬한다
   제목순: 'createdAt,desc',
 }
 
-/** 자료실 목록 · 고정 자료 · 카테고리 개수 · 해결 안 된 질문 · 많이 쓰는 태그 */
+/** 자료실 목록 · 고정 자료 · 카테고리 개수 · 해결 안 된 질문 · 많이 쓰는 태그 (D-1, D-8) */
 export function useLibrary(f: LibraryFilter) {
   return useResource<LibraryData>(['library', f], mockLibrary, async () => {
-    const [list, side, tags] = await Promise.all([
+    const filtered = f.category !== 'ALL' || !!f.tag || !!f.project || !!f.author || !!f.fileType
+    const [list, unresolvedList, tags, all] = await Promise.all([
       api<DocumentListResponse>('/documents', {
         query: {
           categoryCode: f.category === 'ALL' ? undefined : f.category,
@@ -810,25 +900,26 @@ export function useLibrary(f: LibraryFilter) {
           size: 100,
         },
       }),
-      // 카테고리 없이 부르면 pinned 에 전체 고정 자료가 온다 (옆 칸 "고정 자료")
+      // 해결 안 된 질문: unresolved 는 해결 표시가 되는 카테고리(공통코드 extra=Y, 기본 QNA)만 거른다
       api<DocumentListResponse>('/documents', { query: { unresolved: true, size: 5 } }),
       api<{ tag: string; count: number }[]>('/documents/tags', { query: { limit: 30 } }),
+      // 옆 칸 "고정 자료"는 거르기 없이 본 전체 고정 자료. pinned 는 목록과 같은 조건으로 걸러지므로 거르기 중이면 따로 받는다
+      filtered ? api<DocumentListResponse>('/documents', { query: { size: 1 } }) : Promise.resolve(null),
     ])
     const page = list.page.content.map(toDocument)
-    // 명세 확인 필요: pinned 에 태그 · 프로젝트 등 다른 거르기도 적용되는지 명세에 없어 화면에서 한 번 더 거른다
     const pinned = list.pinned.map(toDocument)
-    const counts = Object.fromEntries(
-      (['PAPER', 'SLIDE', 'DEV_DOC', 'DATA', 'FORM', 'QNA', 'FREE'] as DocumentCategory[]).map((c) => [c, list.categoryCounts[c] ?? 0]),
-    ) as Record<DocumentCategory, number>
+    const allPinned = (all ?? list).pinned
     return {
       documents: [...pinned, ...page],
-      categoryCounts: counts,
-      pinnedDocs: side.pinned.map((d) => ({
+      categories: Object.keys(list.categoryCounts).map((code) => ({ code, name: documentCategoryName(code) })),
+      categoryCounts: list.categoryCounts,
+      pinnedDocs: allPinned.map((d) => ({
         documentId: d.documentId,
         title: d.title,
-        meta: [d.categoryName, d.fileTypes[0]?.toUpperCase()].filter(Boolean).join(' · '),
+        meta: [d.categoryName ?? documentCategoryName(d.categoryCode), d.fileTypes[0]?.toUpperCase()].filter(Boolean).join(' · '),
       })),
-      unresolved: side.page.content.map(toDocument),
+      // 고정된 질문은 pinned 쪽에 온다
+      unresolved: [...unresolvedList.pinned, ...unresolvedList.page.content].slice(0, 5).map(toDocument),
       popularTags: tags.slice(0, 10).map((t) => t.tag),
       options: {
         tags: uniq([...tags.map((t) => t.tag), ...page.flatMap((d) => d.tags)]),

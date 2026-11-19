@@ -33,13 +33,32 @@ import {
   type AuditCategory,
   type AuditLog,
   type CodeGroup,
-  type CodeRow,
   type RoleRequest,
 } from '../mocks/adminOps'
 
 /* ---------- 공통 ---------- */
 
 export const isLive = () => getDataMode() === 'live'
+
+/**
+ * 관리 탭별로 백엔드가 요구하는 역할 (@PreAuthorize). 하나라도 있으면 그 탭을 쓸 수 있다.
+ * - members: 목록은 누구나 보지만 관리 칸 · 계정 조치는 member-manage, 역할 저장 · 프리셋 적용은 role-manage
+ * - role-requests: 연구실 역할 신청은 role-manage, 프로젝트 신청은 그 프로젝트 관리자 (REVIEW 범위가 없으면 403)
+ * - codes: 공통코드는 code-manage, SSO_APP 의 client secret 발급은 sso-admin
+ * 메뉴를 숨기는 곳(관리 탭 · 사이드바)이 1-1 의 roles 와 맞춰 쓴다.
+ */
+export const ADMIN_TAB_AUTHORITIES: Record<string, string[]> = {
+  members: ['member-manage', 'role-manage'],
+  presets: ['role-manage'],
+  signups: ['member-manage'],
+  'role-requests': ['role-manage'],
+  audit: ['audit-read'],
+  codes: ['code-manage'],
+  github: ['github-manage'],
+}
+/** 내 역할(1-1 roles)로 볼 수 있는 관리 탭인지. 프로젝트 관리자의 권한 신청 검토는 역할로 알 수 없어 따로 본다 */
+export const canSeeAdminTab = (tab: string, myRoles: readonly string[]) =>
+  (ADMIN_TAB_AUTHORITIES[tab] ?? []).some((r) => myRoles.includes(r))
 
 /** 실패 메시지: 서버가 준 문구가 있으면 그대로 */
 export const errorText = (e: unknown, fallback = '저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.') =>
@@ -143,7 +162,10 @@ const fetchPresets = async (includeDisabled: boolean) =>
 
 /* ---------- 관리 · 구성원 (10-member 2-1, 2-2, 3-3~3-6) ---------- */
 
-type MemberListItem = MemberRef & {
+/** 백엔드 MemberStatus (휴학 ON_LEAVE 포함. types.ts 의 MemberRef 에는 아직 없다) */
+type MemberStatus = 'ACTIVE' | 'ON_LEAVE' | 'GRADUATED' | 'LEFT'
+type MemberListItem = Omit<MemberRef, 'status'> & {
+  status: MemberStatus
   studentNumber: string
   loginId: string
   joinedOn: string
@@ -156,7 +178,8 @@ type MemberListItem = MemberRef & {
   appliedPresets?: { presetId: number; name: string }[]
 }
 type MembersResponse = {
-  counts: { active: number; alumni: number; disabled?: number; locked?: number }
+  // disabled · locked 는 member-manage 일 때만 온다
+  counts: { active: number; onLeave: number; alumni: number; disabled?: number; locked?: number }
   page: PageResponse<MemberListItem>
 }
 type MemberDetailDto = MemberListItem & {
@@ -178,8 +201,8 @@ type GithubAccountDto = {
 const accountState = (x: { enabled?: boolean; locked?: boolean }): AdminMember['state'] =>
   x.enabled === false ? 'DISABLED' : x.locked ? 'LOCKED' : 'ACTIVE'
 
-/** 목업 AdminMember + 역할 수 (목록 응답에는 역할 코드 없이 숫자만 온다) */
-export type AdminRow = AdminMember & { roleCount: number }
+/** 목업 AdminMember + 역할 수 (목록 응답에는 역할 코드 없이 숫자만 온다) + 휴학 */
+export type AdminRow = AdminMember & { roleCount: number; onLeave?: boolean }
 
 const toAdminRow = (x: MemberListItem): AdminRow => ({
   memberId: x.memberId,
@@ -188,7 +211,9 @@ const toAdminRow = (x: MemberListItem): AdminRow => ({
   memberNo: x.studentNumber,
   memberType: TYPE_LABEL[x.memberType],
   state: accountState(x),
-  graduated: x.status !== 'ACTIVE',
+  // 졸업생 탭 = 백엔드 group=ALUMNI (GRADUATED · LEFT). 휴학(ON_LEAVE)은 재실 탭에 두고 따로 표시한다
+  graduated: x.status === 'GRADUATED' || x.status === 'LEFT',
+  onLeave: x.status === 'ON_LEAVE',
   presets: (x.appliedPresets ?? []).map((p) => p.name),
   roles: [],
   roleCount: x.roleCount ?? 0,
@@ -196,20 +221,23 @@ const toAdminRow = (x: MemberListItem): AdminRow => ({
   failCount: x.failedLoginCount ?? 0,
 })
 
-export type AdminMembersData = { members: AdminRow[]; graduatedTotal: number; roles: Role[] }
+export type PresetOption = { id: string; name: string; roles: string[] }
+export type AdminMembersData = { members: AdminRow[]; graduatedTotal: number; roles: Role[]; presets: PresetOption[] }
 
-/** 관리 · 구성원: 재실 + 졸업생 전체와 역할 목록. 필터 · 검색은 화면이 거른다 */
+/** 관리 · 구성원: 재실 + 졸업생 전체와 역할 · 프리셋 목록. 필터 · 검색은 화면이 거른다 */
 export function useAdminMembers() {
   return useResource<AdminMembersData>(
     'admin-members',
-    () => ({ members: adminMembers.map((m) => ({ ...m, roleCount: m.roles.length })), graduatedTotal: 24, roles: ROLES }),
+    () => ({ members: adminMembers.map((m) => ({ ...m, roleCount: m.roles.length })), graduatedTotal: 24, roles: ROLES, presets: mockPresets }),
     async () => {
       // 한 번에 최대 100명 (README 1.3). 연구실 규모라 재실 + 졸업생을 한 번에 받는다
-      const [res, roles] = await Promise.all([
+      const [res, roles, presets] = await Promise.all([
         api<MembersResponse>('/members', { query: { group: 'ALL', size: 100 } }),
         fetchRoles(),
+        // 5-1 은 role-manage · member-manage 만. 권한이 없으면 프리셋 고르기 칸만 비운다
+        fetchPresets(false).catch((): PresetView[] => []),
       ])
-      return { members: res.page.content.map(toAdminRow), graduatedTotal: res.counts.alumni, roles }
+      return { members: res.page.content.map(toAdminRow), graduatedTotal: res.counts.alumni, roles, presets }
     },
   )
 }
@@ -237,7 +265,9 @@ export function useAdminMemberDetail(row: AdminRow | undefined) {
         api<MemberDetailDto>(`/members/${row.memberId}`),
         api<GithubAccountDto>(`/github/accounts/${row.memberId}`).catch(() => null),
       ])
-      const applied = d.presetApplications?.map((p) => p.preset) ?? d.appliedPresets ?? []
+      // presetApplications 는 적용 기록이라 같은 프리셋이 여러 번 나올 수 있다
+      const history = d.presetApplications?.map((p) => p.preset) ?? d.appliedPresets ?? []
+      const applied = history.filter((p, i) => history.findIndex((x) => x.presetId === p.presetId) === i)
       return {
         roles: (d.roles ?? []).map((r) => r.code),
         presets: applied.map((p) => p.name),
@@ -256,22 +286,16 @@ export const saveMemberRoles = (memberId: number, roleCodes: string[]) =>
   api<{ roles: MemberRole[] }>(`/members/${memberId}/roles`, { method: 'PUT', body: { roleCodes } }).then((r) => r.roles.map((x) => x.code))
 
 /**
- * 3-5 프리셋 추가 적용 — 화면의 "프리셋 적용" 은 이미 적용한 프리셋을 다시 적용해 빠진 역할을 채운다.
- * 명세 확인 필요: 화면에 새 프리셋을 고르는 칸이 없어 적용 기록에 있는 프리셋을 차례로 다시 보낸다.
+ * 3-5 프리셋 추가 적용 (role-manage). 프리셋 역할 중 없는 것만 더하고, 이미 가진 역할은 그대로 둔다.
+ * 같은 프리셋을 다시 적용해도 된다 (빠진 역할 채우기). → 더한 역할 · 저장 뒤 역할 코드
  */
-export async function reapplyPresets(memberId: number, presetIds: number[]) {
-  let roles: string[] | null = null
-  for (const presetId of presetIds) {
-    const r = await api<{ addedRoleCodes: string[]; roles: MemberRole[] }>(`/members/${memberId}/preset-applications`, {
-      method: 'POST',
-      body: { presetId },
-    })
-    roles = r.roles.map((x) => x.code)
-  }
-  return roles
-}
+export const applyPreset = (memberId: number, presetId: number) =>
+  api<{ addedRoleCodes?: string[]; roles: MemberRole[] }>(`/members/${memberId}/preset-applications`, {
+    method: 'POST',
+    body: { presetId },
+  }).then((r) => ({ added: r.addedRoleCodes ?? [], roles: r.roles.map((x) => x.code) }))
 
-/** 3-3 구성원 정보 바꾸기 (구분) */
+/** 3-3 구성원 정보 바꾸기 (구분). 권한은 그대로 (applyDefaultPreset 을 보내지 않는다) */
 export const patchMember = (memberId: number, body: { memberType?: MemberType }) =>
   api<MemberDetailDto>(`/members/${memberId}`, { method: 'PATCH', body })
 
@@ -357,8 +381,11 @@ export function useHandover(member: AdminRow, others: string[]) {
 }
 
 export type DepartureBody = {
-  kind: 'GRADUATED' | 'LEFT'
+  /** 백엔드 DepartureKind. 휴학(MILITARY_LEAVE · LEAVE_OF_ABSENCE)은 지금 화면에 없다 */
+  kind: 'GRADUATED' | 'LEFT' | 'MILITARY_LEAVE' | 'LEAVE_OF_ABSENCE'
   departedOn: string
+  /** 휴학일 때만 (복학 예정일, 선택) */
+  expectedReturnOn?: string | null
   taskReassignments: { taskKey: string; assigneeMemberId: number | null }[]
   projectManagerHandovers: { projectKey: string; newManagerMemberId: number }[]
 }
@@ -397,7 +424,8 @@ export function usePresetMembers(preset: PresetView) {
     async () => {
       if (!/^\d+$/.test(preset.id)) return []
       const res = await api<MembersResponse>('/members', { query: { presetId: Number(preset.id), group: 'ACTIVE', size: 100 } })
-      // 명세 확인 필요: 목록(2-1)에 역할 코드가 없어(roleCount 만) 구성원 상세(2-2)를 한 명씩 부른다
+      // 백엔드 2-1 목록(MemberSummaryResponse)에는 역할 코드 없이 roleCount 만 있어 구성원 상세(2-2)를 한 명씩 부른다.
+      // presetId 거르기는 role-manage 만 쓸 수 있다
       const details = await Promise.all(res.page.content.map((m) => api<MemberDetailDto>(`/members/${m.memberId}`)))
       return details.map((d) => ({ memberId: d.memberId, name: d.name, roles: (d.roles ?? []).map((r) => r.code) }))
     },
@@ -467,7 +495,6 @@ const toSignup = (x: SignupDto): SignupRequest => ({
   idTaken: x.desiredLoginIdTaken,
 })
 
-export type PresetOption = { id: string; name: string; roles: string[] }
 export type SignupsData = {
   requests: SignupRequest[]
   /** 받아 온 목록에 없는 건수 (탭 숫자에 더한다) */
@@ -631,59 +658,100 @@ export type AuditFilter = {
   /** 1부터 */
   page: number
 }
-export type AuditRow = AuditLog & { loginId: string | null }
+/** 목업 분류 + 백엔드에만 있는 분류 (SIGNUP · EXTERNAL) */
+export type AuditCategoryView = AuditCategory | '가입' | '외부'
+export type AuditRow = Omit<AuditLog, 'category'> & { category: AuditCategoryView; loginId: string | null }
 export type AuditData = { logs: AuditRow[]; totalPages: number }
 
 const PERIOD_DAYS: Record<string, number> = { 오늘: 0, '최근 7일': 6, '최근 30일': 29, '최근 1년': 364 }
-const CAT_CODE: Record<AuditCategory, string> = {
-  권한: 'ROLE',
-  프로젝트: 'PROJECT',
-  로그인: 'LOGIN',
-  운영: 'OPERATION',
-  콘텐츠: 'CONTENT',
+// 백엔드 AuditCategory (audit/api/event/AuditCategory.java)
+const CAT_CODE: Record<AuditCategoryView, string> = {
   구성원: 'MEMBER',
+  권한: 'ROLE',
+  가입: 'SIGNUP',
+  운영: 'OPERATION',
+  프로젝트: 'PROJECT',
+  콘텐츠: 'CONTENT',
+  외부: 'EXTERNAL',
+  로그인: 'LOGIN',
 }
-// 화면에 없는 분류(가입 · 외부)는 가까운 색으로 보여 준다
-const CAT_LABEL: Record<string, AuditCategory> = {
-  ROLE: '권한',
-  PROJECT: '프로젝트',
-  LOGIN: '로그인',
-  OPERATION: '운영',
-  CONTENT: '콘텐츠',
-  MEMBER: '구성원',
-  SIGNUP: '구성원',
-  EXTERNAL: '운영',
-}
-// 명세 확인 필요: AuditTargetType 이름이 명세에 MEMBER · PROJECT 만 나온다. 나머지는 짐작한 이름
+/** 실서버 거르기의 분류 선택지 */
+export const AUDIT_CATEGORIES = Object.keys(CAT_CODE) as AuditCategoryView[]
+const CAT_LABEL = Object.fromEntries(Object.entries(CAT_CODE).map(([label, code]) => [code, label])) as Record<string, AuditCategoryView>
+
+// 백엔드 AuditTargetType (audit/api/event/AuditTargetType.java) 중 화면에서 거르는 것
 const TARGET_CODE: Record<string, string> = {
   구성원: 'MEMBER',
-  프로젝트: 'PROJECT',
+  역할: 'ROLE',
   프리셋: 'ROLE_PRESET',
-  서비스: 'SSO_CLIENT',
+  '가입 신청': 'SIGNUP_APPLICATION',
+  '권한 신청': 'ACCESS_REQUEST',
+  공통코드: 'COMMON_CODE',
+  서비스: 'SSO_APP',
+  프로젝트: 'PROJECT',
+  작업: 'TASK',
+  공지: 'NOTICE',
   자료: 'DOCUMENT',
+  댓글: 'COMMENT',
+  일정: 'CALENDAR_EVENT',
+  회의록: 'MEETING_MINUTE',
+  GitHub: 'GITHUB_ACCOUNT',
+  파일: 'FILE',
+  '감사 로그': 'AUDIT_LOG',
 }
+/** 대상 거르기 선택지 */
+export const AUDIT_TARGETS = Object.keys(TARGET_CODE)
+
+// 백엔드 AuditAction (audit/api/event/AuditAction.java)
 const ACTION_LABEL: Record<string, string> = {
-  ROLE_CHANGED: '역할 변경',
-  PRESET_APPLIED: '프리셋 반영',
-  PRESET_CREATED: '프리셋 생성',
-  PRESET_UPDATED: '프리셋 변경',
   MEMBER_CREATED: '구성원 생성',
   MEMBER_UPDATED: '구성원 변경',
   MEMBER_DISABLED: '비활성화',
   MEMBER_ENABLED: '다시 활성화',
   MEMBER_UNLOCKED: '잠금 해제',
+  TEMPORARY_PASSWORD_ISSUED: '임시 비밀번호',
   MEMBER_DEPARTED: '졸업 · 퇴실',
   MEMBER_REINSTATED: '재실로 되돌림',
-  TEMP_PASSWORD_ISSUED: '임시 비밀번호',
-  LOGIN_SUCCESS: '로그인',
-  LOGIN_FAILED: '로그인',
-  AUDIT_EXPORTED: '감사 로그 내려받기',
-  GITHUB_LINKED: 'GitHub 연결',
-  GITHUB_UNLINKED: 'GitHub 해제',
+  ROLE_CHANGED: '역할 변경',
+  ROLE_UPDATED: '역할 설정 변경',
+  PRESET_CREATED: '프리셋 생성',
+  PRESET_UPDATED: '프리셋 변경',
+  PRESET_APPLIED: '프리셋 반영',
+  ACCESS_REQUESTED: '권한 신청',
   ACCESS_REQUEST_APPROVED: '권한 신청 승인',
   ACCESS_REQUEST_REJECTED: '권한 신청 거절',
+  ACCESS_REQUEST_CANCELLED: '권한 신청 취소',
+  ACCESS_EXPIRED: '권한 기한 만료',
+  SIGNUP_RECEIVED: '가입 신청',
   SIGNUP_APPROVED: '가입 승인',
   SIGNUP_REJECTED: '가입 거절',
+  COMMON_CODE_CHANGED: '공통코드 변경',
+  CACHE_EVICTED: '캐시 비우기',
+  CLIENT_SECRET_ISSUED: 'client secret 발급',
+  AUDIT_EXPORTED: '감사 로그 내려받기',
+  PROJECT_CREATED: '프로젝트 생성',
+  PROJECT_UPDATED: '프로젝트 변경',
+  PROJECT_ARCHIVED: '프로젝트 보관',
+  PROJECT_UNARCHIVED: '프로젝트 보관 해제',
+  PROJECT_DELETED: '프로젝트 삭제',
+  PROJECT_MEMBER_CHANGED: '참여자 변경',
+  PROJECT_LINK_ADDED: '연동 추가',
+  PROJECT_LINK_CHANGED: '연동 변경',
+  PROJECT_LINK_REMOVED: '연동 삭제',
+  PROJECT_SERVICE_LEVEL_CHANGED: '서비스 권한 변경',
+  PROVISION_RESULT: '서비스 반영 결과',
+  PROVISION_DRIFT: '서비스 권한 어긋남',
+  VAULT_PATH_REVIEWED: 'Vault 경로 검토',
+  CONTENT_UPDATED: '콘텐츠 수정',
+  CONTENT_DELETED: '콘텐츠 삭제',
+  CONTENT_RESTORED: '콘텐츠 복구',
+  GITHUB_LINKED: 'GitHub 연결',
+  GITHUB_UNLINKED: 'GitHub 해제',
+  GITHUB_ORG_SYNCED: 'GitHub 조직 동기화',
+  GITHUB_ORG_INVITED: 'GitHub 조직 초대',
+  GITHUB_ORG_REMOVED: 'GitHub 조직에서 뺌',
+  LOGIN_SUCCEEDED: '로그인',
+  LOGIN_FAILED: '로그인',
 }
 
 type AuditDto = {
@@ -744,7 +812,7 @@ function auditQuery(f: AuditFilter) {
     from: minusDays(to, PERIOD_DAYS[f.period] ?? 6),
     to,
     actorLoginId: f.actorLoginId || undefined,
-    category: f.cat ? CAT_CODE[f.cat as AuditCategory] : undefined,
+    category: f.cat ? CAT_CODE[f.cat as AuditCategoryView] : undefined,
     targetType: f.target ? TARGET_CODE[f.target] : undefined,
   }
 }
@@ -785,81 +853,146 @@ export async function downloadAuditCsv(f: AuditFilter) {
   saveBlob(await res.blob(), name)
 }
 
-/* ---------- 관리 · 공통코드 (기존 backoffice · sso, 10-member 9-2) ---------- */
-
-// 명세 확인 필요: 기존 공통코드 API 의 경로 · 응답 모양이 명세에 없다.
-// 10-member 는 "경로는 모두 /api/v1 아래" 이고 같은 모듈의 9-1 이 /api/v1/backoffice/job-runs 라서 /api/v1 아래로 본다.
-// 서버 루트(/backoffice/…)라면 아래 값을 true 로 바꾼다.
-const CODES_AT_ROOT = false
+/* ---------- 관리 · 공통코드 (backoffice, 10-member 9-2) · SSO secret ---------- */
+// BackofficeController: /api/v1/backoffice/common-codes/** 는 모두 code-manage.
+// SsoController: /api/v1/sso/clients · /clients/{clientId}/secret 는 sso-admin.
 const CODES = '/backoffice/common-codes'
 
-type CodeGroupDto = { codeId: string; codeName: string; description?: string | null }
-// 명세 확인 필요: 상세 코드 필드 이름(detailCode · detailName · ref1~4 · enabled)은 짐작
-type CodeDetailDto = {
-  detailCode: string
-  detailName: string
-  ref1: string | null
-  ref2: string | null
-  ref3?: string | null
-  ref4: string | null
-  sortOrder?: number
+type CodeGroupDto = {
+  codeId: string
+  description: string
+  /** ref1~ref5 칸의 의미 (쓰지 않는 칸은 null) → 열 제목 */
+  refDescriptions: (string | null)[] | null
   enabled: boolean
+  rowAddable: boolean
 }
-export type CodeGroupView = CodeGroup & { desc?: string }
-export type CodeRowView = CodeRow & { raw?: CodeDetailDto }
-export type CodeTable = { desc: string; columns: [string, string, string, string]; rows: CodeRowView[] } | null
+type CodeDetailDto = {
+  codeId: string
+  detailCodeId: string
+  description: string
+  /** ref1~ref5 (비어 있으면 null) */
+  refs: (string | null)[] | null
+  displayOrder: number
+  enabled: boolean
+  updatedAt: string | null
+  updatedBy: string | null
+}
+type SsoClientDto = { clientId: string; name: string; redirectUris: string[]; secretIssuedAt: string | null }
+
+export type CodeGroupView = CodeGroup & { refDescriptions: (string | null)[]; rowAddable: boolean }
+/** 표의 ref 열 하나. index = refs 의 자리 (0 = ref1), list = 쉼표로 나눠 칩으로 보여 줌 */
+export type CodeColumn = { index: number; label: string; list: boolean }
+export type CodeRowView = {
+  code: string
+  name: string
+  /** ref1~ref5 (빈 칸은 '') */
+  refs: string[]
+  enabled: boolean
+  displayOrder: number
+  /** SSO_APP: 마지막 secret 발급 시각 (null = 아직 발급 안 함 → OIDC 로그인 안 받음, undefined = 모름) */
+  secretIssuedAt?: string | null
+}
+export type CodeTable = {
+  desc: string
+  columns: CodeColumn[]
+  rows: CodeRowView[]
+  /** SSO_APP 에서 secret 발급 버튼을 보일지 (sso-admin 이 아니면 /sso/clients 가 403) */
+  canIssueSecret: boolean
+} | null
+
+const REF_COUNT = 5
+const padRefs = (refs: (string | null)[] | null | undefined) => Array.from({ length: REF_COUNT }, (_, i) => refs?.[i] ?? '')
+/** 열 제목에 '쉼표' 가 있으면 여러 값 칸 (예: SSO_APP ref2 접근 허용 역할, ref4 redirect URI) */
+const toColumns = (descs: (string | null)[]): CodeColumn[] =>
+  descs.flatMap((d, index) => (d ? [{ index, label: `${d} (ref${index + 1})`, list: d.includes('쉼표') }] : []))
+const toCodeRow = (r: CodeDetailDto): CodeRowView => ({
+  code: r.detailCodeId,
+  name: r.description,
+  refs: padRefs(r.refs),
+  enabled: r.enabled,
+  displayOrder: r.displayOrder,
+})
+/** 여러 값 칸을 칩 목록으로 */
+export const splitRef = (v: string) =>
+  v
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean)
+
+// 목업: mocks/adminOps 의 codeRows (ref1 · ref2(목록) · ref4) 를 ref 자리 모양으로 바꾼다
+const MOCK_REF_INDEX = [0, 1, 3]
+function mockCodeTable(code: string): CodeTable {
+  const t = codeRows[code]
+  if (!t) return null
+  return {
+    desc: t.desc,
+    columns: MOCK_REF_INDEX.map((index, i) => ({ index, label: t.columns[i], list: index === 1 })),
+    rows: t.rows.map((r, i) => ({
+      code: r.code,
+      name: r.name,
+      refs: padRefs([r.ref1, r.ref2.join(','), null, r.ref4]),
+      enabled: r.enabled,
+      displayOrder: i + 1,
+    })),
+    canIssueSecret: true,
+  }
+}
 
 export function useCodeGroups() {
   return useResource<CodeGroupView[]>(
     'code-groups',
-    () => codeGroups,
+    () => codeGroups.map((g) => ({ ...g, refDescriptions: [], rowAddable: true })),
     async () =>
-      (await api<CodeGroupDto[]>(CODES, { root: CODES_AT_ROOT })).map((g) => ({ code: g.codeId, name: g.codeName, desc: g.description ?? '' })),
+      (await api<CodeGroupDto[]>(CODES)).map((g) => ({
+        code: g.codeId,
+        name: g.description,
+        refDescriptions: g.refDescriptions ?? [],
+        rowAddable: g.rowAddable,
+      })),
   )
 }
 
 export function useCodeTable(group: CodeGroupView | undefined) {
   return useResource<CodeTable>(
     ['code-table', group?.code],
-    () => (group ? (codeRows[group.code] ?? null) : null),
+    () => (group ? mockCodeTable(group.code) : null),
     async () => {
       if (!group) return null
-      const rows = await api<CodeDetailDto[]>(`${CODES}/${encodeURIComponent(group.code)}/details`, { root: CODES_AT_ROOT })
+      const [rows, clients] = await Promise.all([
+        api<CodeDetailDto[]>(`${CODES}/${encodeURIComponent(group.code)}/details`),
+        group.code === 'SSO_APP'
+          ? api<SsoClientDto[]>('/sso/clients').catch((e: unknown) => (e instanceof ApiError && e.status === 403 ? ('FORBIDDEN' as const) : null))
+          : Promise.resolve(null),
+      ])
+      const issued = Array.isArray(clients) ? new Map(clients.map((c) => [c.clientId, c.secretIssuedAt])) : null
       return {
-        desc: group.desc ?? '',
-        columns: ['ref1', 'ref2', 'ref4', '사용'],
-        rows: rows.map((r) => ({
-          code: r.detailCode,
-          name: r.detailName,
-          ref1: r.ref1 ?? '',
-          ref2: (r.ref2 ?? '')
-            .split(',')
-            .map((x) => x.trim())
-            .filter(Boolean),
-          ref4: r.ref4 ?? '',
-          enabled: r.enabled,
-          raw: r,
-        })),
+        desc: group.rowAddable ? '' : '정해진 코드만 쓰는 그룹이라 행을 더할 수 없어요.',
+        columns: toColumns(group.refDescriptions),
+        rows: rows.map((r) => ({ ...toCodeRow(r), secretIssuedAt: issued ? (issued.get(r.detailCodeId) ?? null) : undefined })),
+        canIssueSecret: clients !== 'FORBIDDEN',
       }
     },
   )
 }
 
-/** 상세 코드 사용 켜기 · 끄기 — 명세 확인 필요: 기존 PUT 의 경로 · 본문을 짐작 */
-export const saveCodeEnabled = (groupCode: string, raw: CodeDetailDto, enabled: boolean) =>
-  api(`${CODES}/${encodeURIComponent(groupCode)}/details/${encodeURIComponent(raw.detailCode)}`, {
-    method: 'PUT',
-    body: { ...raw, enabled },
-    root: CODES_AT_ROOT,
+/** 상세 코드 사용 켜기 · 끄기 (POST …/enable · …/disable) */
+export const setCodeEnabled = (groupCode: string, detailCode: string, enabled: boolean) =>
+  api<null>(`${CODES}/${encodeURIComponent(groupCode)}/details/${encodeURIComponent(detailCode)}/${enabled ? 'enable' : 'disable'}`, {
+    method: 'POST',
   })
 
-export const evictCodeCache = () => api<null>(`${CODES}/cache/evict`, { method: 'POST', root: CODES_AT_ROOT })
+export type CodeDetailBody = { detailCodeId: string; description: string; refs: string[]; displayOrder: number }
+/** 상세 코드 추가 (rowAddable 인 그룹만). refs 는 ref1~ref5 순서, 빈 칸은 서버가 null 로 저장 */
+export const createCodeDetail = (groupCode: string, body: CodeDetailBody) =>
+  api<CodeDetailDto>(`${CODES}/${encodeURIComponent(groupCode)}/details`, { method: 'POST', body }).then(toCodeRow)
 
-/** client secret 새로 발급 → 한 번만 보이는 값. 명세 확인 필요: 응답 필드 이름 */
+export const evictCodeCache = () => api<null>(`${CODES}/cache/evict`, { method: 'POST' })
+
+/** client secret 새로 발급 (sso-admin) → 한 번만 보이는 원문 */
 export const issueClientSecret = (clientId: string) =>
-  api<{ clientId?: string; clientSecret?: string; secret?: string }>(`/sso/clients/${encodeURIComponent(clientId)}/secret`, {
+  api<{ clientId: string; clientSecret: string; issuedAt: string }>(`/sso/clients/${encodeURIComponent(clientId)}/secret`, {
     method: 'POST',
-  }).then((r) => r.clientSecret ?? r.secret ?? '')
+  }).then((r) => ({ secret: r.clientSecret, issuedAt: r.issuedAt }))
 
 /* ---------- 관리 · GitHub (50-infra G-4, G-6~G-8) ---------- */
 
@@ -1112,7 +1245,8 @@ async function centerSquare(file: File) {
 
 /**
  * 1-3 프로필 사진 바꾸기: F-1 올리기 시작 → Garage 로 PUT → F-2 완료 → 사진으로 지정.
- * 명세 확인 필요: 자르기 화면이 없어 가운데 정사각형으로 자른다.
+ * 백엔드는 crop(원본 기준 정사각형 x · y · size) 을 받는다. 화면에 자르기 도구가 아직 없어 가운데 정사각형을 보낸다.
+ * 프로필 사진은 최대 5MB (FILE_POLICY MAX_PROFILE_PHOTO_MB) 라 늘 SINGLE 로 온다.
  */
 export async function uploadProfilePhoto(memberId: number, file: File) {
   const crop = await centerSquare(file)
@@ -1124,7 +1258,6 @@ export async function uploadProfilePhoto(memberId: number, file: File) {
     method: 'POST',
     body: { filename: file.name, size: file.size, contentType: file.type, purpose: 'PROFILE_PHOTO' },
   })
-  // 5MB 이하라 늘 SINGLE (16MB 넘으면 MULTIPART)
   if (!up.single) throw new ApiError(400, 'UPLOAD_MODE', '사진을 올리지 못했어요.')
   const put = await fetch(up.single.url, { method: up.single.method || 'PUT', headers: up.single.headers, body: file })
   if (!put.ok) throw new ApiError(put.status, 'UPLOAD_PUT', '사진을 저장소에 올리지 못했어요.')

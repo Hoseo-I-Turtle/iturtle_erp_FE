@@ -1,4 +1,6 @@
 // 프로젝트 · 작업 API — docs/api/30-project.md, 31-task.md, 60-common.md(댓글), 20-communication.md(CL-1)
+// 백엔드 기준: win.iturtle.project.internal.controller.* (ProjectController, TaskController, MilestoneController,
+// ProjectLinkController, ServiceAccessController, VaultPathRequestController) 와 dto/request · dto/response.
 // 응답을 화면이 쓰는 mocks/projects.ts · projectDetail.ts · tasks.ts 의 모양으로 바꾼다.
 import { api } from './client'
 import { ago, type MemberRef, type PageResponse } from './types'
@@ -6,6 +8,8 @@ import { useResource } from './useResource'
 import { getApiBase } from '../lib/dataMode'
 import {
   findProject,
+  PROJECT_CATEGORY_NAME,
+  PROJECT_STATUS_NAME,
   projects as mockProjects,
   type ProjectCategory,
   type ProjectStatus,
@@ -15,9 +19,11 @@ import {
 import { projectDetail, type ProjectMember } from '../mocks/projectDetail'
 import {
   findTask,
+  PRIORITY_NAME,
   STATUS_NAME,
   taskDetailExtra,
   tasks as mockTasks,
+  TYPE_NAME,
   type Task,
   type TaskPriority,
   type TaskStatus,
@@ -48,20 +54,45 @@ const kstDateTime = (iso: string) => {
 
 const daysUntil = (d: string) => Math.round((Date.parse(d.slice(0, 10)) - Date.parse(todayKst())) / 86400000)
 
-/** 서버 상태 → 화면 상태. 명세 확인 필요: ON_HOLD(보류) 는 화면 상태에 없어 '준비'로 보여 준다 */
+/**
+ * 서버 상태 → 프로젝트 머리(ProjectLayout)의 화면 상태.
+ * 머리는 mocks 의 ProjectSummary 타입(ON_HOLD 없음)을 그대로 써서 ON_HOLD(보류) 를 '준비'로 보여 준다.
+ * 목록 카드 · 홈은 ProjectCard 로 '보류' 를 그대로 보여 준다.
+ */
 const toProjectStatus = (s: string): ProjectStatus => (s === 'ON_HOLD' ? 'PREPARING' : (s as ProjectStatus))
+
+/** 서버 ProjectStatus 전부 (PREPARING · ACTIVE · ON_HOLD · DONE · ARCHIVED) */
+export type ProjectStatusLive = ProjectStatus | 'ON_HOLD'
+export const PROJECT_STATUS_LABEL: Record<ProjectStatusLive, string> = { ...PROJECT_STATUS_NAME, ON_HOLD: '보류' }
+
+/**
+ * 공통코드 PROJECT_CATEGORY 기본값 (backoffice V20261118_09 · project V20261118_15 마이그레이션).
+ * 공통코드 목록 API(/backoffice/common-codes)는 code-manage 권한만 부를 수 있어,
+ * 서버가 준 categoryName 을 기억해 두고 처음 보는 코드는 이 표 → 코드 순으로 보여 준다.
+ */
+const PROJECT_CATEGORY_SEED: Record<string, string> = { ...PROJECT_CATEGORY_NAME, CLASS: '수업', LAB: '연구실 운영' }
+const seenCategoryNames = new Map<string, string>()
+export const projectCategoryName = (code: string) => seenCategoryNames.get(code) ?? PROJECT_CATEGORY_SEED[code] ?? code
+
+/** 목록 카드 · 홈 머리용: 화면 타입에 없는 상태(ON_HOLD) · 카테고리(CLASS · LAB · 새 공통코드)도 담는다 */
+export type ProjectCard = Omit<ProjectSummary, 'status' | 'categoryCode'> & {
+  status: ProjectStatusLive
+  categoryCode: string
+  categoryName?: string
+}
 
 const fileSize = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)}MB` : `${Math.max(1, Math.round(n / 1024))}KB`)
 
 // ───────────────────────── P-1 프로젝트 목록 ─────────────────────────
 
+/** ProjectSummaryResponse */
 type ProjectSummaryDto = {
   projectKey: string
   name: string
-  status: string
+  status: ProjectStatusLive
   visibility: 'LAB' | 'PRIVATE'
   categoryCode: string
-  categoryName: string
+  categoryName: string | null
   summary: string | null
   startsOn: string | null
   endsOn: string | null
@@ -70,32 +101,47 @@ type ProjectSummaryDto = {
   memberPreview: MemberRef[]
   nextMilestone: { milestoneId: number; name: string; dueOn: string | null; progress: { done: number; total: number; ratio: number } } | null
 }
+/** ProjectListResponse — categoryCounts 는 ALL + 프로젝트가 있는 카테고리만 (공통코드 표시 순서) */
 type ProjectListResponse = { categoryCounts: Record<string, number>; page: PageResponse<ProjectSummaryDto> }
 
-const toSummary = (x: ProjectSummaryDto): ProjectSummary => ({
-  projectKey: x.projectKey,
-  name: x.name,
-  status: toProjectStatus(x.status),
-  visibility: x.visibility,
-  // 명세 확인 필요: 공통코드에 화면에 없는 카테고리가 생기면 이름이 비어 보인다 (categoryName 은 화면 타입에 없음)
-  categoryCode: x.categoryCode as ProjectCategory,
-  summary: x.summary ?? '',
-  startsOn: x.startsOn ?? '',
-  endsOn: x.endsOn ?? '',
-  myRole: x.myRole,
-  memberPreview: x.memberPreview.map((m) => m.name),
-  // 명세 확인 필요: ProjectSummary 에 연동 서비스 목록이 없어 카드의 서비스 아이콘은 실서버에서 비어 있다
-  services: [],
-  nextMilestone: x.nextMilestone
-    ? { name: x.nextMilestone.name, dueOn: monthDay(x.nextMilestone.dueOn), ratio: x.nextMilestone.progress.ratio }
-    : null,
-})
+const rememberCategory = (code: string, name: string | null | undefined) => {
+  if (name) seenCategoryNames.set(code, name)
+}
 
-export type ProjectListFilter = { category: ProjectCategory | 'ALL'; mine: boolean; activeOnly: boolean; archived: boolean }
-export type ProjectList = { projects: ProjectSummary[]; counts: Record<string, number> }
+const toCard = (x: ProjectSummaryDto): ProjectCard => {
+  rememberCategory(x.categoryCode, x.categoryName)
+  return {
+    projectKey: x.projectKey,
+    name: x.name,
+    status: x.status,
+    visibility: x.visibility,
+    categoryCode: x.categoryCode,
+    categoryName: x.categoryName ?? projectCategoryName(x.categoryCode),
+    summary: x.summary ?? '',
+    startsOn: x.startsOn ?? '',
+    endsOn: x.endsOn ?? '',
+    myRole: x.myRole,
+    memberPreview: x.memberPreview.map((m) => m.name),
+    // 백엔드 ProjectSummaryResponse 에 연동 서비스 목록이 없어 카드의 서비스 아이콘은 실서버에서 비어 있다
+    services: [],
+    nextMilestone: x.nextMilestone
+      ? { name: x.nextMilestone.name, dueOn: monthDay(x.nextMilestone.dueOn), ratio: x.nextMilestone.progress.ratio }
+      : null,
+  }
+}
+
+export type ProjectListFilter = { category: string; mine: boolean; activeOnly: boolean; archived: boolean }
+export type ProjectList = { projects: ProjectCard[]; counts: Record<string, number>; categories: { code: string; name: string }[] }
+
+/** 탭: 기본 카테고리 + 서버 개수에 나온 카테고리 (서버 순서를 앞에) */
+const categoryTabs = (counts: Record<string, number>) =>
+  [...new Set([...Object.keys(counts).filter((c) => c !== 'ALL'), ...Object.keys(PROJECT_CATEGORY_NAME)])].map((code) => ({
+    code,
+    name: projectCategoryName(code),
+  }))
 
 /**
- * 프로젝트 목록 화면. 실서버는 조건을 서버에 넘기고, 목업은 지금처럼 화면이 거른다.
+ * 프로젝트 목록 화면 (P-1 GET /projects). 실서버는 조건을 서버에 넘기고, 목업은 지금처럼 화면이 거른다.
  * 화면은 늘 같은 거르기를 한 번 더 하므로 (서버가 이미 거른 값이면 그대로) 결과가 같다.
  */
 export function useProjectList(f: ProjectListFilter) {
@@ -106,19 +152,21 @@ export function useProjectList(f: ProjectListFilter) {
       const base = mockProjects.filter((p) => f.archived || p.status !== 'ARCHIVED')
       const counts: Record<string, number> = { ALL: base.length }
       for (const p of base) counts[p.categoryCode] = (counts[p.categoryCode] ?? 0) + 1
-      return { projects: base, counts }
+      return { projects: base, counts, categories: categoryTabs(counts) }
     },
     async () => {
       const r = await api<ProjectListResponse>('/projects', {
         query: {
           categoryCode: f.category === 'ALL' ? undefined : f.category,
           mine: f.mine || undefined,
+          // 쉼표로 여러 상태 (ProjectService.parseStatuses)
           status: f.activeOnly ? 'PREPARING,ACTIVE' : undefined,
           includeArchived: f.archived || undefined,
           size: 100,
         },
       })
-      return { projects: r.page.content.map(toSummary), counts: r.categoryCounts }
+      const projects = r.page.content.map(toCard)
+      return { projects, counts: r.categoryCounts, categories: categoryTabs(r.categoryCounts) }
     },
   )
 }
@@ -126,14 +174,15 @@ export function useProjectList(f: ProjectListFilter) {
 // ───────────────────────── P-3 프로젝트 상세 ─────────────────────────
 
 type ProjectMemberRefDto = { member: MemberRef; role: 'MANAGER' | 'MEMBER' | 'FORMER'; joinedAt: string; leftAt: string | null }
+/** ProjectDetailResponse */
 type ProjectDetailDto = {
   projectId: number
   projectKey: string
   name: string
-  status: string
+  status: ProjectStatusLive
   visibility: 'LAB' | 'PRIVATE'
   categoryCode: string
-  categoryName: string
+  categoryName: string | null
   description: string | null
   startsOn: string | null
   endsOn: string | null
@@ -156,74 +205,174 @@ const toMembers = (d: ProjectDetailDto): (ProjectMember & { memberId: number })[
       note: m.member.memberType === 'INTERN' ? '인턴' : undefined,
     }))
 
-const detailToSummary = (d: ProjectDetailDto): ProjectSummary => ({
-  projectKey: d.projectKey,
-  name: d.name,
-  status: toProjectStatus(d.status),
-  visibility: d.visibility,
-  categoryCode: d.categoryCode as ProjectCategory,
-  summary: '',
-  startsOn: d.startsOn ?? '',
-  endsOn: d.endsOn ?? '',
-  myRole: d.myRole === 'FORMER' ? 'NONE' : d.myRole,
-  memberPreview: toMembers(d).map((m) => m.name),
-  services: [],
-  nextMilestone: null,
-})
+const detailToCard = (d: ProjectDetailDto): ProjectCard => {
+  rememberCategory(d.categoryCode, d.categoryName)
+  return {
+    projectKey: d.projectKey,
+    name: d.name,
+    status: d.status,
+    visibility: d.visibility,
+    categoryCode: d.categoryCode,
+    categoryName: d.categoryName ?? projectCategoryName(d.categoryCode),
+    summary: '',
+    startsOn: d.startsOn ?? '',
+    endsOn: d.endsOn ?? '',
+    myRole: d.myRole === 'FORMER' ? 'NONE' : d.myRole,
+    memberPreview: toMembers(d).map((m) => m.name),
+    services: [],
+    nextMilestone: null,
+  }
+}
 
 /**
- * 프로젝트 머리 (ProjectLayout 이 실서버에서 쓰면 되는 훅).
- * 목업은 findProject 그대로.
+ * 프로젝트 머리 (ProjectLayout 이 실서버에서 쓰는 훅, P-3).
+ * 목업은 findProject 그대로. 머리는 화면 타입(ProjectSummary)이라 ON_HOLD 는 '준비', 새 카테고리 코드는 코드 그대로 들어간다.
  */
 export function useProjectHeader(key: string | undefined) {
-  return useResource<ProjectSummary>(['project', key], () => findProject(key), async () => detailToSummary(await getProject(key ?? '')))
+  return useResource<ProjectSummary>(['project', key], () => findProject(key), async () => {
+    const c = detailToCard(await getProject(key ?? ''))
+    return { ...c, status: toProjectStatus(c.status), categoryCode: c.categoryCode as ProjectCategory }
+  })
 }
 
 // ───────────────────────── P-9 활동 기록 ─────────────────────────
 
+/** 백엔드 ActivityType enum 전부 */
+type ActivityType =
+  | 'TASK_CREATED'
+  | 'TASK_DELETED'
+  | 'TASK_FIELD_CHANGED'
+  | 'TASK_STATUS_CHANGED'
+  | 'TASK_COMMENTED'
+  | 'TASK_ATTACHMENT'
+  | 'TASK_CHECKLIST_CHANGED'
+  | 'MEMBER_ADDED'
+  | 'MEMBER_REMOVED'
+  | 'MEMBER_ROLE_CHANGED'
+  | 'THREAD_POSTED'
+  | 'THREAD_PINNED'
+  | 'THREAD_EDITED'
+  | 'MINUTE_CREATED'
+  | 'MINUTE_ACTIONS_CONVERTED'
+  | 'SETTINGS_CHANGED'
+
+/** ActivityResponse. ref.type 은 PROJECT_THREAD · MEETING_MINUTE · MEMBER */
 type ActivityDto = {
   activityId: number
-  type: string
+  type: ActivityType
   actor: MemberRef | null
-  task: { taskKey: string; title: string; status: string } | null
+  task: { taskId: number; taskKey: string; title: string; status: string } | null
   field: string | null
   before: string | null
   after: string | null
-  ref: { type: string; id: number; title: string } | null
+  ref: { type: string; id: number; title: string | null } | null
   createdAt: string
 }
 
 const statusName = (s: string | null) => (s && s in STATUS_NAME ? STATUS_NAME[s as TaskStatus] : s === 'CANCELLED' ? '취소' : (s ?? ''))
-const FIELD_NAME: Record<string, string> = { due_on: '기한', assignee: '담당자', priority: '우선순위', title: '제목', milestone: '마일스톤', labels: '라벨', description: '설명' }
+const ROLE_NAME: Record<string, string> = { MANAGER: '관리자', MEMBER: '참여자', FORMER: '이전 참여자' }
+const LEVEL_NAME: Record<string, string> = { NONE: '없음', READ: '읽기', WRITE: '쓰기', BUILD: '빌드' }
+
+/** TASK_FIELD_CHANGED 의 field (TaskService.update · ProjectActivityService.recordReassigned) */
+const TASK_FIELD_NAME: Record<string, string> = {
+  title: '제목',
+  description: '설명',
+  type: '유형',
+  priority: '우선순위',
+  assignee: '담당자',
+  requester: '요청자',
+  due_on: '기한',
+  milestone: '마일스톤',
+  labels: '라벨',
+}
+/** SETTINGS_CHANGED 의 field (ProjectService · ProjectLabelFacade · ProjectLinkFacade · MilestoneService · ServiceAccessService) */
+const SETTING_FIELD_NAME: Record<string, string> = {
+  name: '이름',
+  category: '카테고리',
+  description: '설명',
+  visibility: '공개 범위',
+  period: '기간',
+  status: '상태',
+  label: '라벨',
+  link: '연동 서비스',
+  link_name: '연동 서비스 이름',
+  milestone: '마일스톤',
+  milestone_status: '마일스톤 상태',
+  milestone_due: '마일스톤 기한',
+  vault_enabled: 'Vault 사용',
+  vault_manager_level: 'Vault 관리자 권한',
+  vault_member_level: 'Vault 참여자 권한',
+  jenkins_enabled: 'Jenkins 사용',
+  jenkins_manager_level: 'Jenkins 관리자 권한',
+  jenkins_member_level: 'Jenkins 참여자 권한',
+}
 
 /**
- * 활동 문장 ("님이" 뒤에 붙는 부분). 화면이 type · field · 값으로 만든다 (P-9).
- * 명세 확인 필요: ActivityType 전체 목록이 명세에 없어, 모르는 종류는 일반 문장으로 보여 준다.
+ * 바뀐 값 표시. 서버는 빈 값을 null 또는 문자열 "null" 로 남긴다 (String.valueOf).
+ * 설명 · 라벨 · 작업의 마일스톤은 값 대신 ID 나 빈 값이 남아 값을 보여 주지 않는다 (undefined).
  */
+function changedValue(field: string, v: string | null): string | undefined {
+  if (field === 'description' || field === 'labels' || (field === 'milestone' && v !== null && /^\d+$/.test(v))) return undefined
+  if (v === null || v === 'null' || v === '') return '없음'
+  if (field === 'priority') return PRIORITY_NAME[v as TaskPriority] ?? v
+  if (field === 'type') return TYPE_NAME[v as TaskType] ?? v
+  if (field === 'due_on' || field === 'milestone_due') return monthDay(v)
+  if (field === 'status' || field === 'milestone_status') return PROJECT_STATUS_LABEL[v as ProjectStatusLive] ?? (v === 'OPEN' ? '열림' : v === 'CLOSED' ? '닫힘' : v)
+  if (field === 'visibility') return v === 'PRIVATE' ? '비공개' : v === 'LAB' ? '연구실 공개' : v
+  if (field === 'category') return projectCategoryName(v)
+  if (field.endsWith('_level')) return LEVEL_NAME[v] ?? v
+  if (field.endsWith('_enabled')) return v === 'true' ? '켬' : '끔'
+  return v
+}
+
+function changeText(names: Record<string, string>, a: ActivityDto) {
+  const field = a.field ?? ''
+  const name = names[field] ?? (field || '항목')
+  const before = changedValue(field, a.before)
+  const after = changedValue(field, a.after)
+  return `${name}을 바꿨어요${before !== undefined && after !== undefined ? ` (${before} → ${after})` : ''}`
+}
+
+/** 활동 문장 ("님이" 뒤에 붙는 부분). 화면이 type · field · 값으로 만든다 (P-9) */
 function activityText(a: ActivityDto, inTask: boolean) {
   const k = a.task?.taskKey ?? ''
   const subject = inTask ? '' : `${k} 의 `
+  const refTitle = a.ref?.title ?? ''
   switch (a.type) {
     case 'TASK_STATUS_CHANGED':
       return inTask ? `상태를 ${statusName(a.before)} → ${statusName(a.after)}로 바꿨어요` : `${k} 를 ${statusName(a.after)}로 옮겼어요`
     case 'TASK_CREATED':
-      return inTask ? `작업을 만들었어요${a.ref ? ` (${a.ref.title})` : ''}` : `${k} 를 만들었어요`
+      return inTask ? '작업을 만들었어요' : `${k} 를 만들었어요`
+    case 'TASK_DELETED':
+      // after 에 지운 작업 키가 남는다
+      return `${a.after ?? k} 를 지웠어요`
     case 'TASK_COMMENTED':
       return inTask ? '댓글을 남겼어요' : `${k} 에 댓글을 남겼어요`
-    case 'TASK_FIELD_CHANGED': {
-      const f = FIELD_NAME[a.field ?? ''] ?? a.field ?? '항목'
-      return `${subject}${f}을 바꿨어요${a.before || a.after ? ` (${a.before ?? '없음'} → ${a.after ?? '없음'})` : ''}`
-    }
+    case 'TASK_FIELD_CHANGED':
+      return `${subject}${changeText(TASK_FIELD_NAME, a)}`
     case 'TASK_ATTACHMENT':
-      return `${subject}첨부를 바꿨어요`
+      return `${subject}첨부를 바꿨어요${a.after ? ` (${a.after}개)` : ''}`
+    case 'TASK_CHECKLIST_CHANGED':
+      return `${subject}체크리스트를 바꿨어요`
+    case 'MINUTE_CREATED':
+      return `회의록 "${refTitle}" 을 썼어요`
     case 'MINUTE_ACTIONS_CONVERTED':
-      return `회의록 "${a.ref?.title ?? ''}"에서 작업 ${a.after ?? ''}개를 만들었어요`
+      return `회의록 "${refTitle}"에서 작업 ${a.after ?? ''}개를 만들었어요`
     case 'THREAD_POSTED':
-      return `스레드에 "${a.ref?.title ?? ''}" 를 올렸어요`
+      return refTitle ? `스레드에 "${refTitle}" 를 올렸어요` : '스레드에 글을 올렸어요'
+    case 'THREAD_PINNED':
+      return `스레드 글 "${refTitle}" 를 고정했어요`
+    case 'THREAD_EDITED':
+      return `스레드 글 "${refTitle}" 를 고쳤어요`
     case 'MEMBER_ADDED':
-      return `참여자를 더했어요${a.after ? ` (${a.after})` : ''}`
+      // ref = 그 구성원, after = 역할
+      return `${refTitle || '구성원'} 님을 ${ROLE_NAME[a.after ?? ''] ?? '참여자'}로 더했어요`
+    case 'MEMBER_ROLE_CHANGED':
+      return `${refTitle || '구성원'} 님의 역할을 ${ROLE_NAME[a.before ?? ''] ?? a.before ?? ''} → ${ROLE_NAME[a.after ?? ''] ?? a.after ?? ''}로 바꿨어요`
+    case 'MEMBER_REMOVED':
+      return `${refTitle || '구성원'} 님을 참여자에서 뺐어요`
     case 'SETTINGS_CHANGED':
-      return '프로젝트 설정을 바꿨어요'
+      return `프로젝트 ${changeText(SETTING_FIELD_NAME, a)}`
     default:
       return k ? `${k} 를 고쳤어요` : '프로젝트를 고쳤어요'
   }
@@ -231,6 +380,7 @@ function activityText(a: ActivityDto, inTask: boolean) {
 
 type ActivityLine = { who: string; text: string; ago: string }
 const toActivity = (a: ActivityDto, inTask: boolean): ActivityLine => ({
+  // actor 가 없으면 시스템 처리 (졸업 · 퇴실 정리 등)
   who: a.actor?.name ?? '시스템',
   text: activityText(a, inTask),
   ago: ago(a.createdAt),
@@ -238,6 +388,7 @@ const toActivity = (a: ActivityDto, inTask: boolean): ActivityLine => ({
 
 // ───────────────────────── 프로젝트 홈 ─────────────────────────
 
+/** MilestoneResponse */
 type MilestoneDto = {
   milestoneId: number
   name: string
@@ -246,6 +397,7 @@ type MilestoneDto = {
   overdue: boolean
   progress: { done: number; total: number; ratio: number }
 }
+/** ProjectLinkResponse (LinkedService: PENPOT · VAULT · JENKINS · GITHUB · OTHER) */
 type LinkDto = {
   linkId: number
   service: ServiceCode | 'OTHER'
@@ -255,14 +407,19 @@ type LinkDto = {
   externalRef: string | null
   myAccess: { granted: boolean; level: string | null }
 }
+/** LinkStatusResponse — 젠킨스 빌드 값은 모두 비어 있을 수 있다 (진행 중 빌드는 result 가 없음) */
 type LinkStatusDto = {
   linkId: number
   status: 'OK' | 'UNAVAILABLE' | 'NOT_SUPPORTED'
-  jenkins: { lastBuild: { number: number; result: string; startedAt: string; durationMs: number } | null } | null
-  penpot: { fileCount: number; files: { name: string; modifiedAt: string }[] } | null
-  github: { weekCommitCount: number; openPullRequestCount: number } | null
+  jenkins: {
+    lastBuild: { number: number | null; result: string | null; startedAt: string | null; durationMs: number | null; url: string | null } | null
+    branch: string | null
+  } | null
+  penpot: { fileCount: number; files: { name: string; modifiedAt: string | null }[] } | null
+  github: { weekCommitCount: number; openPullRequestCount: number | null } | null
 }
 type Level = { override: string | null; effective: string; source?: string | null; expiresAt?: string | null }
+/** ServiceAccessResponse (P-16 · P-17 · P-18 모두 이 모양) */
 type ServiceAccessDto = {
   services: {
     service: 'VAULT' | 'JENKINS'
@@ -277,15 +434,17 @@ type ServiceAccessDto = {
   members: { member: MemberRef; projectRole: 'MANAGER' | 'MEMBER'; vault: Level; jenkins: Level }[]
   notice: string
 }
+/** TaskCardResponse. taskKey 는 '{projectKey}-{번호}' */
 type TaskCardDto = {
   taskId: number
   taskKey: string
   projectKey: string
   title: string
   typeCode: string
-  typeName: string
-  status: string
-  priority: string
+  typeName: string | null
+  typeIcon: string | null
+  status: TaskStatus | 'CANCELLED'
+  priority: TaskPriority
   assignee: MemberRef | null
   requester: MemberRef
   dueOn: string | null
@@ -299,10 +458,10 @@ type TaskCardDto = {
   updatedAt: string
   version: number
 }
-type TaskListResponse = { page: PageResponse<TaskCardDto>; deletedTaskKeys?: string[]; serverTime: string }
-type OccurrenceDto = { eventId: number; title?: string; allDay: boolean; startsAt: string; startsOn?: string; color: string | null }
+type TaskListResponse = { page: PageResponse<TaskCardDto>; deletedTaskKeys: string[] | null; serverTime: string }
+/** calendar OccurrenceResponse — 바쁨만 보이는 일정은 title 이 빠진다 */
+type OccurrenceDto = { eventId: number; title?: string; busyOnly: boolean; allDay: boolean; startsAt: string; startsOn?: string; color: string | null }
 
-const LEVEL_NAME: Record<string, string> = { NONE: '없음', READ: '읽기', WRITE: '쓰기', BUILD: '빌드' }
 const SERVICE_NAME: Record<ServiceCode, string> = { GITHUB: 'GitHub', JENKINS: 'Jenkins', VAULT: 'Vault', PENPOT: 'Penpot' }
 const BUILD_RESULT: Record<string, string> = { SUCCESS: '성공', FAILURE: '실패', UNSTABLE: '불안정', ABORTED: '중단', IN_PROGRESS: '진행 중' }
 
@@ -315,7 +474,7 @@ export type HomeService = {
   url?: string
 }
 export type ProjectHome = {
-  project: ProjectSummary
+  project: ProjectCard
   description: string
   period: string
   taskTotal: number
@@ -334,16 +493,25 @@ function linkToService(l: LinkDto & { service: ServiceCode }, st: LinkStatusDto 
   else if (l.service === 'VAULT') status = { ok: null, text: l.description ?? '비밀값은 Vault 에서만 보여요' }
   else if (st?.jenkins?.lastBuild) {
     const b = st.jenkins.lastBuild
-    const sec = Math.round(b.durationMs / 1000)
+    const sec = b.durationMs === null ? null : Math.round(b.durationMs / 1000)
+    const result = b.result ?? 'IN_PROGRESS'
     status = {
-      ok: b.result === 'SUCCESS',
-      text: `#${b.number} ${BUILD_RESULT[b.result] ?? b.result} · ${ago(b.startedAt)} · ${Math.floor(sec / 60)}분 ${sec % 60}초`,
+      ok: b.result === null ? null : b.result === 'SUCCESS',
+      text: [
+        `${b.number !== null ? `#${b.number} ` : ''}${BUILD_RESULT[result] ?? result}`,
+        b.startedAt ? ago(b.startedAt) : null,
+        sec !== null && b.result !== null ? `${Math.floor(sec / 60)}분 ${sec % 60}초` : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
     }
   } else if (st?.penpot) {
     const f = st.penpot.files[0]
-    status = { ok: null, text: f ? `${ago(f.modifiedAt)} 수정 · ${f.name}` : `파일 ${st.penpot.fileCount}개` }
+    status = { ok: null, text: f ? `${f.modifiedAt ? `${ago(f.modifiedAt)} 수정 · ` : ''}${f.name}` : `파일 ${st.penpot.fileCount}개` }
   } else if (st?.github) {
-    status = { ok: null, text: `이번 주 커밋 ${st.github.weekCommitCount} · 열린 PR ${st.github.openPullRequestCount}` }
+    // 열린 PR 수는 GitHub 앱이 없으면 비어 온다
+    const pr = st.github.openPullRequestCount
+    status = { ok: null, text: `이번 주 커밋 ${st.github.weekCommitCount}${pr !== null ? ` · 열린 PR ${pr}` : ''}` }
   }
   const leveled = l.service === 'VAULT' || l.service === 'JENKINS'
   return {
@@ -417,7 +585,7 @@ export function useProjectHome(key: string | undefined) {
 
       const stById = new Map(statuses.statuses.map((x) => [x.linkId, x]))
       return {
-        project: detailToSummary(d),
+        project: detailToCard(d),
         description: d.description ?? '',
         period: d.startsOn || d.endsOn ? `${(d.startsOn ?? '').replace(/-/g, '.')} – ${(d.endsOn ?? '').replace(/-/g, '.')}` : '기간 없음',
         taskTotal: d.taskCounts.total,
@@ -447,7 +615,11 @@ export function useProjectHome(key: string | undefined) {
 
 const TASK_TYPES: TaskType[] = ['TASK', 'BUG', 'RESEARCH']
 
-export type BoardTask = Task & { taskId?: number; version?: number }
+/**
+ * 화면 작업 + 서버 값. typeName 은 공통코드 TASK_TYPE 의 이름 (관리자가 새 종류를 더하면 화면 TaskType 밖일 수 있다).
+ * CANCELLED 는 화면 TaskStatus 에 없다. 보드(T-1, statuses 생략 = TODO · IN_PROGRESS · REVIEW · DONE)에는 안 나오고 작업 상세에서만 나온다.
+ */
+export type BoardTask = Task & { taskId?: number; version?: number; typeName?: string; cancelled?: boolean }
 
 function toTask(x: TaskCardDto): BoardTask {
   const left = x.dueOn ? daysUntil(x.dueOn) : null
@@ -457,11 +629,13 @@ function toTask(x: TaskCardDto): BoardTask {
     version: x.version,
     taskKey: x.taskKey,
     title: x.title,
-    // 명세 확인 필요: TASK_TYPE 공통코드가 화면의 세 가지(작업 · 버그 · 조사) 밖이면 '작업'으로 보여 준다
+    // 화면 거르기는 세 가지(작업 · 버그 · 조사)로만 한다. 그 밖의 공통코드는 '작업' 칸에 넣고 이름은 typeName 으로 보여 준다
     type: TASK_TYPES.includes(x.typeCode as TaskType) ? (x.typeCode as TaskType) : 'TASK',
-    // 명세 확인 필요: CANCELLED 는 화면 상태에 없다 (보드 기본 조회에서는 빠짐)
-    status: x.status as TaskStatus,
-    priority: x.priority as TaskPriority,
+    typeName: x.typeName ?? TYPE_NAME[x.typeCode as TaskType] ?? x.typeCode,
+    // 취소된 작업은 화면 상태가 없어 '할 일' 자리에 두고 cancelled 로 표시한다 (상세의 상태 칩은 '취소')
+    status: x.status === 'CANCELLED' ? 'TODO' : x.status,
+    cancelled: x.status === 'CANCELLED' || undefined,
+    priority: x.priority,
     labels: x.labels.map((l) => l.name),
     milestone: x.milestone?.name ?? null,
     dueOn: x.dueOn ? monthDay(x.dueOn) : null,
@@ -513,7 +687,25 @@ async function fetchBoardTasks(projectKey: string) {
 
 export type BoardPosition = { afterTaskKey: string | null; beforeTaskKey: string | null }
 
-/** T-7 상태 옮기기 */
+/**
+ * 상태 이동 규칙 (TaskService.TRANSITIONS 와 같은 표).
+ * byRequester: 요청자 · PM 급만 (아니면 담당자 · PM 급만). reason: 사유가 필요한 이동 (반려 P107 · 취소 · 다시 열기 P106)
+ */
+export const TASK_TRANSITIONS: { from: TaskStatus | 'CANCELLED'; to: TaskStatus | 'CANCELLED'; byRequester: boolean; reason: boolean }[] = [
+  { from: 'TODO', to: 'IN_PROGRESS', byRequester: false, reason: false },
+  { from: 'TODO', to: 'CANCELLED', byRequester: true, reason: true },
+  { from: 'IN_PROGRESS', to: 'TODO', byRequester: false, reason: false },
+  { from: 'IN_PROGRESS', to: 'REVIEW', byRequester: false, reason: false },
+  { from: 'IN_PROGRESS', to: 'CANCELLED', byRequester: true, reason: true },
+  { from: 'REVIEW', to: 'DONE', byRequester: true, reason: false },
+  { from: 'REVIEW', to: 'IN_PROGRESS', byRequester: true, reason: true },
+  { from: 'DONE', to: 'IN_PROGRESS', byRequester: true, reason: true },
+  { from: 'CANCELLED', to: 'TODO', byRequester: true, reason: false },
+]
+export const transitionRule = (from: TaskStatus | 'CANCELLED', to: TaskStatus | 'CANCELLED') =>
+  TASK_TRANSITIONS.find((r) => r.from === from && r.to === to)
+
+/** T-7 상태 옮기기 (version 은 카드의 동시 수정 값, 틀리면 P101) */
 export const transitionTask = (taskKey: string, body: { toStatus: TaskStatus; version: number; reason?: string; boardPosition?: BoardPosition }) =>
   api<{ task: TaskCardDto; reasonCommentId: number | null }>(`/tasks/${encodeURIComponent(taskKey)}/transition`, { method: 'POST', body }).then((r) => ({
     task: toTask(r.task),
@@ -526,22 +718,35 @@ export const moveTaskInColumn = (taskKey: string, boardPosition: BoardPosition) 
 
 // ───────────────────────── 작업 상세 ─────────────────────────
 
+/** AttachmentResponse */
 type FileRefDto = { publicId: string; name: string; size: number; contentType: string }
-type ChecklistItemDto = { itemId: number; content: string; done: boolean; displayOrder: number }
+type ChecklistItemDto = {
+  itemId: number
+  content: string
+  done: boolean
+  assignee: MemberRef | null
+  displayOrder: number
+  convertedTask: { taskId: number; taskKey: string; title: string; status: string } | null
+}
+/** TaskDetailResponse = TaskCardResponse 필드 + 상세 필드 */
 type TaskDetailDto = TaskCardDto & {
   description: string | null
-  creator: MemberRef
+  creator: MemberRef | null
+  createdAt: string
   checklistItems: ChecklistItemDto[]
   attachments: FileRefDto[]
   watchers: { count: number; watching: boolean; members: MemberRef[] }
-  source: { type: string; id: number; label: string; url: string } | null
-  convertedTasks: { taskKey: string; title: string; status: string }[]
-  allowedTransitions: { toStatus: string; reasonRequired: boolean }[]
+  /** TaskSource: MEETING_ACTION · THREAD · CHECKLIST */
+  source: { type: 'MEETING_ACTION' | 'THREAD' | 'CHECKLIST'; id: number; label: string; url: string | null } | null
+  convertedTasks: { taskId: number; taskKey: string; title: string; status: string }[]
+  allowedTransitions: { toStatus: TaskStatus | 'CANCELLED'; reasonRequired: boolean }[]
   permissions: { canEdit: boolean; canDelete: boolean }
 }
+/** comment 모듈 CommentResponse (NON_NULL 이라 비어 있는 필드는 빠져 온다) */
 type CommentDto = {
   commentId: number
-  author: MemberRef
+  parentId?: number
+  author: { memberId: number; name: string | null }
   body: string | null
   deleted: boolean
   kind: 'NORMAL' | 'REJECT_REASON' | 'STATUS_REASON'
@@ -569,7 +774,7 @@ export type TaskDetailData = {
 
 const toComment = (c: CommentDto): TaskComment => ({
   commentId: c.commentId,
-  author: c.author.name,
+  author: c.author.name ?? '알 수 없음',
   ago: ago(c.createdAt),
   body: c.deleted || c.body === null ? '_삭제된 댓글입니다_' : c.kind === 'REJECT_REASON' ? `반려: ${c.body}` : c.kind === 'STATUS_REASON' ? `사유: ${c.body}` : c.body,
 })
@@ -624,7 +829,7 @@ export function useTaskDetail(projectKey: string | undefined, taskKey: string | 
         subscribers: t.watchers.members.map((m) => m.name),
         watchCount: t.watchers.count,
         watching: t.watchers.watching,
-        // 명세 확인 필요: 화면의 PR · Jenkins 빌드 연결은 명세에 없다 (README S1). 원본 · 바꾼 작업만 보여 준다
+        // 백엔드 TaskDetailResponse 에 PR · Jenkins 빌드 연결 필드가 없어 원본(source) · 바꾼 작업(convertedTasks)만 보여 준다
         links: [
           ...(t.source ? [sourceLink(t.source)] : []),
           ...t.convertedTasks.map((c): TaskLink => ({ kind: 'task', title: `${c.taskKey} ${c.title}`, meta: `체크리스트에서 만든 작업 · ${statusName(c.status)}`, to: `/projects/${projectKey}/tasks/${c.taskKey}` })),
@@ -730,28 +935,51 @@ export function useServiceAccess(key: string | undefined) {
   return useResource<ServiceAccessView>(['service-access', key], () => MOCK_ACCESS, async () => toAccessView(await api<ServiceAccessDto>(accessPath(key ?? ''))))
 }
 
+/**
+ * 서비스 권한 저장이 중간에 실패했을 때. 백엔드는 서비스 설정(P-17 PATCH /service-access/{service})과
+ * 구성원 수준(P-18 PUT /service-access/members)을 한 번에 저장하는 API 가 없어, 앞의 것만 저장될 수 있다.
+ * saved 는 실패 전까지 서버가 저장한 마지막 상태 (없으면 null).
+ */
+export class AccessSaveError extends Error {
+  saved: ServiceAccessView | null
+  reason: unknown
+  constructor(cause: unknown, saved: ServiceAccessView | null) {
+    super(cause instanceof Error ? cause.message : '저장하지 못했어요.')
+    this.reason = cause
+    this.saved = saved
+  }
+}
+
 /** 저장: 바뀐 서비스는 P-17, 바뀐 구성원은 P-18. 마지막 응답(P-16 모양)을 돌려준다 */
 export async function saveServiceAccess(key: string, view: ServiceAccessView, before: AccessState, after: AccessState) {
   let last: ServiceAccessDto | null = null
-  for (const svc of ['VAULT', 'JENKINS'] as const) {
-    const on = svc === 'VAULT' ? 'vaultOn' : 'jenkinsOn'
-    const lv = svc === 'VAULT' ? 'vault' : 'jenkins'
-    const body: { enabled?: boolean; managerLevel?: string; memberLevel?: string } = {}
-    if (before[on] !== after[on]) body.enabled = after[on]
-    if (before.roles.MANAGER[lv] !== after.roles.MANAGER[lv]) body.managerLevel = after.roles.MANAGER[lv]
-    if (before.roles.MEMBER[lv] !== after.roles.MEMBER[lv]) body.memberLevel = after.roles.MEMBER[lv]
-    if (Object.keys(body).length) last = await api<ServiceAccessDto>(`${accessPath(key)}/${svc}`, { method: 'PATCH', body })
+  try {
+    for (const svc of ['VAULT', 'JENKINS'] as const) {
+      const on = svc === 'VAULT' ? 'vaultOn' : 'jenkinsOn'
+      const lv = svc === 'VAULT' ? 'vault' : 'jenkins'
+      // ServiceSettingRequest: 바뀐 값만 (ServiceLevel NONE · READ · WRITE(Vault) · BUILD(Jenkins))
+      const body: { enabled?: boolean; managerLevel?: string; memberLevel?: string } = {}
+      if (before[on] !== after[on]) body.enabled = after[on]
+      if (before.roles.MANAGER[lv] !== after.roles.MANAGER[lv]) body.managerLevel = after.roles.MANAGER[lv]
+      if (before.roles.MEMBER[lv] !== after.roles.MEMBER[lv]) body.memberLevel = after.roles.MEMBER[lv]
+      if (Object.keys(body).length) last = await api<ServiceAccessDto>(`${accessPath(key)}/${svc}`, { method: 'PATCH', body })
+    }
+    // MemberLevelsRequest.items: 바뀐 서비스만 (DEFAULT = 역할 기본값으로 되돌리기). 한 번에 100명까지
+    const items = view.members.flatMap((m) => {
+      const a = before.members[m.name]
+      const b = after.members[m.name]
+      if (!a || !b || m.memberId === undefined) return []
+      const item: { memberId: number; vault?: string; jenkins?: string } = { memberId: m.memberId }
+      if (a.vault !== b.vault) item.vault = b.vault
+      if (a.jenkins !== b.jenkins) item.jenkins = b.jenkins
+      return item.vault || item.jenkins ? [item] : []
+    })
+    for (let i = 0; i < items.length; i += 100) {
+      last = await api<ServiceAccessDto>(`${accessPath(key)}/members`, { method: 'PUT', body: { items: items.slice(i, i + 100) } })
+    }
+  } catch (e) {
+    throw new AccessSaveError(e, last ? toAccessView(last) : null)
   }
-  const items = view.members.flatMap((m) => {
-    const a = before.members[m.name]
-    const b = after.members[m.name]
-    if (!a || !b || m.memberId === undefined) return []
-    const item: { memberId: number; vault?: string; jenkins?: string } = { memberId: m.memberId }
-    if (a.vault !== b.vault) item.vault = b.vault
-    if (a.jenkins !== b.jenkins) item.jenkins = b.jenkins
-    return item.vault || item.jenkins ? [item] : []
-  })
-  if (items.length) last = await api<ServiceAccessDto>(`${accessPath(key)}/members`, { method: 'PUT', body: { items } })
   return last ? toAccessView(last) : null
 }
 

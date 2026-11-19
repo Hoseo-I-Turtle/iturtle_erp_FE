@@ -46,7 +46,8 @@ function SignupsView({ data }: { data: SignupsData }) {
   const sel = reqs.find((r) => r.id === id) ?? list[0]
   const count = (t: Tab) => reqs.filter((r) => r.status === t).length + data.extra[t]
 
-  const localValid = /^[a-z][a-z0-9._]{2,19}$/.test(loginId)
+  // 백엔드 CredentialPolicyService 와 같은 규칙 (영문 소문자로 시작, 소문자 · 숫자 · . _ - 4~30자)
+  const localValid = /^[a-z][a-z0-9._-]{3,29}$/.test(loginId)
   const result = checkId === loginId ? check.data : null
   const taken = isLive()
     ? !!result && !result.available
@@ -82,8 +83,9 @@ function SignupsView({ data }: { data: SignupsData }) {
                 loginId,
                 studentNumber: null, // 비우면 신청서 학번, 없으면 다음 인턴 번호
                 joinedOn: joinDate,
+                // 비우면 서버가 "인턴 기본" 을 적용한다. roleCodes 는 프리셋 밖에 더 줄 역할만 (지금 화면에는 없음)
                 presetIds: p ? [Number(p.id)] : [],
-                roleCodes: p?.roles ?? [],
+                roleCodes: [],
               },
         ),
       )

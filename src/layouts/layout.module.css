@@ -142,6 +142,32 @@
   color: var(--status-warning-text);
 }
 
+/* SSO 접근 거절 안내 (/?denied=<client_id>) */
+.deniedBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--status-negative-bg);
+  font-size: var(--fs-caption);
+  color: var(--status-negative);
+}
+.deniedBanner span {
+  flex: 1;
+}
+.deniedBanner a {
+  text-decoration: underline;
+}
+.deniedBanner button {
+  display: flex;
+}
+
+.adminNotice {
+  font-size: var(--fs-caption);
+  color: var(--status-negative);
+}
+
 /* ---------- Main ---------- */
 .main {
   flex: 1;

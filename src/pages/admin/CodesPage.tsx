@@ -1,15 +1,18 @@
-import { useState } from 'react'
-import { Copy, Lock, Plus, RefreshCw } from 'lucide-react'
+import { useState, type CSSProperties } from 'react'
+import { Check, Copy, Lock, Plus, RefreshCw, X } from 'lucide-react'
 import { Button, Card, Empty, Loadable, Switch } from '../../components/ui'
 import { whenLive } from '../../api/useResource'
 import {
+  createCodeDetail,
   errorText,
   evictCodeCache,
   isLive,
   issueClientSecret,
-  saveCodeEnabled,
+  setCodeEnabled,
+  splitRef,
   useCodeGroups,
   useCodeTable,
+  type CodeColumn,
   type CodeGroupView,
   type CodeRowView,
 } from '../../api/admin'
@@ -25,6 +28,9 @@ export function CodesPage() {
   )
 }
 
+type Draft = { code: string; name: string; refs: string[] }
+const EMPTY_DRAFT: Draft = { code: '', name: '', refs: ['', '', '', '', ''] }
+
 function CodesView({ groups }: { groups: CodeGroupView[] }) {
   const [group, setGroup] = useState(() => (groups.some((g) => g.code === 'SSO_APP') ? 'SSO_APP' : (groups[0]?.code ?? '')))
   const [selectedRow, setSelectedRow] = useState('penpot')
@@ -32,9 +38,19 @@ function CodesView({ groups }: { groups: CodeGroupView[] }) {
   const [copied, setCopied] = useState(false)
   const [cacheMsg, setCacheMsg] = useState('')
   const [err, setErr] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
+  const [busy, setBusy] = useState(false)
 
   const g = groups.find((x) => x.code === group)
   const table = useCodeTable(g)
+
+  const pickGroup = (code: string) => {
+    setGroup(code)
+    setAdding(false)
+    setDraft(EMPTY_DRAFT)
+    setErr('')
+  }
 
   const updateRow = (code: string, patch: Partial<CodeRowView>) =>
     table.setData((t) => (t ? { ...t, rows: t.rows.map((r) => (r.code === code ? { ...r, ...patch } : r)) } : t))
@@ -43,7 +59,7 @@ function CodesView({ groups }: { groups: CodeGroupView[] }) {
     setErr('')
     updateRow(r.code, { enabled })
     try {
-      await whenLive(() => saveCodeEnabled(group, r.raw!, enabled))
+      await whenLive(() => setCodeEnabled(group, r.code, enabled))
     } catch (e) {
       setErr(errorText(e))
       updateRow(r.code, { enabled: !enabled })
@@ -56,13 +72,14 @@ function CodesView({ groups }: { groups: CodeGroupView[] }) {
       // 목업: 브라우저에서 만든 값. 실서버: 서버가 발급한 값 (한 번만 보임)
       const live = await whenLive(() => issueClientSecret(app))
       const value =
-        live ??
+        live?.secret ??
         `${app.slice(0, 3)}_` +
           Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(36).padStart(2, '0'))
             .join('')
             .slice(0, 32)
       setSecret({ app, value })
       setCopied(false)
+      updateRow(app, { secretIssuedAt: live?.issuedAt ?? new Date().toISOString() })
     } catch (e) {
       setErr(errorText(e, 'secret 을 발급하지 못했어요.'))
     }
@@ -80,12 +97,47 @@ function CodesView({ groups }: { groups: CodeGroupView[] }) {
     }
   }
 
+  const closeAdd = () => {
+    setAdding(false)
+    setDraft(EMPTY_DRAFT)
+    setErr('')
+  }
+
+  const addRow = async (columns: CodeColumn[], rows: CodeRowView[]) => {
+    const code = draft.code.trim()
+    const name = draft.name.trim()
+    if (!/^[A-Za-z0-9_-]{1,50}$/.test(code)) return setErr("상세 코드는 영문, 숫자, '_', '-' 50자 이하예요.")
+    if (!name) return setErr('표시 이름을 적어 주세요.')
+    if (rows.some((r) => r.code === code)) return setErr('이미 있는 상세 코드예요.')
+    // 쓰는 칸만 보내고 나머지는 비운다 (ref1~ref5 순서)
+    const refs = draft.refs.map((v, i) => (columns.some((c) => c.index === i) ? v.trim() : ''))
+    const displayOrder = rows.reduce((m, r) => Math.max(m, r.displayOrder), 0) + 1
+    setBusy(true)
+    setErr('')
+    try {
+      const created = (await whenLive(() => createCodeDetail(group, { detailCodeId: code, description: name, refs, displayOrder }))) ?? {
+        code,
+        name,
+        refs,
+        enabled: true,
+        displayOrder,
+      }
+      table.setData((t) => (t ? { ...t, rows: [...t.rows, created] } : t))
+      setSelectedRow(code)
+      closeAdd()
+    } catch (e) {
+      setErr(errorText(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className={s.layout}>
       <Card className={s.groups}>
         <div className={a.muted}>그룹</div>
         {groups.map((c) => (
-          <button key={c.code} type="button" className={c.code === group ? `${s.group} ${s.groupOn}` : s.group} onClick={() => setGroup(c.code)}>
+          <button key={c.code} type="button" className={c.code === group ? `${s.group} ${s.groupOn}` : s.group} onClick={() => pickGroup(c.code)}>
             <strong>
               {c.code}
               {c.isNew && <span className={s.new}>새</span>}
@@ -111,25 +163,31 @@ function CodesView({ groups }: { groups: CodeGroupView[] }) {
                 </h2>
                 {table.data?.desc && <small>{table.data.desc}</small>}
               </div>
-              {/* 명세 확인 필요: 행 추가 화면 · 기존 POST 본문이 아직 없어 버튼만 둔다 */}
-              <Button variant="tint" icon={Plus}>
-                행 추가
-              </Button>
+              {/* 백엔드 rowAddable 인 그룹만 상세 코드를 더할 수 있다 */}
+              {g.rowAddable && table.data && (
+                <Button variant="tint" icon={Plus} onClick={() => setAdding(true)} disabled={adding}>
+                  행 추가
+                </Button>
+              )}
             </div>
             {err && <p className={a.err}>{err}</p>}
 
             <Loadable resource={table} label="상세 코드">
-              {(t) =>
-                !t ? (
-                  <Empty>{isLive() ? '이 그룹에는 상세 코드가 없어요.' : '이 그룹의 상세 코드는 목업에 없어요.'}</Empty>
-                ) : (
+              {(t) => {
+                if (!t) return <Empty>{isLive() ? '이 그룹에는 상세 코드가 없어요.' : '이 그룹의 상세 코드는 목업에 없어요.'}</Empty>
+                // secret 발급은 sso-admin 만 (아니면 버튼을 숨긴다)
+                const showLock = group === 'SSO_APP' && t.canIssueSecret
+                const cols = { '--ref-cols': `repeat(${Math.max(1, t.columns.length)}, minmax(0, 1fr))` } as CSSProperties
+                return (
                   <>
-                    <div className={s.thead}>
+                    <div className={s.thead} style={cols}>
                       <span>코드</span>
                       <span>표시 이름</span>
+                      {t.columns.length === 0 && <span />}
                       {t.columns.map((c) => (
-                        <span key={c}>{c}</span>
+                        <span key={c.index}>{c.label}</span>
                       ))}
+                      <span>사용</span>
                       <span />
                     </div>
                     {t.rows.length === 0 && <Empty>이 그룹에는 상세 코드가 없어요.</Empty>}
@@ -137,21 +195,32 @@ function CodesView({ groups }: { groups: CodeGroupView[] }) {
                       <div
                         key={r.code}
                         className={r.code === selectedRow ? `${s.row} ${s.rowOn}` : s.row}
+                        style={cols}
                         onClick={() => setSelectedRow(r.code)}
                       >
                         <strong>{r.code}</strong>
-                        <span>{r.name}</span>
-                        <span className={s.wrap}>{r.ref1}</span>
-                        <span className={s.refs}>
-                          {r.ref2.map((x) => (
-                            <span key={x} className={s.ref}>
-                              {x}
-                            </span>
-                          ))}
+                        <span>
+                          {r.name}
+                          {group === 'SSO_APP' && r.secretIssuedAt === null && <span className={s.noSecret}> · secret 발급 전</span>}
                         </span>
-                        <span className={s.wrap}>{r.ref4}</span>
+                        {t.columns.length === 0 && <span />}
+                        {t.columns.map((c) =>
+                          c.list ? (
+                            <span key={c.index} className={s.refs}>
+                              {splitRef(r.refs[c.index]).map((x) => (
+                                <span key={x} className={s.ref}>
+                                  {x}
+                                </span>
+                              ))}
+                            </span>
+                          ) : (
+                            <span key={c.index} className={s.wrap}>
+                              {r.refs[c.index]}
+                            </span>
+                          ),
+                        )}
                         <Switch checked={r.enabled} onChange={(v) => toggleEnabled(r, v)} label={`${r.code} 사용`} />
-                        {group === 'SSO_APP' ? (
+                        {showLock ? (
                           <button type="button" className={s.lock} onClick={() => issueSecret(r.code)} title="client secret 새로 발급">
                             <Lock size={16} />
                           </button>
@@ -160,9 +229,39 @@ function CodesView({ groups }: { groups: CodeGroupView[] }) {
                         )}
                       </div>
                     ))}
+
+                    {adding && (
+                      <div className={s.addForm}>
+                        <label className={a.field}>
+                          상세 코드
+                          <input className={a.input} maxLength={50} value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value })} />
+                        </label>
+                        <label className={a.field}>
+                          표시 이름
+                          <input className={a.input} maxLength={255} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+                        </label>
+                        {t.columns.map((c) => (
+                          <label key={c.index} className={a.field}>
+                            {c.label}
+                            <input
+                              className={a.input}
+                              maxLength={255}
+                              value={draft.refs[c.index]}
+                              onChange={(e) => setDraft({ ...draft, refs: draft.refs.map((v, i) => (i === c.index ? e.target.value : v)) })}
+                            />
+                          </label>
+                        ))}
+                        <Button variant="secondary" icon={X} onClick={closeAdd}>
+                          취소
+                        </Button>
+                        <Button icon={Check} onClick={() => addRow(t.columns, t.rows)} disabled={busy}>
+                          더하기
+                        </Button>
+                      </div>
+                    )}
                   </>
                 )
-              }
+              }}
             </Loadable>
           </>
         )}

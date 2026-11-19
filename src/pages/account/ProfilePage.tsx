@@ -1,9 +1,11 @@
-import { useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Bell, Check, ChevronRight, GitBranch, Lock, Shield, Upload, X } from 'lucide-react'
 import { Avatar, Button, Card, Chip, Columns, Loadable, Switch } from '../../components/ui'
 import { PageHeader } from '../../layouts/PageHeader'
 import { whenLive } from '../../api/useResource'
+import { PASSWORD_PATH } from '../../api/client'
+import { keepModeAcrossReload } from '../../lib/dataMode'
 import {
   deleteProfilePhoto,
   errorText,
@@ -44,6 +46,15 @@ function ProfileView({ data }: { data: ProfileData }) {
   const [github, setGithub] = useState(data.github)
   // GitHub 연결에서 돌아왔을 때 (?github=linked | error&code=)
   const [githubMsg, setGithubMsg] = useState(() => githubLinkResult(window.location.search))
+  const [params, setParams] = useSearchParams()
+  // 결과는 한 번만 보여 주고 주소에서 지운다 (새로고침해도 다시 뜨지 않게)
+  useEffect(() => {
+    if (!params.has('github')) return
+    const next = new URLSearchParams(params)
+    next.delete('github')
+    next.delete('code')
+    setParams(next, { replace: true })
+  }, [params, setParams])
   const [prefs, setPrefs] = useState(data.prefs)
   const [prefError, setPrefError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -106,7 +117,10 @@ function ProfileView({ data }: { data: ProfileData }) {
 
   const linkGithub = () => {
     // 실서버: GitHub 로 페이지 이동 (G-1). 돌아오면 ?github= 로 결과를 알려 준다
-    if (isLive()) return window.location.assign(githubLinkStartUrl())
+    if (isLive()) {
+      keepModeAcrossReload()
+      return window.location.assign(githubLinkStartUrl())
+    }
     setGithub({ login: 'minseo-k', orgLabel: 'Hoseo-I-Turtle 조직 · students 팀' })
   }
   const unlink = async () => {
@@ -190,7 +204,7 @@ function ProfileView({ data }: { data: ProfileData }) {
           </label>
 
           <div className={s.bottom}>
-            <Link to="/password" className={s.pwLink}>
+            <Link to={PASSWORD_PATH} className={s.pwLink}>
               <Lock size={16} /> 비밀번호 바꾸기
             </Link>
             {saveError && <small className={s.err}>{saveError}</small>}

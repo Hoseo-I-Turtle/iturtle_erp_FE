@@ -2,7 +2,6 @@ import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Calendar, ClipboardList, Clock, FileText, ListChecks, MapPin, Pencil, Plus, Save, TriangleAlert, Kanban, X } from 'lucide-react'
 import { Avatar, Breadcrumb, Button, Card, Checkbox, Chip, Columns, Empty, ListItem, Loadable, Note, SectionHead } from '../../components/ui'
-import { findProject } from '../../mocks/projects'
 import type { Minute } from '../../mocks/minutes'
 import { whenLive, type Resource } from '../../api/useResource'
 import {
@@ -18,6 +17,7 @@ import {
   type MinuteView,
 } from '../../api/content'
 import s from './MinutesPage.module.css'
+import { useProjectHeader } from '../../api/projects'
 
 type SectionKey = MinuteSection
 const SECTIONS: { key: SectionKey; label: string }[] = [
@@ -28,7 +28,8 @@ const SECTIONS: { key: SectionKey; label: string }[] = [
 
 export function MinutesPage() {
   const { key } = useParams()
-  const p = findProject(key)
+  // 실서버면 GET /projects/{key} (목업이면 mocks) — 목업 프로젝트 이름이 실서버 화면에 섞이지 않게
+  const p = useProjectHeader(key).data ?? { projectKey: key ?? '', name: key ?? '' }
   // 실서버에는 목업에 없는 프로젝트도 있으니 주소의 키를 그대로 쓴다
   const projectKey = key ?? p.projectKey
   const projectName = p.projectKey === projectKey ? p.name : projectKey

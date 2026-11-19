@@ -5,6 +5,7 @@ import { Avatar, Button, Card, Loadable, Note, Select, Switch } from '../../comp
 import { ApiError } from '../../api/client'
 import { whenLive } from '../../api/useResource'
 import {
+  AccessSaveError,
   requestVaultPath,
   retryProvision,
   saveServiceAccess,
@@ -112,9 +113,16 @@ function AccessPanel({ projectKey, view, onSaved }: { projectKey: string; view: 
         if (nv) onSaved(nv)
       })
       .catch((e: unknown) => {
-        // 명세 확인 필요: 서비스 설정(P-17) · 구성원(P-18) 을 나눠 저장해서, 앞의 것만 저장되고 실패할 수 있다
-        setSaved(before)
-        setError(errMsg(e, '저장하지 못했어요. 잠시 뒤 다시 해 주세요.'))
+        // 백엔드에 한 번에 저장하는 API 가 없어 서비스 설정(P-17) · 구성원(P-18) 을 나눠 저장한다.
+        // 앞의 것만 저장되고 실패하면 저장된 상태를 기준으로 삼아, 남은 바뀐 값은 다시 저장할 수 있게 둔다
+        const partial = e instanceof AccessSaveError ? e.saved : null
+        setSaved(partial ? partial.state : before)
+        const cause = e instanceof AccessSaveError ? e.reason : e
+        setError(
+          partial
+            ? `일부만 저장됐어요. ${errMsg(cause, '나머지를 저장하지 못했어요.')}`
+            : errMsg(cause, '저장하지 못했어요. 잠시 뒤 다시 해 주세요.'),
+        )
       })
       .finally(() => setSaving(false))
   }

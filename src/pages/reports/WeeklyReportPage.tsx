@@ -38,6 +38,8 @@ export function WeeklyReportPage() {
   const [error, setError] = useState<string | null>(null)
   const timer = useRef<number | undefined>(undefined)
   const refreshTimer = useRef<number | undefined>(undefined)
+  // 이 화면에서 "작업 넣기"로 되돌린 작업 (주마다). 저장 때 excluded: false 로 보내 서버에 남은 '뺌'을 푼다
+  const restored = useRef(new Map<string, Set<string>>())
 
   const week = weeks[weekIdx]
   const isCurrent = weekIdx === weeks.length - 1
@@ -61,9 +63,10 @@ export function WeeklyReportPage() {
     setSaveState('saving')
     window.clearTimeout(timer.current)
     const weekStartOn = week.weekStartOn
+    const includedKeys = [...(restored.current.get(weekStartOn) ?? [])].filter((k) => !excludedKeys.includes(k))
     timer.current = window.setTimeout(async () => {
       try {
-        const saved = await whenLive(() => saveMyReport(weekStartOn, fields, excludedKeys))
+        const saved = await whenLive(() => saveMyReport(weekStartOn, fields, excludedKeys, includedKeys))
         if (saved) mine.setData((r) => ({ ...r, reportId: saved.reportId, submitted: saved.submitted, editable: saved.editable }))
         setSaveState('saved')
       } catch (e) {
@@ -89,8 +92,23 @@ export function WeeklyReportPage() {
   const removeTask = (key: string) => {
     const r = mine.data
     if (!r) return
+    const chip = r.tasks.find((t) => t.key === key)
     const excludedKeys = [...r.excludedKeys, key]
-    setMine((x) => ({ ...x, tasks: x.tasks.filter((t) => t.key !== key), excludedKeys }))
+    restored.current.get(week.weekStartOn)?.delete(key)
+    setMine((x) => ({ ...x, tasks: x.tasks.filter((t) => t.key !== key), excluded: chip ? [...x.excluded, chip] : x.excluded, excludedKeys }))
+    scheduleSave(r.fields, excludedKeys)
+  }
+  /** 뺀 작업을 다시 넣는다. 서버는 자동 채우기 대상(그 주에 완료 · 진행한 내 작업)만 받아서(P238) 뺀 작업만 되돌릴 수 있다 */
+  const restoreTask = (key: string) => {
+    const r = mine.data
+    if (!r) return
+    const chip = r.excluded.find((t) => t.key === key)
+    if (!chip) return
+    const excludedKeys = r.excludedKeys.filter((k) => k !== key)
+    const set = restored.current.get(week.weekStartOn) ?? new Set<string>()
+    set.add(key)
+    restored.current.set(week.weekStartOn, set)
+    setMine((x) => ({ ...x, tasks: [...x.tasks, chip], excluded: x.excluded.filter((t) => t.key !== key), excludedKeys }))
     scheduleSave(r.fields, excludedKeys)
   }
   const submit = async () => {
@@ -139,7 +157,7 @@ export function WeeklyReportPage() {
     <>
       <PageHeader
         title="주간 보고"
-        subtitle={`${week.label} (${week.range}) · 마감 ${week.deadline}`}
+        subtitle={`${week.label} (${week.range}) · 마감 ${mine.data?.deadline ?? week.deadline}`}
         action={
           <Button icon={submitted ? Check : Send} onClick={submit} disabled={!isCurrent || !mine.data}>
             {submitted ? '제출함' : '제출하기'}
@@ -198,7 +216,7 @@ export function WeeklyReportPage() {
                         </label>
                       ))}
 
-                      <TaskBox tasks={r.tasks} onRemove={removeTask} />
+                      <TaskBox tasks={r.tasks} excluded={r.excluded} onRemove={removeTask} onRestore={restoreTask} />
 
                       <Loadable resource={gh} label="GitHub 활동">
                         {(g) => <GithubBox g={g} onRefresh={() => refreshGithub(gh)} />}
@@ -317,7 +335,18 @@ export function WeeklyReportPage() {
   )
 }
 
-function TaskBox({ tasks, onRemove }: { tasks: MyWeekReport['tasks']; onRemove: (key: string) => void }) {
+function TaskBox({
+  tasks,
+  excluded,
+  onRemove,
+  onRestore,
+}: {
+  tasks: MyWeekReport['tasks']
+  excluded: MyWeekReport['excluded']
+  onRemove: (key: string) => void
+  onRestore: (key: string) => void
+}) {
+  const [picking, setPicking] = useState(false)
   const doneCount = tasks.filter((t) => t.status === '완료').length
   return (
     <div className={s.tasks}>
@@ -341,11 +370,34 @@ function TaskBox({ tasks, onRemove }: { tasks: MyWeekReport['tasks']; onRemove: 
             </button>
           </span>
         ))}
-        {/* 명세 확인 필요: 자동 채우기 대상이 아닌 작업은 넣을 수 없다 (WR-3 P238). 뺀 작업 되돌리기용으로 남겨 둠 */}
-        <button type="button" className={s.addTask}>
+        {/* 백엔드는 자동 채우기 대상이 아닌 작업을 받지 않는다 (WR-3 P238). 그래서 "작업 넣기"는 뺀 작업 되돌리기다 */}
+        <button
+          type="button"
+          className={s.addTask}
+          onClick={() => setPicking((v) => !v)}
+          disabled={excluded.length === 0}
+          title={excluded.length === 0 ? '뺀 작업이 없어요' : undefined}
+        >
           <Plus size={14} /> 작업 넣기
         </button>
       </div>
+      {picking && excluded.length > 0 && (
+        <div className={s.taskChips}>
+          {excluded.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              className={s.addTask}
+              onClick={() => {
+                onRestore(t.key)
+                if (excluded.length === 1) setPicking(false)
+              }}
+            >
+              <Plus size={14} /> <strong>{t.key}</strong> {t.title}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
