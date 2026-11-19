@@ -1,8 +1,11 @@
-// 목업 / 실서버 선택 — 브라우저(localStorage)에 기억한다
+// 목업 / 실서버 선택
+// - 고른 모드는 메모리에만 둔다 → 새로고침하면 항상 시작 화면(/start)으로 돌아간다
+// - 지난번에 고른 모드 · API 주소는 브라우저에 남겨 시작 화면에서 미리 골라 둔다
 export type DataMode = 'mock' | 'live'
 
-const MODE_KEY = 'iturtle.dataMode'
+const LAST_MODE_KEY = 'iturtle.lastDataMode'
 const BASE_KEY = 'iturtle.apiBase'
+let currentMode: DataMode | null = null
 
 /** 기본 API 주소: .env 의 VITE_API_BASE_URL, 없으면 같은 서버의 /api/v1 */
 export const DEFAULT_API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api/v1'
@@ -23,19 +26,27 @@ function write(key: string, value: string | null) {
   }
 }
 
+// 예전 버전이 남긴 "계속 기억" 값은 지운다
+write('iturtle.dataMode', null)
+
+/** 지금 쓰는 모드. 새로고침 직후에는 null */
 export function getDataMode(): DataMode | null {
-  const v = read(MODE_KEY)
-  return v === 'mock' || v === 'live' ? v : null
+  return currentMode
+}
+/** 시작 화면에서 미리 골라 둘 지난번 모드 */
+export function getLastDataMode(): DataMode {
+  return read(LAST_MODE_KEY) === 'live' ? 'live' : 'mock'
 }
 export function getApiBase() {
   return read(BASE_KEY) ?? DEFAULT_API_BASE
 }
 export function setDataMode(mode: DataMode, apiBase?: string) {
-  write(MODE_KEY, mode)
+  currentMode = mode
+  write(LAST_MODE_KEY, mode)
   if (apiBase !== undefined) write(BASE_KEY, apiBase)
 }
 export function clearDataMode() {
-  write(MODE_KEY, null)
+  currentMode = null
 }
 
 /** 실서버 연결 확인: 응답이 오기만 하면(401 포함) 서버가 살아 있다고 본다 */

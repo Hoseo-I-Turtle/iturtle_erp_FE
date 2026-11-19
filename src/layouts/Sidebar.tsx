@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Database, FlaskConical, Server, Settings } from 'lucide-react'
+import { Database, Server, Settings } from 'lucide-react'
 import { clearDataMode, type DataMode } from '../lib/dataMode'
-import { Avatar } from '../components/ui'
+import { Avatar, BrandLogo } from '../components/ui'
 import { NAV } from './nav'
 import s from './layout.module.css'
 
@@ -9,11 +9,8 @@ export function Sidebar({ mode }: { mode: DataMode }) {
   const navigate = useNavigate()
   return (
     <aside className={s.sidebar}>
-      <NavLink to="/" className={s.logo}>
-        <span className={s.logoMark}>
-          <FlaskConical size={24} strokeWidth={2} />
-        </span>
-        <span className={s.logoText}>Iturtle</span>
+      <NavLink to="/" className={`${s.logo} ${s.brand}`} aria-label="iturtle 홈">
+        <BrandLogo height={48} gap={19} />
       </NavLink>
 
       <nav className={s.nav}>

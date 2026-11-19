@@ -25,6 +25,7 @@ import { ProjectSettingsPage } from './pages/projects/ProjectSettingsPage'
 import { WeeklyReportPage } from './pages/reports/WeeklyReportPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { StartPage } from './pages/start/StartPage'
+import { ModeGate } from './layouts/ModeGate'
 import { LoginPage } from './pages/account/LoginPage'
 import { PasswordChangePage } from './pages/account/PasswordChangePage'
 import { SignupPage } from './pages/account/SignupPage'
@@ -33,8 +34,8 @@ import { NotificationsPage } from './pages/account/NotificationsPage'
 
 const router = createBrowserRouter([
   { path: '/start', element: <StartPage /> },
-  { path: '/login', element: <LoginPage /> },
-  { path: '/password', element: <PasswordChangePage /> },
+  { path: '/login', element: <ModeGate><LoginPage /></ModeGate> },
+  { path: '/password', element: <ModeGate><PasswordChangePage /></ModeGate> },
   { path: '/signup', element: <SignupPage /> },
   {
     element: <AppLayout />,

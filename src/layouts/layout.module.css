@@ -24,22 +24,14 @@
   gap: 12px;
   margin-bottom: 24px;
 }
-.logoMark {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--brand-400);
-  color: var(--text-on-dark);
-  display: flex;
-  align-items: center;
+/* 새 로고: 거북이(mark)와 글자(wordmark)를 따로 두고 간격을 띄운다. 이미지는 2배 해상도 */
+.brand {
+  gap: 19px;
+  /* 사이드바 가로 가운데 (좌우 안쪽 여백이 같아서 사이드바 기준 가운데가 된다) */
   justify-content: center;
+  align-self: stretch;
+  padding-right: 24px;
 }
-.logoText {
-  font-size: var(--fs-h2);
-  font-weight: 600;
-  color: var(--text-on-dark);
-}
-
 .nav {
   display: flex;
   flex-direction: column;

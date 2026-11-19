@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, CircleCheck, FlaskConical, Info, Shield } from 'lucide-react'
-import { Button, Checkbox } from '../../components/ui'
+import { Check, CircleCheck, Info, Shield } from 'lucide-react'
+import { BrandLogo, Button, Checkbox } from '../../components/ui'
 import { getDataMode } from '../../lib/dataMode'
 import { api, ApiError } from '../../api/client'
 import a from './auth.module.css'
@@ -49,10 +49,7 @@ export function SignupPage() {
     <div className={s.page}>
       <header className={s.top}>
         <Link to="/login" className={s.logo}>
-          <span className={s.mark}>
-            <FlaskConical size={18} />
-          </span>
-          Iturtle
+          <BrandLogo height={36} gap={14} />
         </Link>
         <span className={s.badge}>
           <Info size={14} /> 인턴 가입 신청 · 로그인 없이 신청

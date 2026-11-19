@@ -14,15 +14,6 @@
   font-size: 40px;
   font-weight: 600;
 }
-.mark {
-  width: 72px;
-  height: 72px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--brand-400);
-}
 .main {
   display: flex;
   align-items: center;

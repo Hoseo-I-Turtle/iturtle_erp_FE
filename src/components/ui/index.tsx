@@ -388,3 +388,4 @@ export function KeyValue({ items }: { items: [string, ReactNode][] }) {
 }
 
 export { Loadable } from './Loadable'
+export { BrandLogo } from './BrandLogo'

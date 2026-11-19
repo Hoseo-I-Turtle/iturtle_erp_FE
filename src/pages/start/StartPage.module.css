@@ -24,16 +24,6 @@
   font-size: var(--fs-h3);
   font-weight: 600;
 }
-.mark {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--brand-400);
-  color: var(--text-on-dark);
-}
 .box h1 {
   font-size: var(--fs-h1);
   font-weight: 600;

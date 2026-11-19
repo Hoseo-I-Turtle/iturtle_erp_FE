@@ -17,15 +17,6 @@
   gap: 10px;
   font-weight: 600;
 }
-.mark {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--brand-400);
-}
 .badge {
   display: inline-flex;
   align-items: center;

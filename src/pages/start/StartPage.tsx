@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, Database, FlaskConical, Loader, Server, TriangleAlert } from 'lucide-react'
-import { Button } from '../../components/ui'
-import { getApiBase, getDataMode, pingServer, setDataMode, type DataMode } from '../../lib/dataMode'
+import { Check, Database, Loader, Server, TriangleAlert } from 'lucide-react'
+import { BrandLogo, Button } from '../../components/ui'
+import { getApiBase, getLastDataMode, pingServer, setDataMode, type DataMode } from '../../lib/dataMode'
 import s from './StartPage.module.css'
 
 /** 앱에 들어가기 전에 목업 / 실서버를 고르는 화면 */
 export function StartPage() {
   const navigate = useNavigate()
-  const [mode, setMode] = useState<DataMode>(() => getDataMode() ?? 'mock')
+  const [mode, setMode] = useState<DataMode>(getLastDataMode)
   const [base, setBase] = useState(getApiBase)
   const [check, setCheck] = useState<{ state: 'idle' | 'checking' | 'ok' | 'fail'; message?: string }>({ state: 'idle' })
 
@@ -27,10 +27,7 @@ export function StartPage() {
     <div className={s.page}>
       <div className={s.box}>
         <div className={s.logo}>
-          <span className={s.mark}>
-            <FlaskConical size={24} />
-          </span>
-          Iturtle
+          <BrandLogo onDark={false} height={48} gap={19} />
         </div>
         <h1>어떤 데이터로 볼까요?</h1>
         <p className={s.sub}>나중에 사이드바 아래에서 언제든 바꿀 수 있어요.</p>
