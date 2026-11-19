@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Copy, Info, Link2, Lock, Mail, Plus, Shield, X } from 'lucide-react'
+import { Check, Copy, Info, Link2, Lock, Mail, MailCheck, Plus, Send, Shield, X } from 'lucide-react'
 import { Button, Modal } from '../../../components/ui'
 import {
   checkIdentifiers,
@@ -7,6 +7,7 @@ import {
   errorText,
   notifyMembersChanged,
   useAddMemberPresets,
+  useInvitationPolicy,
   type IdentifierCheck,
   type NewMember,
 } from '../../../api/admin'
@@ -42,12 +43,15 @@ function useIdCheck(loginId: string, studentNumber: string) {
 }
 
 /**
- * 구성원 추가 (Penpot 06 "구성원 추가", 3-1). 처음 비밀번호는 서버가 만들고 이 화면에서 한 번만 보여 준다.
- * 첫 로그인 때 새 비밀번호로 바꾸게 한다 (로그인이 /account/password 로 보낸다).
- * 초대 메일은 아직 메일 발송 수단이 없어 두지 않았다 — 처음 비밀번호를 직접 전해 준다.
+ * 구성원 추가 (Penpot 06 "구성원 추가", 3-1). 두 가지 중 하나:
+ * - 처음 비밀번호: 서버가 만들고 이 화면에서 한 번만 보여 준다. 첫 로그인 때 새 비밀번호로 바꾸게 한다 (/account/password).
+ * - 초대 메일: 24시간 일회용 링크(/account/setup#token=…)를 메일로 보낸다. 메일 설정이 꺼져 있으면(3-9) 고를 수 없다.
  */
 export function MemberAddModal({ onClose }: { onClose: () => void }) {
   const presets = useAddMemberPresets().data ?? []
+  const policy = useInvitationPolicy().data
+  const mailEnabled = policy?.mailEnabled ?? false
+  const [invite, setInvite] = useState(false)
   const [name, setName] = useState('')
   const [loginId, setLoginId] = useState('')
   const [studentNumber, setStudentNumber] = useState('')
@@ -59,7 +63,7 @@ export function MemberAddModal({ onClose }: { onClose: () => void }) {
   const [presetPick, setPresetPick] = useState<string | null | undefined>(undefined)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [done, setDone] = useState<{ loginId: string; password: string } | null>(null)
+  const [done, setDone] = useState<{ loginId: string; password: string | null; invited: boolean; email: string } | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
 
   const check = useIdCheck(loginId.trim(), studentNumber.trim())
@@ -79,10 +83,11 @@ export function MemberAddModal({ onClose }: { onClose: () => void }) {
     if (!/^[a-z][a-z0-9._-]{3,29}$/.test(loginId.trim())) list.push('아이디')
     if (!/^[A-Z0-9]{1,20}$/.test(number)) list.push('구성원 번호')
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) list.push('이메일')
+    if (invite && !email.trim()) list.push('이메일(초대 메일에 필요)')
     if (phone.trim() && !/^[0-9-]{9,20}$/.test(phone.trim())) list.push('연락처')
     if (!joinedOn) list.push('입실일')
     return list
-  }, [name, loginId, number, email, phone, joinedOn])
+  }, [name, loginId, number, email, phone, joinedOn, invite])
 
   const submit = async () => {
     setError(null)
@@ -101,8 +106,9 @@ export function MemberAddModal({ onClose }: { onClose: () => void }) {
         phone: phone.trim() || null,
         presetIds: preset ? [Number(preset.id)].filter((n) => Number.isFinite(n)) : [],
         roleCodes: preset ? preset.roles : [],
+        sendInvitation: invite && mailEnabled,
       })
-      setDone({ loginId: r.loginId, password: r.temporaryPassword })
+      setDone({ loginId: r.loginId, password: r.temporaryPassword, invited: r.invitationSent, email: email.trim() })
       notifyMembersChanged()
     } catch (e) {
       setError(errorText(e, '구성원을 만들지 못했어요.'))
@@ -121,7 +127,36 @@ export function MemberAddModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  if (done) {
+  if (done?.invited) {
+    return (
+      <Modal
+        title="초대 메일을 보냈어요"
+        onClose={onClose}
+        width={560}
+        footer={
+          <Button icon={Check} onClick={onClose}>
+            닫기
+          </Button>
+        }
+      >
+        <div className={f.form}>
+          <p className={s.lead}>
+            <strong>{name}</strong> 님({done.email})에게 비밀번호를 정하는 링크를 보냈어요. 링크에서 비밀번호를 정하면 바로 로그인할 수 있어요.
+          </p>
+          <div className={s.secret}>
+            <span>아이디</span>
+            <code>{done.loginId}</code>
+          </div>
+          <p className={f.hint}>
+            <MailCheck size={12} /> 링크는 {policy?.ttlHours ?? 24}시간 동안 한 번만 쓸 수 있어요. 메일이 안 왔으면 구성원 상세의 "초대 메일 다시 보내기"로 새 링크를 보내요.
+          </p>
+        </div>
+      </Modal>
+    )
+  }
+
+  if (done && done.password) {
+    const password = done.password
     return (
       <Modal
         title="구성원을 만들었어요"
@@ -143,8 +178,8 @@ export function MemberAddModal({ onClose }: { onClose: () => void }) {
           </div>
           <div className={s.secret}>
             <span>처음 비밀번호</span>
-            <code>{done.password}</code>
-            <Button variant="secondary" icon={copied === 'pw' ? Check : Copy} onClick={() => void copy('pw', done.password)}>
+            <code>{password}</code>
+            <Button variant="secondary" icon={copied === 'pw' ? Check : Copy} onClick={() => void copy('pw', password)}>
               {copied === 'pw' ? '복사함' : '복사'}
             </Button>
           </div>
@@ -242,7 +277,7 @@ export function MemberAddModal({ onClose }: { onClose: () => void }) {
               <Mail size={18} />
               <input type="email" value={email} maxLength={254} onChange={(e) => setEmail(e.target.value)} placeholder="daeun@hoseo.edu" />
             </span>
-            <span className={f.hint}>알림 · 비밀번호 재설정에 쓰여요</span>
+            <span className={f.hint}>{invite ? '초대 메일을 이 주소로 보내요' : '알림 · 비밀번호 재설정에 쓰여요'}</span>
           </label>
           <label className={f.field}>
             <span className={f.label}>연락처</span>
@@ -293,12 +328,38 @@ export function MemberAddModal({ onClose }: { onClose: () => void }) {
           </label>
         </div>
 
-        <div className={`${f.option} ${f.optionOn}`}>
-          <Lock size={18} className={s.optIcon} />
-          <div className={f.optionText}>
-            <strong>처음 비밀번호 · 자동 생성</strong>
-            <span>만들면 한 번만 보여 줘요. 첫 로그인 때 새 비밀번호로 바꾸게 해요. 초대 메일은 아직 보내지 않아요 — 직접 전해 주세요.</span>
-          </div>
+        <div className={f.row2} role="radiogroup" aria-label="계정 전달 방법">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!invite}
+            className={!invite ? `${f.option} ${f.optionOn} ${s.choice}` : `${f.option} ${s.choice}`}
+            onClick={() => setInvite(false)}
+          >
+            <Lock size={18} className={s.optIcon} />
+            <span className={f.optionText}>
+              <strong>처음 비밀번호 · 자동 생성</strong>
+              <span>만들면 한 번만 보여 줘요. 직접 전해 주면 첫 로그인 때 새 비밀번호로 바꾸게 해요.</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={invite}
+            disabled={!mailEnabled}
+            className={invite ? `${f.option} ${f.optionOn} ${s.choice}` : `${f.option} ${s.choice}`}
+            onClick={() => mailEnabled && setInvite(true)}
+          >
+            <Send size={18} className={s.optIcon} />
+            <span className={f.optionText}>
+              <strong>초대 메일 보내기 ({policy?.ttlHours ?? 24}시간 링크)</strong>
+              <span>
+                {mailEnabled
+                  ? '메일의 링크에서 본인이 비밀번호를 정해요. 이메일이 필요해요.'
+                  : '메일 설정이 없어 지금은 쓸 수 없어요 — 처음 비밀번호를 보여 줘요.'}
+              </span>
+            </span>
+          </button>
         </div>
 
         <div className={s.signup}>

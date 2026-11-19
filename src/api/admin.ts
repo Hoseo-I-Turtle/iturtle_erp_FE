@@ -1322,12 +1322,63 @@ export type NewMember = {
   phone: string | null
   presetIds: number[]
   roleCodes: string[]
+  /** true 면 처음 비밀번호 대신 초대 메일 (24시간 링크) — 이메일 필수, 메일 설정이 꺼져 있으면 M039 */
+  sendInvitation?: boolean
 }
 
-/** 3-1 구성원 만들기 → 처음 비밀번호 (이 응답에서만 보인다) */
-export async function createMember(m: NewMember) {
-  if (!isLive()) return { memberId: 0, loginId: m.loginId, temporaryPassword: 'Mock-Temp-2026!' }
-  return api<{ memberId: number; loginId: string; temporaryPassword: string }>('/members', { method: 'POST', body: m })
+export type CreatedMember = { memberId: number; loginId: string; temporaryPassword: string | null; invitationSent: boolean }
+
+/** 3-1 구성원 만들기 → 처음 비밀번호 (이 응답에서만 보인다). 초대 메일로 만들면 비밀번호 없이 invitationSent */
+export async function createMember(m: NewMember): Promise<CreatedMember> {
+  if (!isLive()) {
+    return m.sendInvitation
+      ? { memberId: 0, loginId: m.loginId, temporaryPassword: null, invitationSent: true }
+      : { memberId: 0, loginId: m.loginId, temporaryPassword: 'Mock-Temp-2026!', invitationSent: false }
+  }
+  const r = await api<{ memberId: number; loginId: string; temporaryPassword: string | null; invitationSent?: boolean }>('/members', {
+    method: 'POST',
+    body: m,
+  })
+  return { ...r, invitationSent: Boolean(r.invitationSent) }
+}
+
+/* ---------- 초대 메일 (3-9 ~ 3-11) ---------- */
+
+export type InvitationPolicy = { mailEnabled: boolean; ttlHours: number }
+export type InvitationStatus = 'NONE' | 'PENDING' | 'SENT' | 'FAILED' | 'EXPIRED' | 'COMPLETED'
+export type InvitationView = {
+  status: InvitationStatus
+  email: string | null
+  requestedAt: string | null
+  sentAt: string | null
+  expiresAt: string | null
+  usedAt: string | null
+  failureReason: string | null
+}
+
+/** 3-9 초대 메일을 보낼 수 있는지 (목업은 켜져 있는 것으로) */
+export function useInvitationPolicy() {
+  return useResource<InvitationPolicy>(
+    'invitation-policy',
+    () => ({ mailEnabled: true, ttlHours: 24 }),
+    () => api<InvitationPolicy>('/members/invitation-policy'),
+  )
+}
+
+const MOCK_INVITATION: InvitationView = {
+  status: 'NONE', email: null, requestedAt: null, sentAt: null, expiresAt: null, usedAt: null, failureReason: null,
+}
+
+/** 3-10 구성원의 가장 최근 초대 */
+export async function fetchInvitation(memberId: number): Promise<InvitationView> {
+  if (!isLive()) return MOCK_INVITATION
+  return api<InvitationView>(`/members/${memberId}/invitation`)
+}
+
+/** 3-11 초대 메일 다시 보내기 (새 링크, 옛 링크는 끝남) → PENDING */
+export async function resendInvitation(memberId: number): Promise<InvitationView> {
+  if (!isLive()) return { ...MOCK_INVITATION, status: 'SENT', sentAt: new Date().toISOString() }
+  return api<InvitationView>(`/members/${memberId}/invitation`, { method: 'POST' })
 }
 
 /** 구성원 목록이 다시 불러오게 알린다 (구성원 추가 모달 → 관리 · 구성원) */
