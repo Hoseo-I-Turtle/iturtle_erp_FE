@@ -1,0 +1,107 @@
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.item {
+  display: flex;
+  gap: 12px;
+}
+.reply {
+  margin-left: 40px;
+}
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.meta {
+  display: flex;
+  gap: 6px;
+  font-size: var(--fs-caption);
+}
+.meta strong {
+  font-weight: 500;
+}
+.meta span {
+  color: var(--text-muted);
+}
+.text {
+  margin: 0;
+  color: var(--brand-500);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.deleted {
+  margin: 0;
+  color: var(--text-muted);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: var(--fs-caption);
+}
+.actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.actions button:hover {
+  color: var(--brand-500);
+}
+.confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--status-negative);
+}
+.actions .danger {
+  color: var(--status-negative);
+  font-weight: 600;
+}
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.textarea {
+  resize: vertical;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-default);
+  font: inherit;
+}
+.composerButtons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.error {
+  margin: 0;
+  color: var(--status-negative);
+  font-size: var(--fs-caption);
+}

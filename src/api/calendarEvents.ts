@@ -288,6 +288,18 @@ export async function saveEvent(f: EventForm, edit: { detail: EventDetail; scope
   await api(`/calendar-events/${detail.eventId}`, { method: 'PATCH', query, body: patchBody(detail.form, f, detail.recurring ? scope : null) })
 }
 
+/**
+ * 지우기 (CL-5). 반복 일정이면 범위(THIS 그 회차 · FOLLOWING 이후 모두 · ALL 전부)와 그 회차 시각을 보낸다.
+ * 공용 일정이면 참석자에게 취소 알림이 간다 (서버 규칙). 목업 모드면 보내지 않는다
+ */
+export async function deleteEvent(detail: EventDetail, scope: EditScope | null): Promise<void> {
+  if (getDataMode() !== 'live') return
+  const query: Record<string, string> = {}
+  if (detail.recurring && scope) query.scope = scope
+  if (detail.recurring && scope !== 'ALL' && detail.occurrence) query.occurrence = detail.occurrence
+  await api(`/calendar-events/${detail.eventId}`, { method: 'DELETE', query })
+}
+
 // ───────────────────────── 겹치는 일정 (CL-12) ─────────────────────────
 
 export type Conflict = { member: string; title: string | null; busyOnly: boolean; time: string }

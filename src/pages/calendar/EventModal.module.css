@@ -243,3 +243,32 @@
     flex-wrap: wrap;
   }
 }
+
+/* 지우기 확인 줄 */
+.confirmDelete {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--status-negative-bg);
+  color: var(--status-negative);
+  font-size: var(--fs-caption);
+}
+.dangerButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--status-negative);
+  color: #fff;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.dangerButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

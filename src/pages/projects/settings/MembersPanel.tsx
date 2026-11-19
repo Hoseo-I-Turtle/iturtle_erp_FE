@@ -6,12 +6,13 @@ import {
   addProjectMember,
   changeMemberRole,
   errText,
-  removeProjectMember,
   useCreateOptions,
   type ProjectSettings,
   type SettingsMember,
 } from '../../../api/projectSettings'
+import { removeMemberWithHandover } from '../../../api/projectLinks'
 import { MEMBER_TYPE_NAME, type MemberType } from '../../../mocks/members'
+import { RemoveMemberDialog } from './RemoveMemberDialog'
 import s from './panels.module.css'
 
 type Props = { settings: ProjectSettings; onChange: (p: Partial<ProjectSettings>) => void; onReload: () => void }
@@ -27,6 +28,7 @@ export function MembersPanel({ settings, onChange, onReload }: Props) {
   const [showFormer, setShowFormer] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<number | null>(null)
+  const [removing, setRemoving] = useState<SettingsMember | null>(null)
   const active = settings.members.filter((m) => m.role !== 'FORMER')
   const former = settings.members.filter((m) => m.role === 'FORMER')
   const readOnly = settings.status === 'ARCHIVED' || !settings.canManage
@@ -49,9 +51,15 @@ export function MembersPanel({ settings, onChange, onReload }: Props) {
 
   const role = (m: SettingsMember, r: 'MANAGER' | 'MEMBER') =>
     run(m.memberId, () => changeMemberRole(settings.projectKey, m.memberId, r), () => patchMember(m.memberId, { role: r }))
-  const remove = (m: SettingsMember) =>
-    run(m.memberId, () => removeProjectMember(settings.projectKey, m.memberId), () =>
-      patchMember(m.memberId, { role: 'FORMER', leftAt: new Date().toISOString().slice(0, 10) }),
+  /** 확인 창에서 고른 사람에게 끝나지 않은 담당 작업을 넘기고 뺀다 (없으면 담당 없음) */
+  const remove = (m: SettingsMember, tasks: { taskKey: string; title: string; status: string }[], handoverTo: number | null) =>
+    run(
+      m.memberId,
+      () => removeMemberWithHandover(settings.projectKey, m.memberId, tasks, handoverTo).then((r) => (setRemoving(null), r)),
+      () => {
+        setRemoving(null)
+        patchMember(m.memberId, { role: 'FORMER', leftAt: new Date().toISOString().slice(0, 10) })
+      },
     )
   const add = (memberId: number, name: string, memberType: string) =>
     run(memberId, () => addProjectMember(settings.projectKey, memberId, 'MEMBER'), () =>
@@ -135,7 +143,7 @@ export function MembersPanel({ settings, onChange, onReload }: Props) {
                 <td className={s.muted}>{m.joinedAt.replace(/-/g, '.')}</td>
                 <td className={s.right}>
                   {!readOnly && (
-                    <button type="button" className={s.iconBtn} disabled={busy === m.memberId || lastManager} onClick={() => remove(m)} aria-label={`${m.name} 빼기`} title="빼기 — 끝나지 않은 담당 작업은 담당 없음으로 넘겨요">
+                    <button type="button" className={s.iconBtn} disabled={busy === m.memberId || lastManager} onClick={() => setRemoving(m)} aria-label={`${m.name} 빼기`} title="빼기 — 끝나지 않은 담당 작업은 고른 사람에게 넘겨요">
                       <UserMinus size={16} />
                     </button>
                   )}
@@ -146,6 +154,17 @@ export function MembersPanel({ settings, onChange, onReload }: Props) {
         </tbody>
       </table>
       {active.length === 0 && <Empty>참여자가 없어요.</Empty>}
+
+      {removing && (
+        <RemoveMemberDialog
+          projectKey={settings.projectKey}
+          member={removing}
+          active={active.map((m) => ({ memberId: m.memberId, name: m.name }))}
+          busy={busy === removing.memberId}
+          onCancel={() => setRemoving(null)}
+          onConfirm={(p, to) => remove(removing, p.openTasks, to)}
+        />
+      )}
 
       {former.length > 0 && (
         <div className={s.former}>

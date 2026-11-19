@@ -3,6 +3,7 @@
 import { api } from './client'
 import { ago, type MemberRef, type PageResponse } from './types'
 import { useResource } from './useResource'
+import type { CommentItem } from './comments'
 import { getApiBase, getDataMode } from '../lib/dataMode'
 import { activityLine, type ActivityDto } from './projects'
 import { formatShortDay, parseYmd, WEEKDAYS } from '../lib/date'
@@ -637,44 +638,15 @@ export const loadNoticeDraft = (id: string): Promise<NoticeDraft> =>
 
 /* ================= 댓글 (CM-1, CM-2) ================= */
 
-type CommentDto = {
-  commentId: number
-  parentId: number | null
-  author: MemberRef
-  body: string | null
-  deleted: boolean
-  createdAt: string
-  editedAt: string | null
-  replies?: CommentDto[]
+/** 공지 댓글 목업 (목업 모드에서 공지마다 보일 댓글). 실제 목록 · 쓰기는 api/comments 의 공용 함수 */
+export function mockNoticeComments(id: string | undefined): CommentItem[] {
+  return (mockNotices.find((n) => n.id === id) ?? mockNotices[0]).comments.map((c, i) => ({
+    id: `m${i}`,
+    commentId: null,
+    parentId: null,
+    ...c,
+  }))
 }
-export type CommentView = { id: string; author: string; ago: string; text: string; deleted?: boolean; reply?: boolean }
-
-const commentFromDto = (c: CommentDto, reply = false): CommentView => ({
-  id: String(c.commentId),
-  author: c.author.name,
-  ago: ago(c.createdAt) + (c.editedAt ? ' · 수정됨' : ''),
-  text: c.deleted ? '삭제된 댓글입니다' : c.body ?? '',
-  deleted: c.deleted,
-  reply,
-})
-
-/** 공지 댓글 목록 (답글은 원 댓글 바로 아래에 펼친다) */
-export function useNoticeComments(id: string | undefined) {
-  return useResource<CommentView[]>(
-    ['notice-comments', id],
-    () => (mockNotices.find((n) => n.id === id) ?? mockNotices[0]).comments.map((c, i) => ({ id: `m${i}`, ...c })),
-    async () => {
-      const page = await api<PageResponse<CommentDto>>('/comments', { query: { targetType: 'NOTICE', targetId: id, size: 100 } })
-      return page.content.flatMap((c) => [commentFromDto(c), ...(c.replies ?? []).map((r) => commentFromDto(r, true))])
-    },
-  )
-}
-
-/** 댓글 쓰기 (CM-2) */
-export const postNoticeComment = (noticeId: number, body: string) =>
-  api<CommentDto>('/comments', { method: 'POST', body: { targetType: 'NOTICE', targetId: noticeId, parentId: null, body, attachmentFileIds: [] } }).then(
-    (c) => commentFromDto(c),
-  )
 
 /* ================= 캘린더 (CL-1, CL-6, CL-7 + 작업 기한 · 마일스톤) ================= */
 

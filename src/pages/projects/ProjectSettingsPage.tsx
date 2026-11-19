@@ -22,6 +22,7 @@ import { useProjectSettings, type ProjectSettings } from '../../api/projectSetti
 import { ArchiveDeletePanel } from './settings/ArchiveDeletePanel'
 import { GeneralPanel } from './settings/GeneralPanel'
 import { LabelsPanel } from './settings/LabelsPanel'
+import { LinksPanel } from './settings/LinksPanel'
 import { MembersPanel } from './settings/MembersPanel'
 import { SettingsMenu } from './settings/SettingsMenu'
 import type { SyncState } from './settings/SyncStatus'
@@ -59,6 +60,8 @@ function SettingsSection({ projectKey, menu }: { projectKey: string; menu: Setti
           <MembersPanel settings={v} onChange={patch} onReload={settings.reload} />
         ) : menu === '라벨' ? (
           <LabelsPanel settings={v} onChange={patch} />
+        ) : menu === '연동 서비스' ? (
+          <LinksPanel settings={v} />
         ) : (
           <ArchiveDeletePanel settings={v} onChange={patch} />
         )
