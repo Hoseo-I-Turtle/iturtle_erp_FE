@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   ChartGantt,
@@ -17,6 +17,7 @@ import { Button } from '../components/ui'
 import { PageHeader } from './PageHeader'
 import { findProject, MY_ROLE_NAME } from '../mocks/projects'
 import { projectCategoryName, useProjectHeader } from '../api/projects'
+import { checkProjectKey } from '../api/projectSettings'
 import { useTaskCreateRequests, type TaskCreateOpen } from '../api/tasks'
 import { openUpload } from '../api/documents'
 import { TaskCreateModal } from '../pages/projects/TaskCreateModal'
@@ -41,6 +42,13 @@ export function ProjectLayout() {
   const navigate = useNavigate()
   // 실서버면 GET /projects/{key}, 목업이면 mocks 에서 찾는다. 불러오는 동안은 이전 값 또는 목업으로 자리만 채운다.
   const header = useProjectHeader(key)
+  // 키가 바뀐 프로젝트(P150)에 옛 주소로 들어오면 새 키 주소로 옮긴다
+  useEffect(() => {
+    if (!header.error || !key) return
+    checkProjectKey(key)
+      .then((r) => r.movedTo && navigate(pathname.replace(`/projects/${key}`, `/projects/${r.movedTo}`) + window.location.search, { replace: true }))
+      .catch(() => undefined)
+  }, [header.error, key, navigate, pathname])
   // 작업 만들기 창: 머리 버튼과 보드 열의 + 가 연다 (openTaskCreate)
   const [creating, setCreating] = useState<TaskCreateOpen | null>(null)
   useTaskCreateRequests(useCallback((d: TaskCreateOpen) => setCreating(d), []))
