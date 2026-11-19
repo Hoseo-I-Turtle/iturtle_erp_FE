@@ -27,7 +27,7 @@ type Item = { key: string; icon: LucideIcon; label: string; desc: string; role?:
 /**
  * 머리의 "새로 만들기" (Penpot 06 "새로 만들기 메뉴"). 프로젝트 안이면 그 프로젝트 항목을 먼저 보여 준다.
  * 메뉴가 열려 있을 때 단축키(오른쪽 글자)로 바로 고른다. 권한이 없는 항목은 흐리게 두고 "권한 필요"를 단다 (서버도 막는다).
- * 일정 · 프로젝트 · 회의록 · 마일스톤은 그 화면으로 보내고 ?new=1 을 붙인다 (그 화면이 만들기 창을 연다).
+ * 회의록은 쓰기 화면(minutes/new)으로, 일정 · 프로젝트 · 마일스톤은 그 화면으로 보내고 ?new=1 을 붙인다 (그 화면이 만들기 창을 연다).
  */
 export function NewMenu() {
   const navigate = useNavigate()
@@ -44,7 +44,7 @@ export function NewMenu() {
   const project: Item[] = key
     ? [
         { key: 'C', icon: SquareCheck, label: '작업', desc: '보드 · 작업 목록에 올라가요', run: () => openTaskCreate({}) },
-        { key: 'M', icon: FileText, label: '회의록', desc: '할 일을 작업으로 이어요', run: () => navigate(`${base}/minutes?new=1`) },
+        { key: 'M', icon: FileText, label: '회의록', desc: '할 일을 작업으로 이어요', run: () => navigate(`${base}/minutes/new`) },
         { key: 'S', icon: FlaskConical, label: '마일스톤', desc: '작업을 묶어 기한을 봐요', run: () => navigate(`${base}/milestones?new=1`) },
         { key: 'T', icon: MessageSquare, label: '스레드 글', desc: '프로젝트 토론', run: () => navigate(`${base}/threads/new`) },
       ]
