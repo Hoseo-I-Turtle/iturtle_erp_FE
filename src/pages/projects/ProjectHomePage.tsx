@@ -103,10 +103,10 @@ function ProjectHomeView({ d }: { d: ProjectHome }) {
       }
       side={
         <>
-          <LinkedServices services={d.services} manageTo={`${base}/settings`} />
+          <LinkedServices services={d.services} manageTo={`${base}/settings?tab=service`} />
 
           <Card>
-            <SectionHead icon={Shield} title="프로젝트 서비스 권한" link={{ to: `${base}/settings`, label: '설정' }} />
+            <SectionHead icon={Shield} title="프로젝트 서비스 권한" link={{ to: `${base}/settings?tab=service`, label: '설정' }} />
             <ul className={s.perms}>
               {d.permissions.map((r) => (
                 <li key={r.who}>

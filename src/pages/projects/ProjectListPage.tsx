@@ -5,7 +5,10 @@ import { AvatarStack, Button, Chip, Empty, Loadable, Progress } from '../../comp
 import { PageHeader } from '../../layouts/PageHeader'
 import { MY_ROLE_NAME, PROJECT_CATEGORY_NAME } from '../../mocks/projects'
 import { projectCategoryName, useProjectList, type ProjectCard as Project } from '../../api/projects'
+import { useMe } from '../../api/members'
 import { ServiceIcon, StatusChip } from './common'
+import { DeletedProjects } from './create/DeletedProjects'
+import { ProjectCreateModal } from './create/ProjectCreateModal'
 import s from './ProjectListPage.module.css'
 
 /** 'ALL' 또는 공통코드 PROJECT_CATEGORY 코드 (실서버는 화면 기본 4개 밖의 코드도 온다) */
@@ -16,6 +19,12 @@ export function ProjectListPage() {
   const [mine, setMine] = useState(false)
   const [activeOnly, setActiveOnly] = useState(false)
   const [archived, setArchived] = useState(false)
+  const [creating, setCreating] = useState(false)
+  // 목업은 roles 가 null (역할을 따지지 않는다), 실서버에서 내 정보를 받기 전에는 빈 역할로 본다
+  const me = useMe().data
+  const roles = me === undefined ? [] : (me?.roles ?? null)
+  const canCreate = roles == null || roles.includes('project-create')
+  const canRestore = roles == null || roles.includes('project-manage')
 
   // 실서버는 조건을 서버가 거르고 탭 숫자(categoryCounts)도 서버가 센다. 목업은 화면이 거른다.
   const res = useProjectList({ category: cat, mine, activeOnly, archived })
@@ -42,7 +51,13 @@ export function ProjectListPage() {
       <PageHeader
         title="프로젝트"
         subtitle="연구실의 모든 일은 프로젝트로"
-        action={<Button icon={Plus}>프로젝트 만들기</Button>}
+        action={
+          canCreate ? (
+            <Button icon={Plus} onClick={() => setCreating(true)}>
+              프로젝트 만들기
+            </Button>
+          ) : undefined
+        }
       />
 
       <div className={s.toolbar}>
@@ -85,6 +100,8 @@ export function ProjectListPage() {
           )
         }}
       </Loadable>
+      <DeletedProjects enabled={canRestore} />
+      {creating && <ProjectCreateModal onClose={() => setCreating(false)} />}
     </>
   )
 }

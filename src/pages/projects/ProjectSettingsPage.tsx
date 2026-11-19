@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { Check, Clock } from 'lucide-react'
-import { Button, Card, Loadable, Note } from '../../components/ui'
+import { Button, Loadable, Note } from '../../components/ui'
 import { ApiError } from '../../api/client'
 import { whenLive } from '../../api/useResource'
 import {
@@ -17,7 +17,12 @@ import type { SyncService } from './settings/levels'
 import { MemberOverridesCard } from './settings/MemberOverridesCard'
 import { RoleDefaultsCard } from './settings/RoleDefaultsCard'
 import { ServiceToggleCard } from './settings/ServiceToggleCard'
-import type { SettingsMenuItem } from './settings/menu'
+import { MENU_TAB, menuOfTab, type SettingsMenuItem } from './settings/menu'
+import { useProjectSettings, type ProjectSettings } from '../../api/projectSettings'
+import { ArchiveDeletePanel } from './settings/ArchiveDeletePanel'
+import { GeneralPanel } from './settings/GeneralPanel'
+import { LabelsPanel } from './settings/LabelsPanel'
+import { MembersPanel } from './settings/MembersPanel'
 import { SettingsMenu } from './settings/SettingsMenu'
 import type { SyncState } from './settings/SyncStatus'
 import s from './ProjectSettingsPage.module.css'
@@ -26,26 +31,48 @@ const errMsg = (e: unknown, fallback: string) => (e instanceof ApiError ? e.mess
 
 export function ProjectSettingsPage() {
   const { key } = useParams()
-  const [menu, setMenu] = useState<SettingsMenuItem>('서비스 권한')
-  const access = useServiceAccess(key)
+  const [params, setParams] = useSearchParams()
+  const menu = menuOfTab(params.get('tab'))
+  const setMenu = (m: SettingsMenuItem) => setParams({ tab: MENU_TAB[m] }, { replace: true })
 
   return (
     <div className={s.layout}>
       <SettingsMenu value={menu} onChange={setMenu} />
 
       <div className={s.content}>
-        {menu !== '서비스 권한' ? (
-          <Card>
-            <h2 className={s.h}>{menu}</h2>
-            <p className={s.muted}>이 설정 화면은 아직 디자인이 없어 준비 중이에요.</p>
-          </Card>
-        ) : (
-          <Loadable resource={access} label="서비스 권한">
-            {(v) => <AccessPanel key={JSON.stringify(v.state)} projectKey={key ?? ''} view={v} onSaved={(nv) => access.setData(() => nv)} />}
-          </Loadable>
-        )}
+        {menu === '서비스 권한' ? <ServiceAccessSection projectKey={key ?? ''} /> : <SettingsSection key={key} projectKey={key ?? ''} menu={menu} />}
       </div>
     </div>
+  )
+}
+
+/** 일반 · 참여자 · 라벨 · 보관 · 삭제 (P-3 · P-24 를 한 번 받아 패널끼리 나눠 쓴다) */
+function SettingsSection({ projectKey, menu }: { projectKey: string; menu: SettingsMenuItem }) {
+  const settings = useProjectSettings(projectKey)
+  const patch = (p: Partial<ProjectSettings>) => settings.setData((prev) => ({ ...prev, ...p }))
+  return (
+    <Loadable resource={settings} label="프로젝트 설정">
+      {(v) =>
+        menu === '일반' ? (
+          <GeneralPanel key={v.projectKey} settings={v} onChange={patch} />
+        ) : menu === '참여자' ? (
+          <MembersPanel settings={v} onChange={patch} onReload={settings.reload} />
+        ) : menu === '라벨' ? (
+          <LabelsPanel settings={v} onChange={patch} />
+        ) : (
+          <ArchiveDeletePanel settings={v} onChange={patch} />
+        )
+      }
+    </Loadable>
+  )
+}
+
+function ServiceAccessSection({ projectKey }: { projectKey: string }) {
+  const access = useServiceAccess(projectKey)
+  return (
+    <Loadable resource={access} label="서비스 권한">
+      {(v) => <AccessPanel key={JSON.stringify(v.state)} projectKey={projectKey} view={v} onSaved={(nv) => access.setData(() => nv)} />}
+    </Loadable>
   )
 }
 
