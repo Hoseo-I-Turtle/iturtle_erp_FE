@@ -5,10 +5,10 @@ import { api } from './client'
 import type { MemberRef } from './types'
 import { useResource } from './useResource'
 import { getDataMode } from '../lib/dataMode'
-import { getProject, toMembers, toTask, transitionTask, type BoardTask, type TaskCardDto, type TaskListResponse } from './projects'
+import { getProject, toMembers, toTask, type BoardTask, type TaskCardDto, type TaskListResponse } from './projects'
 import { projectDetail } from '../mocks/projectDetail'
 import { findProject } from '../mocks/projects'
-import { tasks as mockTasks, type TaskPriority, type TaskStatus, type TaskType } from '../mocks/tasks'
+import { tasks as mockTasks, TYPE_NAME, type TaskPriority, type TaskStatus, type TaskType } from '../mocks/tasks'
 
 const MOCK_ME = '김민서'
 
@@ -45,6 +45,8 @@ export function useTaskCreateRequests(open: (d: TaskCreateOpen) => void) {
 
 export type Option = { id: number; name: string }
 export type LabelOption = Option & { color: string }
+/** 공통코드 TASK_TYPE (GET /codes/TASK_TYPE) */
+export type TypeOption = { code: string; name: string; icon: string | null }
 export type TaskFormOptions = {
   projectKey: string
   projectName: string
@@ -52,6 +54,7 @@ export type TaskFormOptions = {
   members: Option[]
   milestones: Option[]
   labels: LabelOption[]
+  types: TypeOption[]
   canWrite: boolean
   isManager: boolean
 }
@@ -72,6 +75,7 @@ export function useTaskFormOptions(key: string | undefined, enabled = true) {
         members,
         milestones: projectDetail.milestones.filter((m) => !m.closed).map((m) => ({ id: m.id, name: m.name })),
         labels: ['알림', '프로필', '공지', '캘린더', '보안'].map((name, i) => ({ id: i + 1, name, color: '#80AAD3' })),
+        types: (Object.keys(TYPE_NAME) as TaskType[]).map((code) => ({ code, name: TYPE_NAME[code], icon: null })),
         canWrite: true,
         isManager: true,
       }
@@ -79,11 +83,12 @@ export function useTaskFormOptions(key: string | undefined, enabled = true) {
     async () => {
       if (!enabled || !key) return null
       const k = encodeURIComponent(key)
-      const [d, me, ms, ls] = await Promise.all([
+      const [d, me, ms, ls, types] = await Promise.all([
         getProject(key),
         api<MemberRef>('/members/me'),
         api<MilestoneListDto>(`/projects/${k}/milestones`),
         api<LabelListDto>(`/projects/${k}/labels`),
+        api<TypeOption[]>('/codes/TASK_TYPE'),
       ])
       return {
         projectKey: d.projectKey,
@@ -92,6 +97,7 @@ export function useTaskFormOptions(key: string | undefined, enabled = true) {
         members: toMembers(d).map((m) => ({ id: m.memberId, name: m.name })),
         milestones: ms.milestones.filter((m) => m.status === 'OPEN').map((m) => ({ id: m.milestoneId, name: m.name })),
         labels: ls.labels.map((l) => ({ id: l.labelId, name: l.name, color: l.color })),
+        types,
         canWrite: d.permissions.canWriteTasks,
         isManager: d.permissions.canManage,
       }
@@ -105,9 +111,10 @@ export type TaskDraft = {
   projectKey: string
   title: string
   description: string
-  typeCode: TaskType
+  typeCode: string
   priority: TaskPriority
   assigneeMemberId: number | null
+  startOn: string | null
   dueOn: string | null
   milestoneId: number | null
   labelIds: number[]
@@ -115,16 +122,11 @@ export type TaskDraft = {
   initialStatus: 'TODO' | 'IN_PROGRESS'
 }
 
-export type CreateResult = { taskKey: string; warnings: string[] }
-
-/**
- * POST /tasks 로 만들고, 체크리스트 항목을 하나씩 더하고, 처음 상태가 진행 중이면 상태를 옮긴다.
- * 만들기 요청에는 체크리스트 · 처음 상태가 없어서 이어서 부른다. 뒤 단계가 실패해도 작업은 만들어진 것이라 경고로 알린다.
- */
-export async function createTask(draft: TaskDraft): Promise<CreateResult> {
+/** POST /tasks — 처음 상태 · 체크리스트 · 시작일까지 한 번에 만든다 (P103 담당자 없음 · P105 권한 · P121 체크리스트 50개 · P128 기간) */
+export async function createTask(draft: TaskDraft): Promise<{ taskKey: string }> {
   if (getDataMode() !== 'live') {
     const no = Math.max(...mockTasks.map((t) => Number(t.taskKey.split('-')[1]) || 0)) + 1
-    return { taskKey: `${draft.projectKey}-${no}`, warnings: [] }
+    return { taskKey: `${draft.projectKey}-${no}` }
   }
   const created = await api<TaskCardDto>('/tasks', {
     method: 'POST',
@@ -135,30 +137,15 @@ export async function createTask(draft: TaskDraft): Promise<CreateResult> {
       typeCode: draft.typeCode,
       priority: draft.priority,
       assigneeMemberId: draft.assigneeMemberId,
+      startOn: draft.startOn,
       dueOn: draft.dueOn,
       labelIds: draft.labelIds,
       milestoneId: draft.milestoneId,
+      initialStatus: draft.initialStatus,
+      checklist: draft.checklist.map((c) => c.trim()).filter(Boolean),
     },
   })
-  const warnings: string[] = []
-  const items = draft.checklist.map((c) => c.trim()).filter(Boolean)
-  let failedItems = 0
-  for (const content of items) {
-    try {
-      await api(`/tasks/${encodeURIComponent(created.taskKey)}/checklist-items`, { method: 'POST', body: { content } })
-    } catch {
-      failedItems++
-    }
-  }
-  if (failedItems) warnings.push(`체크리스트 ${failedItems}개를 넣지 못했어요. 작업 상세에서 다시 넣어 주세요.`)
-  if (draft.initialStatus === 'IN_PROGRESS' && draft.assigneeMemberId) {
-    try {
-      await transitionTask(created.taskKey, { toStatus: 'IN_PROGRESS', version: created.version })
-    } catch {
-      warnings.push('진행 중으로 옮기지 못해 할 일로 만들었어요. 담당자나 프로젝트 관리자가 옮길 수 있어요.')
-    }
-  }
-  return { taskKey: created.taskKey, warnings }
+  return { taskKey: created.taskKey }
 }
 
 // ───────────────────────── 작업 목록 ─────────────────────────
@@ -170,7 +157,7 @@ export type TaskListFilter = {
   labelId: number | null
   milestoneId: number | null
   priorities: TaskPriority[]
-  typeCodes: TaskType[]
+  typeCodes: string[]
   keyword: string
   sort: TaskSort
   showDone: boolean
@@ -178,7 +165,7 @@ export type TaskListFilter = {
   names?: { assignee?: string; label?: string; milestone?: string }
 }
 
-export type TaskRow = BoardTask & { dueIso: string | null }
+export type TaskRow = BoardTask
 export type TaskListData = { rows: TaskRow[]; doneHidden: number; total: number }
 
 const OPEN_STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'REVIEW']
@@ -211,7 +198,7 @@ export function useTaskList(key: string | undefined, f: TaskListFilter) {
       else if (f.sort === 'taskNo,desc') rows = [...rows].sort((a, b) => b.taskKey.localeCompare(a.taskKey, undefined, { numeric: true }))
       else if (f.sort === 'dueOn') rows = [...rows].sort((a, b) => mockDueKey(a.dueOn) - mockDueKey(b.dueOn))
       const doneHidden = f.showDone ? 0 : mockTasks.filter((t) => t.status === 'DONE').length
-      return { rows: rows.map((r) => ({ ...r, dueIso: null })), doneHidden, total: rows.length }
+      return { rows, doneHidden, total: rows.length }
     },
     async () => {
       const statuses = f.statuses.length ? f.statuses : OPEN_STATUSES
@@ -236,7 +223,7 @@ export function useTaskList(key: string | undefined, f: TaskListFilter) {
           : api<TaskListResponse>('/tasks', { query: { projectKey: key ?? '', statuses: 'DONE', doneWithinDays: 365, size: 1 } }),
       ])
       return {
-        rows: list.page.content.map((x) => ({ ...toTask(x), dueIso: x.dueOn })),
+        rows: list.page.content.map(toTask),
         doneHidden: done?.page.totalElements ?? 0,
         total: list.page.totalElements,
       }
@@ -244,11 +231,22 @@ export function useTaskList(key: string | undefined, f: TaskListFilter) {
   )
 }
 
-/** PATCH /tasks — 고른 작업의 담당자 · 마일스톤 · 우선순위를 한 번에 바꾼다 (상태는 일괄 변경이 없다) */
-export async function bulkUpdateTasks(
-  taskKeys: string[],
-  change: { assigneeMemberId?: number | null; milestoneId?: number | null; priority?: TaskPriority },
-) {
-  if (getDataMode() !== 'live') return
-  await api('/tasks', { method: 'PATCH', body: { taskKeys, ...change } })
+export type BulkChange = {
+  assigneeMemberId?: number | null
+  milestoneId?: number | null
+  priority?: TaskPriority
+  status?: TaskStatus | 'CANCELLED'
+  reason?: string
+  labelIdsToAdd?: number[]
+  labelIdsToRemove?: number[]
+}
+export type BulkFailure = { taskKey: string; code: string; message: string }
+
+/**
+ * PATCH /tasks — 고른 작업을 한 번에 바꾼다. 상태는 작업마다 이동 규칙을 따져서 못 옮긴 작업은 failures 로 온다 (나머지는 반영).
+ */
+export async function bulkUpdateTasks(taskKeys: string[], change: BulkChange): Promise<BulkFailure[]> {
+  if (getDataMode() !== 'live') return []
+  const r = await api<{ tasks: TaskCardDto[]; failures: BulkFailure[] | null }>('/tasks', { method: 'PATCH', body: { taskKeys, ...change } })
+  return r.failures ?? []
 }

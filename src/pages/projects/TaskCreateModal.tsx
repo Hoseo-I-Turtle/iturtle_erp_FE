@@ -1,15 +1,24 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Check, CircleUser, FlaskConical, ListChecks, Plus, SquareCheck, X } from 'lucide-react'
+import { Calendar, CalendarRange, Check, CircleUser, FlaskConical, ListChecks, Plus, SquareCheck, X } from 'lucide-react'
 import { Button, Chip, Loadable, Modal, Switch } from '../../components/ui'
 import { ApiError } from '../../api/client'
 import { createTask, notifyTasksChanged, useTaskFormOptions, type TaskCreateOpen, type TaskDraft, type TaskFormOptions } from '../../api/tasks'
-import { PRIORITY_NAME, TYPE_NAME, type TaskPriority, type TaskType } from '../../mocks/tasks'
+import { PRIORITY_NAME, type TaskPriority } from '../../mocks/tasks'
 import s from './TaskCreateModal.module.css'
 
 const TITLE_MAX = 200
-const TYPES: TaskType[] = ['TASK', 'BUG', 'RESEARCH']
+const CHECKLIST_MAX = 50
 const PRIORITIES: TaskPriority[] = ['URGENT', 'HIGH', 'NORMAL', 'LOW']
+
+/** 서버 오류를 붙일 칸 */
+type ErrorSlot = 'status' | 'checklist' | 'period' | 'form'
+const SLOT_OF: Record<string, ErrorSlot> = {
+  P103: 'status', // 담당자 없이 진행 중
+  P105: 'status', // 진행 중으로 옮길 권한 없음
+  P121: 'checklist', // 체크리스트 50개 넘음
+  P128: 'period', // 기한이 시작일보다 앞
+}
 
 type Props = { projectKey: string; open: TaskCreateOpen; onClose: () => void }
 
@@ -29,9 +38,10 @@ const emptyDraft = (o: TaskFormOptions, open: TaskCreateOpen): TaskDraft => ({
   projectKey: o.projectKey,
   title: '',
   description: '',
-  typeCode: 'TASK',
+  typeCode: o.types[0]?.code ?? 'TASK',
   priority: 'NORMAL',
   assigneeMemberId: o.members.some((m) => m.id === o.me.id) ? o.me.id : null,
+  startOn: null,
   dueOn: null,
   milestoneId: null,
   labelIds: [],
@@ -44,39 +54,46 @@ function TaskForm({ o, open, onClose }: { o: TaskFormOptions; open: TaskCreateOp
   const [d, setD] = useState<TaskDraft>(() => emptyDraft(o, open))
   const [again, setAgain] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ slot: ErrorSlot; message: string } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [newItem, setNewItem] = useState('')
   const [pickLabel, setPickLabel] = useState(false)
-  const set = <K extends keyof TaskDraft>(k: K, v: TaskDraft[K]) => setD((x) => ({ ...x, [k]: v }))
+  const set = <K extends keyof TaskDraft>(k: K, v: TaskDraft[K]) => {
+    setD((x) => ({ ...x, [k]: v }))
+    setError(null)
+  }
 
   const titleOk = d.title.trim().length > 0 && d.title.length <= TITLE_MAX
   const noAssigneeInProgress = d.initialStatus === 'IN_PROGRESS' && !d.assigneeMemberId
+  const badPeriod = !!d.startOn && !!d.dueOn && d.dueOn < d.startOn
+  const tooMany = d.checklist.length > CHECKLIST_MAX
+  const errorAt = (slot: ErrorSlot) => (error?.slot === slot ? error.message : null)
 
   const addItem = () => {
     const v = newItem.trim()
-    if (!v) return
+    if (!v || d.checklist.length >= CHECKLIST_MAX) return
     set('checklist', [...d.checklist, v])
     setNewItem('')
   }
 
   const submit = async () => {
-    if (!titleOk || noAssigneeInProgress || saving) return
+    if (!titleOk || noAssigneeInProgress || badPeriod || tooMany || saving) return
     setSaving(true)
     setError(null)
     try {
       const r = await createTask(d)
       notifyTasksChanged()
       if (again) {
-        // 같은 유형 · 마일스톤 · 담당자로 이어서 만든다
-        setD((x) => ({ ...x, title: '', description: '', checklist: [], labelIds: x.labelIds }))
-        setNotice(`${r.taskKey} 를 만들었어요.${r.warnings.length ? ` ${r.warnings.join(' ')}` : ''}`)
+        // 같은 유형 · 마일스톤 · 담당자 · 라벨로 이어서 만든다
+        setD((x) => ({ ...x, title: '', description: '', checklist: [] }))
+        setNotice(`${r.taskKey} 를 만들었어요.`)
       } else {
         onClose()
-        navigate(`/projects/${o.projectKey}/tasks/${r.taskKey}`, { state: r.warnings.length ? { warnings: r.warnings } : undefined })
+        navigate(`/projects/${o.projectKey}/tasks/${r.taskKey}`)
       }
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '작업을 만들지 못했어요. 잠시 뒤 다시 해 주세요.')
+      if (e instanceof ApiError) setError({ slot: SLOT_OF[e.code] ?? 'form', message: e.message })
+      else setError({ slot: 'form', message: '작업을 만들지 못했어요. 잠시 뒤 다시 해 주세요.' })
     } finally {
       setSaving(false)
     }
@@ -84,6 +101,9 @@ function TaskForm({ o, open, onClose }: { o: TaskFormOptions; open: TaskCreateOp
 
   const labelById = new Map(o.labels.map((l) => [l.id, l]))
   const restLabels = o.labels.filter((l) => !d.labelIds.includes(l.id))
+  const periodMsg = errorAt('period') ?? (badPeriod ? '기한은 시작일과 같거나 뒤여야 해요' : null)
+  const statusMsg = errorAt('status') ?? (noAssigneeInProgress ? '담당자가 없으면 진행 중으로 시작할 수 없어요' : null)
+  const checklistMsg = errorAt('checklist') ?? (d.checklist.length >= CHECKLIST_MAX ? `체크리스트는 ${CHECKLIST_MAX}개까지 만들 수 있어요` : null)
 
   return (
     <form
@@ -118,10 +138,10 @@ function TaskForm({ o, open, onClose }: { o: TaskFormOptions; open: TaskCreateOp
       </label>
 
       <div className={s.grid}>
-        <SelectField label="유형" icon={<SquareCheck size={16} />} value={d.typeCode} onChange={(v) => set('typeCode', v as TaskType)}>
-          {TYPES.map((t) => (
-            <option key={t} value={t}>
-              {TYPE_NAME[t]}
+        <SelectField label="유형" icon={<SquareCheck size={16} />} value={d.typeCode} onChange={(v) => set('typeCode', v)}>
+          {o.types.map((t) => (
+            <option key={t.code} value={t.code}>
+              {t.name}
             </option>
           ))}
         </SelectField>
@@ -148,10 +168,18 @@ function TaskForm({ o, open, onClose }: { o: TaskFormOptions; open: TaskCreateOp
         </SelectField>
 
         <label className={s.field}>
+          <span className={s.label}>시작일 (선택)</span>
+          <span className={s.input}>
+            <CalendarRange size={16} />
+            <input type="date" value={d.startOn ?? ''} max={d.dueOn ?? undefined} onChange={(e) => set('startOn', e.target.value || null)} />
+          </span>
+          <small className={periodMsg ? s.hintBad : s.hint}>{periodMsg ?? '일정표 막대가 이 날부터 그려져요'}</small>
+        </label>
+        <label className={s.field}>
           <span className={s.label}>기한</span>
           <span className={s.input}>
             <Calendar size={16} />
-            <input type="date" value={d.dueOn ?? ''} onChange={(e) => set('dueOn', e.target.value || null)} />
+            <input type="date" value={d.dueOn ?? ''} min={d.startOn ?? undefined} onChange={(e) => set('dueOn', e.target.value || null)} />
           </span>
         </label>
         <SelectField
@@ -167,12 +195,13 @@ function TaskForm({ o, open, onClose }: { o: TaskFormOptions; open: TaskCreateOp
             </option>
           ))}
         </SelectField>
+
         <SelectField
           label="처음 상태"
           value={d.initialStatus}
           onChange={(v) => set('initialStatus', v as TaskDraft['initialStatus'])}
-          hint="담당자가 없으면 진행 중으로 시작할 수 없어요"
-          bad={noAssigneeInProgress}
+          hint={statusMsg ?? '담당자가 없으면 진행 중으로 시작할 수 없어요'}
+          bad={!!statusMsg}
         >
           <option value="TODO">할 일</option>
           <option value="IN_PROGRESS">진행 중</option>
@@ -228,25 +257,28 @@ function TaskForm({ o, open, onClose }: { o: TaskFormOptions; open: TaskCreateOp
             </button>
           </div>
         ))}
-        <div className={s.checkAdd}>
-          <Plus size={14} />
-          <input
-            value={newItem}
-            maxLength={200}
-            placeholder="항목 추가 (Enter)"
-            onChange={(e) => setNewItem(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                addItem()
-              }
-            }}
-            onBlur={addItem}
-          />
-        </div>
+        {d.checklist.length < CHECKLIST_MAX && (
+          <div className={s.checkAdd}>
+            <Plus size={14} />
+            <input
+              value={newItem}
+              maxLength={200}
+              placeholder="항목 추가 (Enter)"
+              onChange={(e) => setNewItem(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  addItem()
+                }
+              }}
+              onBlur={addItem}
+            />
+          </div>
+        )}
+        {checklistMsg && <small className={s.hintBad}>{checklistMsg}</small>}
       </div>
 
-      {(error || notice) && <p className={error ? s.error : s.notice}>{error ?? notice}</p>}
+      {(errorAt('form') || notice) && <p className={errorAt('form') ? s.error : s.notice}>{errorAt('form') ?? notice}</p>}
 
       <div className={s.foot}>
         <Switch checked={again} onChange={setAgain} label="만들고 하나 더" />
@@ -256,7 +288,7 @@ function TaskForm({ o, open, onClose }: { o: TaskFormOptions; open: TaskCreateOp
         <Button variant="secondary" type="button" onClick={onClose}>
           취소
         </Button>
-        <Button icon={Check} type="submit" disabled={!titleOk || noAssigneeInProgress || saving || !o.canWrite}>
+        <Button icon={Check} type="submit" disabled={!titleOk || noAssigneeInProgress || badPeriod || tooMany || saving || !o.canWrite}>
           {saving ? '만드는 중…' : '작업 만들기'}
         </Button>
       </div>

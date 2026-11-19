@@ -456,6 +456,8 @@ export type TaskCardDto = {
   priority: TaskPriority
   assignee: MemberRef | null
   requester: MemberRef
+  /** 시작일 (일정표 막대의 앞, 없으면 null) */
+  startOn?: string | null
   dueOn: string | null
   overdue: boolean
   labels: { labelId: number; name: string; color: string }[]
@@ -647,6 +649,7 @@ export function toTask(x: TaskCardDto): BoardTask {
     priority: x.priority,
     labels: x.labels.map((l) => l.name),
     milestone: x.milestone?.name ?? null,
+    startOn: x.startOn ? monthDay(x.startOn) : null,
     dueOn: x.dueOn ? monthDay(x.dueOn) : null,
     dueState: x.overdue ? 'overdue' : !done && left !== null && left <= 2 ? 'soon' : undefined,
     checklist: x.checklist.total > 0 ? x.checklist : null,
