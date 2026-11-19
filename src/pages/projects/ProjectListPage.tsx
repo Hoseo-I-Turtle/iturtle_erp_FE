@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Check, Clock, FlaskConical, Lock, Plus } from 'lucide-react'
 import { AvatarStack, Button, Chip, Empty, Loadable, Progress } from '../../components/ui'
 import { PageHeader } from '../../layouts/PageHeader'
@@ -20,6 +20,16 @@ export function ProjectListPage() {
   const [activeOnly, setActiveOnly] = useState(false)
   const [archived, setArchived] = useState(false)
   const [creating, setCreating] = useState(false)
+  // 헤더 '새로 만들기' 메뉴는 /projects?new=1 로 보낸다 → 창을 열고 주소에서 new 를 지운다
+  const [params, setParams] = useSearchParams()
+  const requested = params.get('new') === '1'
+  if (requested && !creating) setCreating(true)
+  useEffect(() => {
+    if (!requested) return
+    const next = new URLSearchParams(params)
+    next.delete('new')
+    setParams(next, { replace: true })
+  }, [requested, params, setParams])
   // 목업은 roles 가 null (역할을 따지지 않는다), 실서버에서 내 정보를 받기 전에는 빈 역할로 본다
   const me = useMe().data
   const roles = me === undefined ? [] : (me?.roles ?? null)
@@ -101,7 +111,7 @@ export function ProjectListPage() {
         }}
       </Loadable>
       <DeletedProjects enabled={canRestore} />
-      {creating && <ProjectCreateModal onClose={() => setCreating(false)} />}
+      {creating && canCreate && <ProjectCreateModal onClose={() => setCreating(false)} />}
     </>
   )
 }
