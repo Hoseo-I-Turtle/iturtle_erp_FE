@@ -115,3 +115,87 @@
   align-items: center;
   gap: 4px;
 }
+
+/* 고치기 창 */
+.grow {
+  flex: 1;
+}
+.tagAdd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--brand-400);
+}
+
+/* 새 버전 · 파일 더하기 */
+.uploader {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+.uploadLink {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--brand-400);
+  font: inherit;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  cursor: pointer;
+}
+.uploadLink:hover {
+  color: var(--brand-500);
+}
+.uploadRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.uploadName {
+  font-size: var(--fs-caption);
+  color: var(--text-primary);
+}
+.noteInput {
+  flex: 1;
+  min-width: 160px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  font: inherit;
+}
+.progress {
+  flex: 1;
+  min-width: 120px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--surface-tint);
+  overflow: hidden;
+}
+.progress i {
+  display: block;
+  height: 100%;
+  background: var(--brand-400);
+}
+.uploadPct {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.uploadCancel {
+  display: inline-flex;
+  padding: 4px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.uploadError {
+  margin: 0;
+  color: var(--status-negative);
+  font-size: var(--fs-caption);
+}

@@ -4,6 +4,7 @@ import { api, ApiError } from './client'
 import { useResource } from './useResource'
 import { fileUrl, type FileRef } from './content'
 import { ago, type MemberRef, type PageResponse } from './types'
+import { getDataMode } from '../lib/dataMode'
 
 export type DocVisibility = 'LAB' | 'PROJECT_MEMBERS' | 'PRIVATE'
 export const VISIBILITY_LABEL: Record<DocVisibility, string> = {
@@ -203,6 +204,7 @@ type DocumentDetailDto = {
   body: string | null
   links: { linkId: number; url: string; title: string | null }[]
   files: { logicalName: string; latest: FileVersionDto; previous: FileVersionDto[] }[]
+  permissions?: { canEdit: boolean; canDelete: boolean }
   createdAt: string
   updatedAt: string
 }
@@ -223,6 +225,10 @@ export type DocumentDetail = {
   links: { url: string; title: string }[]
   files: { name: string; latest: DocVersion; previous: DocVersion[] }[]
   commentCount: number
+  /** 고치기 창에 채울 원래 값 */
+  categoryCode: string
+  folderId: number | null
+  canEdit: boolean
 }
 
 const toVersion = (v: FileVersionDto): DocVersion => ({
@@ -256,6 +262,9 @@ const MOCK_DETAIL: DocumentDetail = {
     },
   ],
   commentCount: 2,
+  categoryCode: 'PAPER',
+  folderId: null,
+  canEdit: true,
 }
 
 export function useDocumentDetail(id: string | undefined) {
@@ -276,8 +285,49 @@ export function useDocumentDetail(id: string | undefined) {
       links: d.links.map((l) => ({ url: l.url, title: l.title ?? l.url })),
       files: d.files.map((g) => ({ name: g.logicalName, latest: toVersion(g.latest), previous: g.previous.map(toVersion) })),
       commentCount: d.commentCount,
+      categoryCode: d.categoryCode,
+      folderId: d.folder?.folderId ?? null,
+      canEdit: !!d.permissions?.canEdit,
     }
   })
+}
+
+/* ---------- 자료 고치기 (D-4) · 파일 새 버전 (D-7) ---------- */
+
+export type DocumentEdit = {
+  categoryCode: string
+  title: string
+  body: string
+  visibility: DocVisibility
+  folderId: number | null
+  tags: string[]
+}
+
+/** 바뀐 칸만 보낸다 (본문 · 폴더는 비우면 null). 목업 모드면 보내지 않는다 */
+export async function updateDocument(documentId: number, before: DocumentEdit, after: DocumentEdit): Promise<void> {
+  if (getDataMode() !== 'live') return
+  const body: Record<string, unknown> = {}
+  if (after.categoryCode !== before.categoryCode) body.categoryCode = after.categoryCode
+  if (after.title !== before.title) body.title = after.title
+  if (after.body !== before.body) body.body = after.body.trim() ? after.body : null
+  if (after.visibility !== before.visibility) body.visibility = after.visibility
+  if (after.folderId !== before.folderId) body.folderId = after.folderId
+  if (JSON.stringify(after.tags) !== JSON.stringify(before.tags)) body.tags = after.tags
+  if (Object.keys(body).length === 0) return
+  await api(`/documents/${documentId}`, { method: 'PATCH', body })
+}
+
+/**
+ * 파일 새 버전 (D-7): logicalName 이 같은 파일의 다음 버전이 된다 (없으면 새 파일로 붙는다).
+ * 올리기는 자료 올리기와 같은 길(uploadWithProgress)을 쓴다. 목업이면 진행률만 흉내 낸다
+ */
+export async function addDocumentFile(documentId: number, file: File, logicalName: string | null, note: string | null, onProgress: (ratio: number) => void, signal: AbortSignal) {
+  if (getDataMode() !== 'live') {
+    await fakeUpload(file, onProgress, signal)
+    return
+  }
+  const ref = await uploadWithProgress(file, onProgress, signal)
+  await api(`/documents/${documentId}/files`, { method: 'POST', body: { fileId: ref.publicId, logicalName, note } })
 }
 
 /* ---------- 프로젝트 자료 (D-1 projectKey) ---------- */

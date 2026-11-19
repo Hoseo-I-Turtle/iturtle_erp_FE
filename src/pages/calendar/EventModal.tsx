@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Bell, Calendar, Check, Clock, FlaskConical, Link2, MapPin, Plus, Repeat, TriangleAlert, X } from 'lucide-react'
+import { Bell, Calendar, Check, Clock, FlaskConical, Link2, MapPin, Plus, Repeat, Trash2, TriangleAlert, X } from 'lucide-react'
 import { Button, Loadable, Modal, Switch } from '../../components/ui'
 import { ApiError } from '../../api/client'
 import {
+  deleteEvent,
   emptyEventForm,
   fetchConflicts,
   fetchEventDetail,
@@ -145,6 +146,26 @@ function EventFormView({ o, initial, detail, onClose }: { o: EventFormOptions; i
     }
   }, [span, people, badTime, excludeId])
 
+  // 지우기: 버튼 → 확인 줄 (반복이면 위에서 고른 범위로 지운다)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const remove = async () => {
+    if (!detail || deleting) return
+    setDeleting(true)
+    setError(null)
+    try {
+      await deleteEvent(detail, detail.recurring ? scope : null)
+      notifyEventsChanged()
+      onClose()
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : '일정을 지우지 못했어요. 잠시 뒤 다시 해 주세요.')
+      setConfirmDelete(false)
+    } finally {
+      setDeleting(false)
+    }
+  }
+  const deleteScopeText = !detail?.recurring ? '이 일정을' : scope === 'THIS' ? '이 회차만' : scope === 'FOLLOWING' ? '이 회차와 이후 모두를' : '반복 전부를'
+
   const submit = async () => {
     if (!canSave) return
     setSaving(true)
@@ -186,7 +207,7 @@ function EventFormView({ o, initial, detail, onClose }: { o: EventFormOptions; i
       {detail?.recurring && (
         <div className={s.scope} role="radiogroup" aria-label="고칠 범위">
           <Repeat size={15} />
-          <span>반복 일정이에요. 고칠 범위:</span>
+          <span>반복 일정이에요. 고치거나 지울 범위:</span>
           {SCOPES.map((x) => (
             <button key={x.value} type="button" role="radio" aria-checked={scope === x.value} className={scope === x.value ? `${s.pill} ${s.pillOn}` : s.pill} onClick={() => setScope(x.value)}>
               {scope === x.value && <Check size={13} />}
@@ -408,7 +429,28 @@ function EventFormView({ o, initial, detail, onClose }: { o: EventFormOptions; i
       )}
       {readOnly && <p className={s.error}>{detail?.owner} 님이 만든 일정이라 고칠 수 없어요.</p>}
 
+      {confirmDelete && detail && (
+        <div className={s.confirmDelete} role="alertdialog" aria-label="일정 지우기 확인">
+          <TriangleAlert size={15} />
+          <span>
+            {deleteScopeText} 지울까요? 되돌릴 수 없어요.{shared ? ' 참석자에게 취소 알림이 가요.' : ''}
+          </span>
+          <span className={s.grow} />
+          <Button variant="secondary" type="button" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+            그대로 두기
+          </Button>
+          <button type="button" className={s.dangerButton} onClick={() => void remove()} disabled={deleting}>
+            <Trash2 size={15} /> {deleting ? '지우는 중…' : '지우기'}
+          </button>
+        </div>
+      )}
+
       <div className={s.foot}>
+        {detail?.canEdit && !confirmDelete && (
+          <Button variant="secondary" type="button" icon={Trash2} onClick={() => setConfirmDelete(true)}>
+            지우기
+          </Button>
+        )}
         <span className={s.footNote}>
           <Clock size={13} /> {shared ? '저장하면 대상자 캘린더에 바로 보여요' : '내 캘린더에만 저장돼요'}
         </span>
