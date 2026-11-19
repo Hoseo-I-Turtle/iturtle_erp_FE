@@ -18,6 +18,7 @@ import { PageHeader } from './PageHeader'
 import { findProject, MY_ROLE_NAME } from '../mocks/projects'
 import { projectCategoryName, useProjectHeader } from '../api/projects'
 import { useTaskCreateRequests, type TaskCreateOpen } from '../api/tasks'
+import { openUpload } from '../api/documents'
 import { TaskCreateModal } from '../pages/projects/TaskCreateModal'
 import s from './layout.module.css'
 
@@ -67,7 +68,13 @@ export function ProjectLayout() {
           tab.action ? (
             <Button
               icon={Plus}
-              onClick={() => (tab.action === '작업 만들기' ? setCreating({}) : tab.actionTo && navigate(`${base}/${tab.actionTo}`))}
+              onClick={() =>
+                tab.action === '작업 만들기'
+                  ? setCreating({})
+                  : tab.action === '자료 올리기'
+                    ? openUpload({ projectKey: key ?? p.projectKey })
+                    : tab.actionTo && navigate(`${base}/${tab.actionTo}`)
+              }
             >
               {tab.action}
             </Button>

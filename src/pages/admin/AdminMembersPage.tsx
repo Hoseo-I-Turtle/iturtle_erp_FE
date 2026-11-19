@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Empty, Loadable } from '../../components/ui'
 import { whenLive } from '../../api/useResource'
 import {
@@ -6,6 +6,7 @@ import {
   applyPreset,
   errorText,
   isLive,
+  onMembersChanged,
   patchMember,
   resetPassword,
   saveMemberRoles,
@@ -24,6 +25,8 @@ import a from './admin.module.css'
 
 export function AdminMembersPage() {
   const res = useAdminMembers()
+  // 구성원 추가 모달이 만들면 다시 불러온다
+  useEffect(() => onMembersChanged(res.reload), [res.reload])
   return (
     <Loadable resource={res} label="구성원 목록">
       {(d) => <AdminMembersView data={d} />}

@@ -3,6 +3,7 @@ import { Eye, GitBranch, Lock, Plus, Settings, Shield, User, Users, type LucideI
 import { Button } from '../components/ui'
 import { useMe } from '../api/members'
 import { PageHeader } from './PageHeader'
+import { MemberAddButton } from '../pages/admin/members/MemberAddModal'
 import { visibleAdminTabs } from './nav'
 import s from './layout.module.css'
 
@@ -47,7 +48,7 @@ export function AdminLayout() {
       <PageHeader
         title="관리"
         subtitle={sub === 'members' ? '구성원 · 권한 · 운영 설정 (관리 역할이 있는 메뉴만 보여요)' : '구성원 · 권한 · 운영 설정'}
-        action={tab.action ? <Button icon={Plus}>{tab.action}</Button> : null}
+        action={tab.to === 'members' ? <MemberAddButton label="구성원 추가" /> : tab.action ? <Button icon={Plus}>{tab.action}</Button> : null}
       />
       <nav className={s.projectTabs} aria-label="관리 메뉴">
         {tabs.map(({ to, label, icon: Icon }) => (

@@ -149,3 +149,11 @@
 .tagOn:hover {
   background: var(--brand-500);
 }
+
+/* 폴더 거르기 */
+.folderBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--brand-500);
+}

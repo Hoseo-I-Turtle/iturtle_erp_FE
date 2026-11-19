@@ -15,6 +15,8 @@ import { NoticeListPage } from './pages/notices/NoticeListPage'
 import { CalendarPage } from './pages/calendar/CalendarPage'
 import { SchedulePollPage } from './pages/calendar/SchedulePollPage'
 import { LibraryPage } from './pages/library/LibraryPage'
+import { DocumentDetailPage } from './pages/library/detail/DocumentDetailPage'
+import { ProjectFilesPage } from './pages/projects/files/ProjectFilesPage'
 import { MembersPage } from './pages/members/MembersPage'
 import { ProjectListPage } from './pages/projects/ProjectListPage'
 import { ProjectHomePage } from './pages/projects/ProjectHomePage'
@@ -81,14 +83,14 @@ const router = createBrowserRouter([
           { path: 'threads', element: <ThreadPage /> },
           { path: 'threads/new', element: <ThreadPage /> },
           { path: 'minutes', element: <MinutesPage /> },
-          { path: 'files', element: <PlaceholderPage title="자료" bare /> },
+          { path: 'files', element: <ProjectFilesPage /> },
           { path: 'settings', element: <ProjectSettingsPage /> },
         ],
       },
       { path: '/reports', element: <WeeklyReportPage /> },
 
       { path: '/library', element: <LibraryPage /> },
-      { path: '/library/:id', element: <PlaceholderPage title="자료 상세" /> },
+      { path: '/library/:id', element: <DocumentDetailPage /> },
       { path: '/members', element: <MembersPage /> },
       {
         path: '/admin',
