@@ -19,7 +19,7 @@ import { Markdown } from '../../components/markdown/Markdown'
 import { PRIORITY_NAME, STATUS_NAME, TYPE_NAME, type TaskStatus } from '../../mocks/tasks'
 import { ApiError } from '../../api/client'
 import { whenLive } from '../../api/useResource'
-import { postTaskComment, setChecklistDone, setWatching, transitionTask, useTaskDetail, type TaskDetailData } from '../../api/projects'
+import { postTaskComment, setChecklistDone, setWatching, transitionRule, transitionTask, useTaskDetail, type TaskDetailData } from '../../api/projects'
 import s from './TaskDetailPage.module.css'
 
 const FLOW: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE']
@@ -42,6 +42,8 @@ function TaskDetailView({ d, projectKey, reload }: { d: TaskDetailData; projectK
   const ME = d.me
 
   const [status, setStatus] = useState<TaskStatus>(task.status)
+  // 취소된 작업 (서버 CANCELLED). 화면 상태 칸에는 없어 따로 들고, '할 일로 되돌리기'(CANCELLED → TODO)만 할 수 있다
+  const [cancelled, setCancelled] = useState(!!task.cancelled)
   // 상태를 옮길 때마다 서버가 올려 주는 동시 수정 값 (T-7)
   const [version, setVersion] = useState(task.version ?? 0)
   const [checklist, setChecklist] = useState(d.checklist)
@@ -54,8 +56,8 @@ function TaskDetailView({ d, projectKey, reload }: { d: TaskDetailData; projectK
 
   const canComplete = task.requester === ME || d.isManager
   const done = checklist.filter((c) => c.done).length
-  const idx = FLOW.indexOf(status)
-  const next = FLOW[idx + 1]
+  const idx = cancelled ? -1 : FLOW.indexOf(status)
+  const next: TaskStatus | undefined = cancelled ? 'TODO' : FLOW[idx + 1]
   // 구독자 얼굴: 내 구독 여부만 화면에서 바꾼다
   const subscribers = subscribed ? (d.subscribers.includes(ME) ? d.subscribers : [...d.subscribers, ME]) : d.subscribers.filter((n) => n !== ME)
   const shownWatchCount = watchCount + (subscribed === d.watching ? 0 : subscribed ? 1 : -1)
@@ -92,8 +94,17 @@ function TaskDetailView({ d, projectKey, reload }: { d: TaskDetailData; projectK
 
   const advance = () => {
     if (!next) return
+    // 서버와 같은 이동 규칙 (TaskService.TRANSITIONS)
+    const rule = transitionRule(cancelled ? 'CANCELLED' : status, next)
+    if (!rule) return setNotice('이 상태로는 옮길 수 없어요.')
     if (next === 'IN_PROGRESS' && !task.assignee) return setNotice('담당자가 없는 작업은 진행 중으로 옮길 수 없어요.')
-    if (next === 'DONE' && !canComplete) return setNotice('완료는 요청자나 프로젝트 관리자만 할 수 있어요.')
+    if (rule.byRequester && !canComplete) return setNotice(`${next === 'DONE' ? '완료' : '되돌리기'}는 요청자나 프로젝트 관리자만 할 수 있어요.`)
+    if (!rule.byRequester && task.assignee !== ME && !d.isManager) return setNotice('담당자나 프로젝트 관리자만 옮길 수 있어요.')
+    if (cancelled) {
+      setCancelled(false)
+      transition(next, undefined, () => setCancelled(true))
+      return
+    }
     transition(next)
   }
   const reject = () => {
@@ -170,7 +181,7 @@ function TaskDetailView({ d, projectKey, reload }: { d: TaskDetailData; projectK
             )}
             {next && (
               <Button icon={Check} onClick={advance}>
-                {STATUS_NAME[next]}로 옮기기
+                {cancelled ? '할 일로 되돌리기' : `${STATUS_NAME[next]}로 옮기기`}
               </Button>
             )}
           </div>
@@ -276,7 +287,11 @@ function TaskDetailView({ d, projectKey, reload }: { d: TaskDetailData; projectK
             <dl className={s.props}>
               <dt>상태</dt>
               <dd>
-                <span className={`${s.statusChip} ${s[`st${status}`]}`}>{STATUS_NAME[status] ?? status}</span>
+                {cancelled ? (
+                  <span className={s.statusChip}>취소</span>
+                ) : (
+                  <span className={`${s.statusChip} ${s[`st${status}`]}`}>{STATUS_NAME[status] ?? status}</span>
+                )}
               </dd>
               <dt>담당자</dt>
               <dd>{task.assignee ? <Person name={task.assignee} /> : '없음'}</dd>
@@ -293,7 +308,7 @@ function TaskDetailView({ d, projectKey, reload }: { d: TaskDetailData; projectK
               <dt>유형</dt>
               <dd>
                 <Chip tone="brand" icon={SquareCheck}>
-                  {TYPE_NAME[task.type]}
+                  {task.typeName ?? TYPE_NAME[task.type]}
                 </Chip>
               </dd>
               <dt>기한</dt>

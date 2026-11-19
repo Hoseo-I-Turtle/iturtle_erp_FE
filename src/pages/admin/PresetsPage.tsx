@@ -50,7 +50,7 @@ function PresetsView({ data }: { data: PresetsData }) {
   const added = draft.roles.filter((r) => !saved.roles.includes(r))
   // 더해진 역할이 아직 없는 적용 구성원 (미리보기)
   const affected = propagate ? (applied.data ?? []).filter((m) => added.some((r) => !m.roles.includes(r))) : []
-  const preview = added.length === 0 && saved.id === 'student' && !dirty ? missingPenpot : affected.map((m) => m.name)
+  const preview = !isLive() && added.length === 0 && saved.id === 'student' && !dirty ? missingPenpot : affected.map((m) => m.name)
 
   const toggle = (code: string) =>
     setDraft({ ...draft, roles: draft.roles.includes(code) ? draft.roles.filter((r) => r !== code) : [...draft.roles, code] })

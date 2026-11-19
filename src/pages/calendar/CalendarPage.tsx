@@ -287,7 +287,7 @@ function CalendarView({ settings }: { settings: CalendarSettings }) {
               {selectedEvents.map((e) => (
                 <EventRow key={e.id} e={e} compact />
               ))}
-              {/* 명세 확인 필요: POST /meeting-minutes 는 참석자 · 프로젝트 키가 필요하고 연구실 회의록 화면 경로가 없어 아직 연결하지 않음 */}
+              {/* 백엔드 POST /meeting-minutes 는 projectKey 없이 연구실 회의록도 받지만(참석자 목록은 필수) 이 앱에 연구실 회의록 화면 경로가 없어 아직 연결하지 않음 */}
               <Button variant="tint" icon={ClipboardList} className={s.minutesBtn}>
                 이 날 회의록 만들기
               </Button>

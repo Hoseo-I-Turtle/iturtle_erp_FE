@@ -27,15 +27,31 @@ import { PlaceholderPage } from './pages/PlaceholderPage'
 import { StartPage } from './pages/start/StartPage'
 import { ModeGate } from './layouts/ModeGate'
 import { LoginPage } from './pages/account/LoginPage'
+import { LogoutPage } from './pages/account/LogoutPage'
 import { PasswordChangePage } from './pages/account/PasswordChangePage'
 import { SignupPage } from './pages/account/SignupPage'
 import { ProfilePage } from './pages/account/ProfilePage'
 import { NotificationsPage } from './pages/account/NotificationsPage'
+import { IS_PROD } from './lib/dataMode'
+import { applyLoginReturn } from './lib/loginReturn'
 
+// 방금 로그인해서 / 에 왔으면, 로그인 화면으로 보내지기 전에 보던 주소로 바꾼 뒤 라우터를 만든다
+applyLoginReturn()
+
+/*
+ * 백엔드가 브라우저를 보내는 화면 주소 (바꾸면 백엔드와 같이 바꿔야 한다)
+ * - /login, /login?error, /login?logout, /login?expired  (AuthSecurityConfig, LoginFailureHandler, SsoLogoutSuccessHandler)
+ * - /account/password  임시 비밀번호로 로그인했을 때 (PasswordChangeRequiredFilter.PASSWORD_PAGE)
+ * - /, /?denied=<client_id>  로그인 성공 기본 주소, SSO 접근 역할이 없을 때 (LoginSuccessHandler, SsoAppAccessFilter)
+ * - /profile?github=linked | error&code=G00x  GitHub 연결 결과 (GithubProperties.profileUrl 기본값)
+ */
 const router = createBrowserRouter([
-  { path: '/start', element: <StartPage /> },
+  // 목업 / 실서버 고르기는 개발 서버에만 있다
+  { path: '/start', element: IS_PROD ? <Navigate to="/" replace /> : <StartPage /> },
   { path: '/login', element: <ModeGate><LoginPage /></ModeGate> },
-  { path: '/password', element: <ModeGate><PasswordChangePage /></ModeGate> },
+  { path: '/logout', element: <ModeGate><LogoutPage /></ModeGate> },
+  { path: '/account/password', element: <ModeGate><PasswordChangePage /></ModeGate> },
+  { path: '/password', element: <Navigate to="/account/password" replace /> },
   { path: '/signup', element: <SignupPage /> },
   {
     element: <AppLayout />,
@@ -83,7 +99,9 @@ const router = createBrowserRouter([
           { path: 'github', element: <GithubPage /> },
         ],
       },
-      { path: '/me', element: <ProfilePage /> },
+      { path: '/profile', element: <ProfilePage /> },
+      // 예전 주소
+      { path: '/me', element: <Navigate to="/profile" replace /> },
       { path: '/notifications', element: <NotificationsPage /> },
       { path: '*', element: <PlaceholderPage title="페이지를 찾을 수 없어요" /> },
     ],

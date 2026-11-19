@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom'
 import { Check, Clock, FlaskConical, Lock, Plus } from 'lucide-react'
 import { AvatarStack, Button, Chip, Empty, Loadable, Progress } from '../../components/ui'
 import { PageHeader } from '../../layouts/PageHeader'
-import { MY_ROLE_NAME, PROJECT_CATEGORY_NAME, type ProjectCategory, type ProjectSummary } from '../../mocks/projects'
-import { useProjectList } from '../../api/projects'
+import { MY_ROLE_NAME, PROJECT_CATEGORY_NAME } from '../../mocks/projects'
+import { projectCategoryName, useProjectList, type ProjectCard as Project } from '../../api/projects'
 import { ServiceIcon, StatusChip } from './common'
 import s from './ProjectListPage.module.css'
 
-type Cat = 'ALL' | ProjectCategory
+/** 'ALL' 또는 공통코드 PROJECT_CATEGORY 코드 (실서버는 화면 기본 4개 밖의 코드도 온다) */
+type Cat = string
 
 export function ProjectListPage() {
   const [cat, setCat] = useState<Cat>('ALL')
@@ -20,7 +21,7 @@ export function ProjectListPage() {
   const res = useProjectList({ category: cat, mine, activeOnly, archived })
   // 다시 불러오는 동안에도 탭 숫자는 앞의 값을 보여 준다
   const count = (c: Cat) => res.data?.counts[c] ?? 0
-  const filter = (all: ProjectSummary[]) =>
+  const filter = (all: Project[]) =>
     all.filter(
       (p) =>
         (cat === 'ALL' || p.categoryCode === cat) &&
@@ -28,7 +29,13 @@ export function ProjectListPage() {
         (!activeOnly || p.status === 'ACTIVE' || p.status === 'PREPARING'),
     )
 
-  const cats: Cat[] = ['ALL', ...(Object.keys(PROJECT_CATEGORY_NAME) as ProjectCategory[])]
+  // 탭: 서버 개수(categoryCounts)에 나온 카테고리 + 기본 카테고리. 고른 탭은 개수가 0이 되어도 남긴다
+  const known = res.data?.categories ?? Object.keys(PROJECT_CATEGORY_NAME).map((code) => ({ code, name: projectCategoryName(code) }))
+  const cats = [
+    { code: 'ALL', name: '전체' },
+    ...known,
+    ...(cat !== 'ALL' && !known.some((c) => c.code === cat) ? [{ code: cat, name: projectCategoryName(cat) }] : []),
+  ]
 
   return (
     <>
@@ -42,12 +49,12 @@ export function ProjectListPage() {
         <div className={s.cats}>
           {cats.map((c) => (
             <button
-              key={c}
+              key={c.code}
               type="button"
-              className={c === cat ? `${s.cat} ${s.catOn}` : s.cat}
-              onClick={() => setCat(c)}
+              className={c.code === cat ? `${s.cat} ${s.catOn}` : s.cat}
+              onClick={() => setCat(c.code)}
             >
-              {c === 'ALL' ? '전체' : PROJECT_CATEGORY_NAME[c]} {count(c)}
+              {c.name} {count(c.code)}
             </button>
           ))}
         </div>
@@ -91,12 +98,12 @@ function Toggle({ on, onClick, children }: { on: boolean; onClick: () => void; c
   )
 }
 
-function ProjectCard({ p }: { p: ProjectSummary }) {
+function ProjectCard({ p }: { p: Project }) {
   const pct = Math.round((p.nextMilestone?.ratio ?? 0) * 100)
   return (
     <Link to={`/projects/${p.projectKey}`} className={s.card}>
       <div className={s.cardTop}>
-        <Chip tone="tint">{PROJECT_CATEGORY_NAME[p.categoryCode]}</Chip>
+        <Chip tone="tint">{p.categoryName ?? projectCategoryName(p.categoryCode)}</Chip>
         <span className={s.key}>{p.projectKey}</span>
         {p.visibility === 'PRIVATE' && (
           <Chip tone="warning" icon={Lock}>

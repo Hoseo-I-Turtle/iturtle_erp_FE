@@ -14,10 +14,10 @@
 
 ## 전제 (README 3장 제안)
 
-- **[T2]** `files` 에 `status`(`UPLOADING`, `READY`) · `upload_id` 칸이 있다고 보고 씁니다. 브라우저가 Garage 로 직접 올리는 방식입니다.
+- **[T2]** `files` 에 `status`(`UPLOADING`, `READY`) · `upload_id` 칸이 있다고 보고 씁니다. 브라우저가 Garage 로 직접 올리는 방식입니다. **(반영함, V20261118_06)**
 - **[T3]** `document_files` 에 `file_extension` · `file_size` 를 붙일 때 복사해 둔다고 보고 씁니다 ("파일 형식" 거르기).
 - **[R5]** 파일 열람 권한은 대상 모듈이 구현한 `FileTargetPolicy` 가 판단합니다.
-- **Garage 주소**: 브라우저가 서명 주소로 Garage 에 직접 올리고 받으려면 Garage 가 브라우저에서 보여야 합니다. NFR-ENV-03("바깥으로 공개하지 않는다")과 맞추려면 **WARP 안의 nginx 경로로만** 엽니다 (예: `https://lab.iturtle.win/storage/`, 인터넷에는 열지 않음). 이것이 안 되면 ERP 가 받아서 넘기는 방식으로 바꿔야 하고, 그때는 F-1 · F-2 가 바뀝니다.
+- **Garage 주소**: 서명에는 호스트와 경로가 들어가므로 `/storage/` 같은 **경로 앞붙이기로는 서명이 맞지 않습니다.** WARP 안에서만 보이는 **별도 호스트**(예: `files.lab.iturtle.win` → `erp-garage:3900`, Host 헤더 유지)로 엽니다 ([배포](../deployment.md#파일-저장소-garage)). 브라우저가 서명 주소로 Garage 에 직접 올리고 받으려면 Garage 가 브라우저에서 보여야 합니다. NFR-ENV-03("바깥으로 공개하지 않는다")과 맞추려면 **WARP 안의 nginx 경로로만** 엽니다 (예: `https://lab.iturtle.win/storage/`, 인터넷에는 열지 않음). 이것이 안 되면 ERP 가 받아서 넘기는 방식으로 바꿔야 하고, 그때는 F-1 · F-2 가 바뀝니다.
 
 ---
 
@@ -674,3 +674,5 @@ API 를 따로 두지 않습니다. `PUT /members/me/photo`([10](10-member.md))�
 | 403 | `F010` | `NOT_FILE_UPLOADER` | 직접 올린 파일만 붙일 수 있어요. |
 | 502 | `F011` | `STORAGE_UNAVAILABLE` | 파일 저장소에 연결하지 못했어요. 잠시 뒤 다시 시도해 주세요. |
 | 400 | `F012` | `INVALID_FILENAME` | 파일 이름이 비었거나 255자를 넘어요. |
+| 400 | `F013` | `INVALID_IMAGE_CROP` | 자를 영역이 사진 밖에 있어요. (프로필 사진, [10](10-member.md) 1-3) |
+| 400 | `F014` | `IMAGE_UNREADABLE` | 사진을 읽지 못했어요. JPG · PNG · WEBP 로 다시 올려 주세요. (프로필 사진) |

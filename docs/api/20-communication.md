@@ -105,9 +105,9 @@ Markdown 본문에 붙여 넣은 이미지는 `purpose = INLINE_IMAGE` 로 올�
 | 마감 전, 투표한 사람 | 공개 | 비공개 |
 | 마감 전, 투표 안 한 대상 | 비공개 | 비공개 |
 | 마감 전, 대상이 아닌 사람 | 비공개 | 비공개 |
-| 마감 전, 작성자 · `content-manage` | 공개 (숫자만. 익명이면 `voters` 없음) | 공개 (숫자만) |
+| 마감 전, 작성자 · `content-manage` | 공개 (기명이면 `voters` 까지, 익명이면 숫자만) | 공개 (기명이면 `voters` 까지, 익명이면 숫자만) |
 
-> 대상이 아닌 사람과 작성자가 마감 전에 결과를 보는지는 SRS 에 없습니다. 위 표처럼 정하는 것을 제안합니다.
+> 대상이 아닌 사람과 작성자가 마감 전에 결과를 보는지는 SRS 에 없습니다. 작성자 · `content-manage` 는 안 한 사람에게 연락할 수 있게 마감 전에도 이름까지 봅니다 (2026-11-19 결정).
 
 ---
 
@@ -136,7 +136,7 @@ Markdown 본문에 붙여 넣은 이미지는 `purpose = INLINE_IMAGE` 로 올�
 
 | 필드 | 타입 | 설명 |
 |------|------|------|
-| `pinned[]` | NoticeSummary[] | 고정 기한 안의 공지 (최대 3개). 첫 페이지에만 넣고 `page` 목록에서는 뺀다 |
+| `pinned[]` | NoticeSummary[] | 고정 기한 안의 공지 (최대 5개). 첫 페이지에만 넣고 `page` 목록에서는 뺀다 |
 | `page` | PageResponse\<NoticeSummary\> | 나머지, 최신 순 |
 
 `NoticeSummary`
@@ -275,7 +275,7 @@ Markdown 본문에 붙여 넣은 이미지는 `purpose = INLINE_IMAGE` 로 올�
 | `title` | string | O | 1~100자 |
 | `body` | string | O | Markdown, 1~20,000자 |
 | `mustRead` | boolean | O | 필독 |
-| `pinnedUntilOn` | string (날짜) \| null | X | 고정 기한 날짜 (그날 끝까지 고정). 오늘 이후. null = 고정 안 함. 고정 중인 공지가 이미 3개면 거절 |
+| `pinnedUntilOn` | string (날짜) \| null | X | 고정 기한 날짜 (그날 끝까지 고정). 오늘 이후. null = 고정 안 함. 고정 중인 공지가 이미 5개면 거절 |
 | `attachmentFileIds` | string[] | X | 첨부 `publicId`, 10개 이하. `purpose = ATTACHMENT` 이고 내가 올렸고 아직 어디에도 안 붙은 파일 |
 | `poll` | object \| null | X | 투표 (0~1개) |
 | `poll.question` | string | O | 1~100자 |
@@ -314,7 +314,7 @@ Markdown 본문에 붙여 넣은 이미지는 `purpose = INLINE_IMAGE` 로 올�
 | HTTP | 코드 | 언제 |
 |------|------|------|
 | 400 | `N003` | 고정 기한이 오늘보다 앞 |
-| 409 | `N002` | 고정 중인 공지가 이미 3개 |
+| 409 | `N002` | 고정 중인 공지가 이미 5개 (동시에 고정해도 넘치지 않게 고정 중인 행을 잠그고 셈) |
 | 400 | `N014` | 첨부가 10개를 넘음 |
 | 400 | `N012` | 선택지 개수 · 길이 · 중복이 규칙에 맞지 않음 |
 | 400 | `N017` | 복수 선택인데 `maxChoices` 가 없거나 2 미만 · 선택지 수 초과, 단일 선택인데 `maxChoices` 를 보냄 |
@@ -344,7 +344,7 @@ Markdown 본문에 붙여 넣은 이미지는 `purpose = INLINE_IMAGE` 로 올�
 | `title` | string | 1~100자 |
 | `body` | string | 1~20,000자. 바뀌면 `editedAt` 이 새로 찍힘 |
 | `mustRead` | boolean | |
-| `pinnedUntilOn` | string \| null | 고정 · 기한 바꾸기 · `null` = 고정 해제. 새로 고정할 때 3개 검사 |
+| `pinnedUntilOn` | string \| null | 고정 · 기한 바꾸기 · `null` = 고정 해제. 새로 고정할 때 5개 검사 |
 | `attachmentFileIds` | string[] | 보낸 목록으로 통째로 바꿈. 빠진 파일은 30일 뒤 지워짐 (DOC-2-09) |
 | `resetReads` | boolean | true 면 읽음 기록 초기화 (COM-1-07). **필독 공지만** |
 | `poll` | object \| null | 아래. 빼면 그대로, `null` 이면 투표 지우기 (표가 없을 때만) |
@@ -377,7 +377,7 @@ Markdown 본문에 붙여 넣은 이미지는 `purpose = INLINE_IMAGE` 로 올�
 |------|------|------|
 | 404 | `N001` | 공지가 없음 |
 | 403 | `C003` | 작성자 · `content-manage` 가 아님, 또는 `content-manage` 가 `poll` 을 바꾸려 함 |
-| 409 | `N002` | 새로 고정하려는데 이미 3개 |
+| 409 | `N002` | 새로 고정하려는데 이미 5개 |
 | 400 | `N003` | 고정 기한이 오늘보다 앞 |
 | 400 | `N015` | 필독이 아닌데 `resetReads` |
 | 409 | `N005` | 표가 들어온 뒤 마감 시각 말고 다른 투표 값을 바꾸려 함 |
@@ -677,7 +677,7 @@ calendar 는 `projectId` 만 저장하고, 볼 수 있는지는 project 모듈�
 | `freq` | string | O | `DAILY`, `WEEKLY`, `MONTHLY` |
 | `byDay` | string[] | 매주면 O | `MO`~`SU`, 1개 이상 |
 | `byMonthDay` | number | 매월이면 O | 1~31 (그 날이 없는 달은 건너뜀) |
-| `until` | string (날짜) | `count` 와 둘 중 하나 | 끝나는 날 (포함) |
+| `until` | string (날짜) | `count` 와 둘 중 하나 (둘 다 비우면 첫 회차부터 5년) | 끝나는 날 (포함). 상한 없음 |
 | `count` | number | `until` 과 둘 중 하나 | 횟수, 1~200 |
 
 서버는 RRULE(`FREQ=WEEKLY;BYDAY=TU;UNTIL=…`)로 저장하고 `recurrence_until` 을 계산해 둡니다.
@@ -721,7 +721,7 @@ calendar 는 `projectId` 만 저장하고, 볼 수 있는지는 project 모듈�
 | 400 | `CL004` | 없거나 사용 안 함인 일정 종류 |
 | 400 | `CL005` | 개인 일정에 `eventTypeCode` · `attendeeIds` · `projectId` 를 보냄, 공용 일정에 `shareMode` 를 보냄 |
 | 400 | `CL006` | 개인 일정인데 `shareMode` 가 없음 |
-| 400 | `CL007` | 반복 규칙이 맞지 않음 (매주인데 요일 없음, `until` · `count` 둘 다 · 둘 다 없음, 범위 밖) |
+| 400 | `CL007` | 반복 규칙이 맞지 않음 (매주인데 요일 없음, `until` · `count` 둘 다, `until` 이 첫 회차보다 앞, `count` 범위 밖) |
 | 400 | `CL010` | 참석자에 재실이 아닌 구성원 · 없는 구성원 |
 | 404 | `P…` | `projectId` 가 없거나 볼 수 없는 프로젝트 ([30](30-project.md)) |
 
@@ -1479,7 +1479,7 @@ PATCH /api/v1/calendar-events/31?scope=THIS&occurrence=2026-11-24T05:00:00Z
 | HTTP | 코드 | 이름 | 메시지 |
 |------|------|------|--------|
 | 404 | `N001` | `NOTICE_NOT_FOUND` | 공지를 찾을 수 없어요. |
-| 409 | `N002` | `PIN_LIMIT_EXCEEDED` | 상단 고정은 3개까지 할 수 있어요. 다른 공지의 고정을 먼저 풀어 주세요. |
+| 409 | `N002` | `PIN_LIMIT_EXCEEDED` | 상단 고정은 5개까지 할 수 있어요. 다른 공지의 고정을 먼저 풀어 주세요. |
 | 400 | `N003` | `PIN_UNTIL_IN_PAST` | 고정 기한은 오늘 이후로 골라 주세요. |
 | 404 | `N004` | `POLL_NOT_FOUND` | 이 공지에는 투표가 없어요. |
 | 409 | `N005` | `POLL_LOCKED_AFTER_VOTE` | 표가 들어온 뒤에는 마감 시각만 바꿀 수 있어요. |

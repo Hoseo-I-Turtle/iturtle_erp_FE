@@ -3,14 +3,16 @@ import { Link } from 'react-router-dom'
 import { CircleHelp, Download, FileText, ListFilter, Lock, MessageCircle, Pin, Plus } from 'lucide-react'
 import { Button, Card, Chip, Columns, Empty, FilterSelect, ListItem, Loadable, Note, PillTabs, SectionHead } from '../../components/ui'
 import { PageHeader } from '../../layouts/PageHeader'
-import { CATEGORY_NAME, type DocumentCategory, type DocumentSummary } from '../../mocks/documents'
-import { useLibrary, type LibraryData, type LibrarySort } from '../../api/content'
+import { CATEGORY_NAME, type DocumentCategory } from '../../mocks/documents'
+import { documentCategoryName, useLibrary, type LibraryData, type LibraryDocument, type LibrarySort } from '../../api/content'
 import s from './LibraryPage.module.css'
 
-type Tab = 'ALL' | DocumentCategory
+/** 'ALL' 또는 공통코드 DOCUMENT_CATEGORY 코드 (실서버는 기본 7개 밖의 코드도 온다) */
+type Tab = string
 const SORTS: readonly LibrarySort[] = ['최신순', '댓글 많은 순', '제목순']
 const EMPTY: LibraryData = {
   documents: [],
+  categories: (Object.keys(CATEGORY_NAME) as DocumentCategory[]).map((code) => ({ code, name: CATEGORY_NAME[code] })),
   categoryCounts: { PAPER: 0, SLIDE: 0, DEV_DOC: 0, DATA: 0, FORM: 0, QNA: 0, FREE: 0 },
   pinnedDocs: [],
   unresolved: [],
@@ -38,15 +40,15 @@ export function LibraryPage() {
   // 거르기 · 정렬은 서버가 하고(실서버), 화면도 같은 조건으로 한 번 더 거른다(목업 · 고정 자료)
   const lib = useLibrary({ category: tab, tag, project, author, fileType, sort })
   // 다시 불러오는 동안에도 앞의 값으로 탭 · 거르기 칸을 그려 둔다
-  const { documents, categoryCounts, pinnedDocs, unresolved, popularTags, options } = lib.data ?? EMPTY
+  const { documents, categories, categoryCounts, pinnedDocs, unresolved, popularTags, options } = lib.data ?? EMPTY
 
   const total = Object.values(categoryCounts).reduce((a, b) => a + b, 0)
   const tabs = [
     { value: 'ALL' as Tab, label: '전체', count: total },
-    ...(Object.keys(CATEGORY_NAME) as DocumentCategory[]).map((c) => ({
-      value: c as Tab,
-      label: CATEGORY_NAME[c],
-      count: categoryCounts[c],
+    ...categories.map((c) => ({
+      value: c.code as Tab,
+      label: c.name,
+      count: categoryCounts[c.code] ?? 0,
     })),
   ]
 
@@ -162,7 +164,7 @@ export function LibraryPage() {
   )
 }
 
-function DocRow({ d, onTag }: { d: DocumentSummary; onTag: (t: string) => void }) {
+function DocRow({ d, onTag }: { d: LibraryDocument; onTag: (t: string) => void }) {
   const ext = d.fileTypes[0]
   return (
     <li className={s.doc}>
@@ -176,7 +178,7 @@ function DocRow({ d, onTag }: { d: DocumentSummary; onTag: (t: string) => void }
           {d.latestVersion > 1 && <span className={s.ver}>v{d.latestVersion}</span>}
         </div>
         <div className={s.docSub}>
-          <span className={s.cat}>{CATEGORY_NAME[d.categoryCode]}</span>
+          <span className={s.cat}>{d.categoryName ?? documentCategoryName(d.categoryCode)}</span>
           {d.tags.map((t) => (
             <button key={t} type="button" className={s.hash} onClick={() => onTag(t)}>
               #{t}
@@ -198,7 +200,7 @@ function DocRow({ d, onTag }: { d: DocumentSummary; onTag: (t: string) => void }
         <MessageCircle size={14} />
         {d.commentCount}
       </span>
-      {/* 명세 확인 필요: 목록(DocumentSummary)에 파일 publicId 가 없어 바로 내려받을 수 없다. 상세(D-3)에서 받는다 */}
+      {/* 백엔드 DocumentSummaryResponse 에 파일 publicId 가 없어 목록에서 바로 내려받을 수 없다. 상세(D-3 files[].latest.file)에서 받는다 */}
       <button type="button" className={s.dl} aria-label="내려받기">
         <Download size={18} />
       </button>

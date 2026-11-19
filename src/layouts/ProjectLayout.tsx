@@ -13,8 +13,8 @@ import {
 } from 'lucide-react'
 import { Button } from '../components/ui'
 import { PageHeader } from './PageHeader'
-import { findProject, MY_ROLE_NAME, PROJECT_CATEGORY_NAME } from '../mocks/projects'
-import { useProjectHeader } from '../api/projects'
+import { findProject, MY_ROLE_NAME } from '../mocks/projects'
+import { projectCategoryName, useProjectHeader } from '../api/projects'
 import s from './layout.module.css'
 
 const TABS: { to: string; label: string; icon: LucideIcon; action?: string; actionTo?: string; subtitle?: string; hideTabs?: boolean }[] = [
@@ -44,7 +44,7 @@ export function ProjectLayout() {
   const isTaskDetail = sub === 'tasks' && pathname.split('/').length > 4
 
   const subtitle = [
-    PROJECT_CATEGORY_NAME[p.categoryCode],
+    projectCategoryName(p.categoryCode),
     p.projectKey,
     p.visibility === 'LAB' ? '연구실 공개' : '비공개',
     p.myRole === 'NONE' ? '참여 안 함' : MY_ROLE_NAME[p.myRole].replace('내가 ', '내가 프로젝트 '),

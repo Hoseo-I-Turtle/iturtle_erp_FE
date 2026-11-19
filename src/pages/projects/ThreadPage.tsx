@@ -20,7 +20,6 @@ import {
 import { Avatar, Button, Card, Chip, Empty, Loadable, Modal, Note } from '../../components/ui'
 import { Markdown } from '../../components/markdown/Markdown'
 import { MarkdownEditor } from '../../components/markdown/MarkdownEditor'
-import { findProject } from '../../mocks/projects'
 import { whenLive, type Resource } from '../../api/useResource'
 import {
   createThread,
@@ -34,12 +33,14 @@ import {
   type ThreadPostView,
 } from '../../api/content'
 import s from './ThreadPage.module.css'
+import { useProjectHeader } from '../../api/projects'
 
 const firstLine = (p: ThreadPostView) => p.body.replace(/```[\s\S]*?```/g, '').trim()
 
 export function ThreadPage() {
   const { key } = useParams()
-  const project = findProject(key)
+  // 실서버면 GET /projects/{key} (목업이면 mocks) — 목업 프로젝트 이름이 실서버 화면에 섞이지 않게
+  const project = useProjectHeader(key).data ?? { projectKey: key ?? '', name: key ?? '' }
   // 실서버에는 목업에 없는 프로젝트도 있으니 주소의 키를 그대로 쓴다
   const projectKey = key ?? project.projectKey
   const projectName = project.projectKey === projectKey ? project.name : projectKey

@@ -71,7 +71,13 @@ function formatBytes(n: number) {
   return `${(n / 1024 / 1024).toFixed(1)}MB`
 }
 const fileUrl = (publicId: string) => `${getApiBase().replace(/\/$/, '')}/files/${publicId}/download`
-const roleName = (m: MemberRef) => (m.status === 'ACTIVE' ? MEMBER_TYPE_NAME[m.memberType] : '졸업')
+/** 백엔드 MemberStatus 는 휴학(ON_LEAVE)도 있다 (types.ts 의 MemberRef 에는 아직 없어 문자열로 본다) */
+const roleName = (m: MemberRef) => {
+  const status: string = m.status
+  if (status === 'ACTIVE') return MEMBER_TYPE_NAME[m.memberType]
+  if (status === 'ON_LEAVE') return `${MEMBER_TYPE_NAME[m.memberType]} · 휴학`
+  return '졸업'
+}
 
 type Me = { memberId: number; name: string; roles: string[] }
 const fetchMe = () => api<Me>('/members/me')
@@ -363,16 +369,14 @@ type OccurrenceDto = {
 }
 type OccurrencesDto = { from: string; to: string; occurrences: OccurrenceDto[] }
 
-// 명세 확인 필요: 공통코드 CALENDAR_EVENT_TYPE 의 상세 코드 목록. 예시(MEETING · SEMINAR · DEADLINE)만 명세에 있어 나머지는 추정
+// 공통코드 CALENDAR_EVENT_TYPE 의 상세 코드 (백엔드 migration V20261118_09). 관리 화면에서 더한 코드는 '행사' 로 그린다
 const EVENT_KIND: Record<string, EventKind> = {
   MEETING: 'meeting',
   SEMINAR: 'seminar',
   DEADLINE: 'deadline',
   EVENT: 'event',
   CONFERENCE: 'conference',
-  OFF: 'off',
   HOLIDAY: 'off',
-  VACATION: 'off',
 }
 const LAYER: Record<OccurrenceDto['layer'], EventLayer> = { SHARED: 'public', PERSONAL: 'personal', MEMBER_SHARED: 'member' }
 
@@ -400,9 +404,12 @@ function occToCalEvents(o: OccurrenceDto): CalEvent[] {
   return out
 }
 
-/** CL-1 일정 조회 */
-const fetchOccurrences = (from: string, to: string, layers = 'SHARED,PERSONAL,MEMBER_SHARED') =>
-  api<OccurrencesDto>('/calendar-events', { query: { from, to, layers, attendingOnly: false } }).then((r) => r.occurrences)
+/**
+ * CL-1 일정 조회 (from · to 는 'YYYY-MM-DD', 최대 92일). layers 는 쉼표 목록.
+ * attendingOnly 를 보내면 내 설정(sharedScope)보다 앞선다
+ */
+const fetchOccurrences = (from: string, to: string, layers = 'SHARED,PERSONAL,MEMBER_SHARED', attendingOnly = false) =>
+  api<OccurrencesDto>('/calendar-events', { query: { from, to, layers, attendingOnly } }).then((r) => r.occurrences)
 
 type TaskCardDto = {
   taskId: number
@@ -581,7 +588,8 @@ function pollFromDto(p: MeetingPollDto, me: Me, busy: OccurrenceDto[]): PollView
     id: String(p.pollId),
     pollId: p.pollId,
     title: p.title,
-    // 명세 확인 필요: MP-3 에 projectId 만 있고 프로젝트 이름이 없음. 이름은 비워 두고 화면에서 칩을 숨긴다
+    // 백엔드 MeetingPollDetailResponse 에 projectId 만 있고 프로젝트 이름 · 키가 없다 (id 로 프로젝트를 찾는 API 도 없음).
+    // 이름은 비워 두고 화면에서 칩을 숨긴다
     project: '',
     durationSlots: Math.round(p.durationMinutes / p.slotMinutes),
     slotHours,
@@ -615,9 +623,9 @@ export function useMeetingPoll(id: string | undefined) {
       const [p, me] = await Promise.all([api<MeetingPollDto>(`/meeting-polls/${id}`), fetchMe()])
       const from = p.candidateDates[0]
       const to = p.candidateDates[p.candidateDates.length - 1]
+      // 내 개인 일정 + 내가 참석하는 공용 일정만 겹친다 (attendingOnly=true 는 공용 층에만 걸린다).
       // 겹쳐 보기 실패는 화면 전체를 막지 않는다
-      const busy = await fetchOccurrences(from, to, 'SHARED,PERSONAL').catch(() => [] as OccurrenceDto[])
-      // 명세 확인 필요: MP 절은 layers=SHARED,PERSONAL, CL 절은 layers=PERSONAL 로 적혀 있음. 공용 일정 중 내가 참석하는 것만 겹친다
+      const busy = await fetchOccurrences(from, to, 'SHARED,PERSONAL', true).catch(() => [] as OccurrenceDto[])
       return pollFromDto(p, me, busy.filter((o) => o.layer === 'PERSONAL' || o.attending))
     },
   )
@@ -651,13 +659,14 @@ export function useHomeMustCheck() {
           kind: 'notice',
           label: '필독 공지',
           title: n.title,
-          // 명세 확인 필요: 60 은 "읽음 · 안 읽음 숫자는 응답에 있음" 이라 하지만 N-1 NoticeSummary 에 숫자 필드가 없음
+          // 백엔드 NoticeSummaryResponse 에 읽음 · 안 읽음 숫자가 없다 (상세 readSummary 에만 있음). 작성자 · 시각만 보여 준다
           meta: `${n.author.name} · ${ago(n.createdAt)}`,
           action: '확인하기',
           to: `/notices/${n.noticeId}`,
         })),
       ),
-      // 명세 확인 필요: 투표만 거르는 파라미터가 없어 최신 공지 목록에서 화면이 거른다
+      // 백엔드 NoticeListRequest 에 투표 공지만 거르는 파라미터가 없다 (keyword · mustRead · unreadOnly 뿐).
+      // 최신 공지 20개에서 화면이 거르므로 더 오래된 진행 중 투표는 빠질 수 있다
       fetchNoticeList({ size: 20 }).then((list) =>
         list
           .filter((n) => n.poll && n.poll.audience && !n.poll.voted && !n.poll.closed)
@@ -719,44 +728,58 @@ const TASK_STATUS: Record<TaskCardDto['status'], Task['status']> = {
   DONE: { label: '완료', tone: 'muted' },
   CANCELLED: { label: '취소', tone: 'muted' },
 }
-function taskFromDto(t: TaskCardDto): Task {
+function taskFromDto(t: TaskCardDto, projectNames: Map<string, string>): Task {
   let due: Task['due']
   if (t.dueOn) {
     const n = daysBetween(todayKst(), t.dueOn)
     const label = n === -1 ? '어제' : n === 0 ? '오늘' : n === 1 ? '내일' : `${Number(t.dueOn.slice(5, 7))}/${Number(t.dueOn.slice(8, 10))}`
     due = { label, tone: t.overdue ? 'danger' : n <= 3 ? 'warning' : 'muted' }
   }
-  // 명세 확인 필요: TaskCard 에 프로젝트 이름이 없어 프로젝트 키를 보여 준다
-  return { key: t.taskKey, title: t.title, project: t.projectKey, due, status: TASK_STATUS[t.status] }
-}
-
-/** 내 작업 (기한 순 10개) */
-export function useHomeMyTasks() {
-  return useResource<Task[]>('home-my-tasks', () => mockTasks, () =>
-    api<TaskListDto>('/tasks', { query: { mine: true, sort: 'dueOn', size: 10 } }).then((r) => r.page.content.map(taskFromDto)),
-  )
-}
-
-/** 검토를 기다리는 작업 (비면 칸 숨김, 목업에는 없음) */
-export function useHomeReviewTasks() {
-  return useResource<Task[]>('home-review-tasks', () => [], () =>
-    api<TaskListDto>('/tasks', { query: { awaitingMyReview: true, size: 10 } }).then((r) => r.page.content.map(taskFromDto)),
-  )
+  // TaskCardResponse 에는 projectKey 만 있어 내 프로젝트 목록(P-1)으로 이름을 찾는다. 못 찾으면 키를 보여 준다
+  return { key: t.taskKey, title: t.title, project: projectNames.get(t.projectKey) ?? t.projectKey, due, status: TASK_STATUS[t.status] }
 }
 
 type ProjectSummaryDto = {
   projectKey: string
   name: string
+  status: 'PREPARING' | 'ACTIVE' | 'ON_HOLD' | 'DONE' | 'ARCHIVED'
+  categoryCode: string
   categoryName: string
   summary: string | null
+  memberCount: number
   memberPreview: MemberRef[]
   nextMilestone: { milestoneId: number; name: string; dueOn: string | null; progress: { done: number; total: number; ratio: number } } | null
+}
+type ProjectListDto = { categoryCounts: Record<string, number>; page: PageResponse<ProjectSummaryDto> }
+
+/** 내 프로젝트 키 → 이름 (작업 카드에 프로젝트 이름을 붙일 때). 실패하면 빈 표 */
+const fetchMyProjectNames = () =>
+  api<ProjectListDto>('/projects', { query: { mine: true, size: 100 } })
+    .then((r) => new Map(r.page.content.map((p) => [p.projectKey, p.name])))
+    .catch(() => new Map<string, string>())
+
+/** 작업 목록 (T-1) + 프로젝트 이름 */
+async function fetchTaskCards(query: Record<string, string | number | boolean>) {
+  const [r, names] = await Promise.all([api<TaskListDto>('/tasks', { query }), fetchMyProjectNames()])
+  return r.page.content.map((t) => taskFromDto(t, names))
+}
+
+/** 내 작업 (기한 순 10개). 상태를 비우면 완료(DONE)도 섞여 열린 상태만 받는다 */
+export function useHomeMyTasks() {
+  return useResource<Task[]>('home-my-tasks', () => mockTasks, () =>
+    fetchTaskCards({ mine: true, statuses: 'TODO,IN_PROGRESS,REVIEW', sort: 'dueOn', size: 10 }),
+  )
+}
+
+/** 검토를 기다리는 작업 (비면 칸 숨김, 목업에는 없음) */
+export function useHomeReviewTasks() {
+  return useResource<Task[]>('home-review-tasks', () => [], () => fetchTaskCards({ awaitingMyReview: true, size: 10 }))
 }
 
 /** 내 프로젝트 (진행 중) */
 export function useHomeProjects() {
   return useResource<ProjectSummary[]>('home-projects', () => mockProjects, async () => {
-    const r = await api<{ page: PageResponse<ProjectSummaryDto> }>('/projects', { query: { mine: true, status: 'ACTIVE', size: 20 } })
+    const r = await api<ProjectListDto>('/projects', { query: { mine: true, status: 'ACTIVE', size: 20 } })
     return r.page.content.map((p) => ({
       id: p.projectKey,
       category: p.categoryName,
@@ -765,7 +788,8 @@ export function useHomeProjects() {
       milestone: p.nextMilestone?.name ?? '열린 마일스톤 없음',
       progress: Math.round((p.nextMilestone?.progress.ratio ?? 0) * 100),
       members: p.memberPreview.map((m) => m.name),
-      // 명세 확인 필요: 60 은 "최근 활동 한 줄은 응답에 있음" 이라 하지만 P-1 ProjectSummary 에 필드가 없음. 요약을 대신 보여 준다
+      // 백엔드 ProjectSummaryResponse 에 최근 활동 한 줄이 없다 (GET /projects/{key}/activities 를 프로젝트마다 불러야 함).
+      // 칸마다 한 번 더 부르지 않고 프로젝트 요약을 대신 보여 준다
       activity: p.summary ?? '',
     }))
   })
@@ -804,13 +828,13 @@ export function useHomeRecentNotices() {
   })
 }
 
-// 명세 확인 필요: 기존 GET /sso/apps 의 응답 모양이 명세에 없음. { name, description, url, accessible } 배열로 가정
-type SsoAppDto = { clientId?: string; name: string; description?: string | null; url?: string | null; accessible?: boolean }
-const SERVICE_ICON_OF = (name: string): Service['icon'] => {
-  const n = name.toLowerCase()
-  if (n.includes('jenkins')) return 'jenkins'
-  if (n.includes('vault')) return 'vault'
-  if (n.includes('github')) return 'github'
+/** GET /sso/apps 한 줄 (백엔드 MyAppResponse). code 는 공통코드 SSO_APP 의 상세 코드 (vault · jenkins · penpot) */
+type SsoAppDto = { code: string; name: string; description: string | null; url: string | null; accessible: boolean }
+const SERVICE_ICON_OF = (code: string): Service['icon'] => {
+  const c = code.toLowerCase()
+  if (c.includes('jenkins')) return 'jenkins'
+  if (c.includes('vault')) return 'vault'
+  if (c.includes('github')) return 'github'
   return 'penpot'
 }
 
@@ -821,9 +845,9 @@ export function useHomeServices() {
     const github = await api<{ githubLogin: string } | null>(`/github/accounts/${me.memberId}`).catch(() => undefined)
     const list: Service[] = apps.map((a) => ({
       name: a.name,
-      desc: a.accessible === false ? '권한 없음' : a.description ?? '',
-      icon: SERVICE_ICON_OF(a.name),
-      enabled: a.accessible !== false,
+      desc: a.accessible ? a.description ?? '' : '권한 없음',
+      icon: SERVICE_ICON_OF(a.code),
+      enabled: a.accessible,
       url: a.url ?? undefined,
     }))
     if (github !== undefined) list.push({ name: 'GitHub', desc: github ? '연결됨' : '연결 안 됨', icon: 'github', enabled: true, url: github ? undefined : '/me' })
@@ -869,18 +893,62 @@ function notiDay(iso: string) {
   return shortDay(day)
 }
 
+/**
+ * 알림 대상 → 화면 주소.
+ * 백엔드 target.url(NotificationLinkService)은 /calendar/meeting-polls/{id} · /reports/{id} · /admin/access-requests/{id} 처럼
+ * 이 앱에 없는 경로를 주므로 target.type · id 로 다시 만든다. 모르는 종류는 target.url 그대로
+ */
+function notiLink(n: NotificationDto) {
+  const { type, id, url } = n.target
+  const projectScoped = (kind: string) => {
+    const slash = id.indexOf('/')
+    return slash > 0 ? `/projects/${id.slice(0, slash)}/${kind}` : `/projects/${id}`
+  }
+  if (n.type === 'ACCESS_RESULT' || n.type === 'ACCESS_EXPIRING' || n.type === 'GITHUB_LINK_REQUEST' || n.type === 'GITHUB_UNLINKED') return '/me'
+  switch (type) {
+    case 'NOTICE':
+      return `/notices/${id}`
+    case 'MEETING_POLL':
+      return `/calendar/polls/${id}`
+    case 'EVENT':
+      return '/calendar'
+    case 'PROJECT':
+      return `/projects/${id}`
+    case 'TASK':
+      return `/projects/${id.slice(0, Math.max(id.lastIndexOf('-'), 0)) || id}/tasks/${id}`
+    case 'THREAD':
+      return projectScoped('threads')
+    case 'MINUTE':
+      return projectScoped('minutes')
+    case 'REPORT':
+      return '/reports'
+    case 'ACCESS_REQUEST':
+      return '/admin/role-requests'
+    case 'SIGNUP_APPLICATION':
+      return '/admin/signups'
+    case 'MEMBER':
+      return '/members'
+    // Vault 경로 신청 · 작업 실패는 아직 전용 관리 화면이 없어 관리 첫 화면으로
+    case 'VAULT_PATH_REQUEST':
+    case 'JOB':
+      return '/admin'
+    default:
+      return url
+  }
+}
+
 const notiFromDto = (n: NotificationDto): NotiItem => ({
   id: n.notificationId,
   type: notiType(n.type),
   title: n.title,
-  // 명세 확인 필요: 미리보기용 짧은 제목이 없어 제목을 그대로 쓴다
+  // 백엔드 NotificationResponse 에 미리보기용 짧은 제목이 없다 (title · body 뿐). 제목을 그대로 쓴다
   short: n.title,
   detail: n.body ?? '',
   ago: ago(n.updatedAt),
   day: notiDay(n.updatedAt),
   read: !!n.readAt,
   grouped: n.groupCount > 1 ? n.groupCount : undefined,
-  to: n.target.url,
+  to: notiLink(n),
 })
 
 export const mockNotiItems: NotiItem[] = mockNotifications

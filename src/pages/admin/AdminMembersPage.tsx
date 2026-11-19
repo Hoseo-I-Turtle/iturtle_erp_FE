@@ -1,15 +1,14 @@
 import { useMemo, useState } from 'react'
 import { Archive, Calendar, ChevronRight, Ellipsis, GitBranch, Info, Kanban, ListChecks, Lock, LockOpen, RefreshCw, Search, Settings, Shield, X } from 'lucide-react'
 import { Avatar, Button, Card, Chip, Empty, ListItem, Loadable, Modal, Segmented, Select } from '../../components/ui'
-import { presets } from '../../mocks/admin'
 import { whenLive } from '../../api/useResource'
 import {
   accountAction,
+  applyPreset,
   departMember,
   errorText,
   isLive,
   patchMember,
-  reapplyPresets,
   resetPassword,
   saveMemberRoles,
   todayKst,
@@ -46,6 +45,7 @@ function AdminMembersView({ data }: { data: AdminMembersData }) {
   const [draftRoles, setDraftRoles] = useState<string[] | null>(null)
   const [tempPw, setTempPw] = useState<string | null>(null)
   const [graduating, setGraduating] = useState(false)
+  const [presetPick, setPresetPick] = useState<string | null>(null)
   const [err, setErr] = useState('')
 
   const counts = {
@@ -70,6 +70,8 @@ function AdminMembersView({ data }: { data: AdminMembersData }) {
   if (!base) return <Empty>구성원이 없어요.</Empty>
   const sel: Selected = { ...base, ...(detail.data ?? {}) }
   const roles = draftRoles ?? sel.roles
+  // 적용할 프리셋: 고르지 않았으면 이미 적용한 첫 프리셋 (빠진 역할 채우기)
+  const pick = presetPick ?? data.presets.find((p) => sel.presets.includes(p.name))?.id ?? data.presets[0]?.id ?? ''
 
   /** 목록과 상세를 함께 고친다 (화면에서 바로 반영) */
   const update = (id: number, patch: Partial<Selected>) => {
@@ -92,19 +94,26 @@ function AdminMembersView({ data }: { data: AdminMembersData }) {
     setSelectedId(id)
     setDraftRoles(null)
     setTempPw(null)
+    setPresetPick(null)
     setErr('')
   }
   const toggleRole = (code: string) => setDraftRoles(roles.includes(code) ? roles.filter((r) => r !== code) : [...roles, code])
 
+  /** 3-5 프리셋 적용: 프리셋 역할 중 없는 것만 더한다 (이미 가진 역할은 그대로) */
   const applyPresets = async () => {
-    // 목업: 적용한 프리셋의 역할을 고치는 중인 역할에 더한다 (저장은 "역할 저장")
-    if (!isLive()) return setDraftRoles([...new Set([...roles, ...sel.presets.flatMap((n) => presets.find((p) => p.name === n)?.roles ?? [])])])
+    const p = data.presets.find((x) => x.id === pick)
+    if (!p) return setErr('적용할 프리셋을 골라 주세요.')
+    // 목업: 프리셋 역할을 고치는 중인 역할에 더한다 (저장은 "역할 저장")
+    if (!isLive()) return setDraftRoles([...new Set([...roles, ...p.roles])])
     const id = sel.memberId
-    if (!sel.presetIds?.length) return setErr('적용한 프리셋이 없어요.')
     setErr('')
     try {
-      const saved = await reapplyPresets(id, sel.presetIds)
-      if (saved) update(id, { roles: saved })
+      const r = await applyPreset(id, Number(p.id))
+      update(id, {
+        roles: r.roles,
+        presets: sel.presets.includes(p.name) ? sel.presets : [...sel.presets, p.name],
+        presetIds: [...new Set([...(sel.presetIds ?? []), Number(p.id)])],
+      })
       setDraftRoles(null)
     } catch (e) {
       setErr(errorText(e))
@@ -208,6 +217,8 @@ function AdminMembersView({ data }: { data: AdminMembersData }) {
             <span>
               {m.graduated ? (
                 <span className={`${a.state} ${a.off}`}>졸업</span>
+              ) : m.onLeave ? (
+                <span className={`${a.state} ${a.warn}`}>휴학</span>
               ) : m.state === 'LOCKED' ? (
                 <span className={`${a.state} ${a.bad}`}>
                   <Lock size={12} /> 잠김
@@ -296,7 +307,16 @@ function AdminMembersView({ data }: { data: AdminMembersData }) {
                 ))}
                 {err && <p className={a.err}>{err}</p>}
                 <div className={s.detailActions}>
-                  <Button variant="tint" icon={Shield} onClick={applyPresets}>
+                  {data.presets.length > 0 && (
+                    <Select
+                      value={pick}
+                      width={140}
+                      label="적용할 프리셋"
+                      options={data.presets.map((p) => ({ value: p.id, label: p.name }))}
+                      onChange={setPresetPick}
+                    />
+                  )}
+                  <Button variant="tint" icon={Shield} onClick={applyPresets} disabled={data.presets.length === 0}>
                     프리셋 적용
                   </Button>
                   <Button onClick={saveRoles} disabled={!draftRoles}>
