@@ -13,6 +13,7 @@ import {
   typeCode,
   useAdminMemberDetail,
   useAdminMembers,
+  useRoleConflicts,
   type AdminMembersData,
   type AdminRow,
 } from '../../api/admin'
@@ -65,6 +66,8 @@ function AdminMembersView({ data }: { data: AdminMembersData }) {
   const base = members.find((m) => m.memberId === selectedId) ?? members[0]
   // 역할 · 프리셋 · GitHub 는 고른 사람마다 상세(2-2)로 불러온다
   const detail = useAdminMemberDetail(base)
+  // 같이 가질 수 없는 역할 규칙과 이미 둘 다 가진 사람 (3-12, 경고용 — 자동으로 빼지 않음)
+  const conflicts = useRoleConflicts()
   if (!base) return <Empty>구성원이 없어요.</Empty>
   const sel: SelectedMember = { ...base, ...(detail.data ?? {}) }
   const roles = draftRoles ?? sel.roles
@@ -113,6 +116,7 @@ function AdminMembersView({ data }: { data: AdminMembersData }) {
         presetIds: [...new Set([...(sel.presetIds ?? []), Number(p.id)])],
       })
       setDraftRoles(null)
+      conflicts.reload()
     } catch (e) {
       setErr(errorText(e))
     }
@@ -127,6 +131,7 @@ function AdminMembersView({ data }: { data: AdminMembersData }) {
     try {
       const saved = await whenLive(() => saveMemberRoles(id, roles))
       if (saved) update(id, { roles: saved })
+      conflicts.reload()
     } catch (e) {
       setErr(errorText(e))
       update(id, { roles: prev })
@@ -188,6 +193,7 @@ function AdminMembersView({ data }: { data: AdminMembersData }) {
         onQuery={setQ}
         selectedId={sel.memberId}
         onSelect={select}
+        conflictIds={conflicts.data?.members.map((m) => m.memberId) ?? []}
       />
 
       <div className={a.col}>
@@ -207,6 +213,7 @@ function AdminMembersView({ data }: { data: AdminMembersData }) {
                 onToggleRole={toggleRole}
                 onApplyPreset={applyPresets}
                 onSaveRoles={saveRoles}
+                conflictRules={conflicts.data?.rules ?? []}
               />
               <AccountActionsCard
                 member={sel}

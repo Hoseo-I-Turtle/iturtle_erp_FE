@@ -59,3 +59,13 @@
 .more {
   color: var(--text-secondary);
 }
+
+.conflictMark {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--status-warning-bg, #fff1dc);
+  color: var(--status-warning-text, #b26a00);
+  font-size: 11px;
+  font-weight: 500;
+}

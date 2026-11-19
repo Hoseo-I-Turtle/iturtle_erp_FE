@@ -577,10 +577,10 @@ type AccessRequestDto = {
   createdAt: string
 }
 
-/** 목업 RoleRequest + 승인할 수 있는지 · 승인할 사람 · 신청한 기한 */
-export type ReviewRequest = RoleRequest & { canReview: boolean; approverLabel: string; expiresOn: string | null }
+/** 목업 RoleRequest + 승인할 수 있는지 · 승인할 사람 · 신청한 기한 · 내 신청인지 (자기 승인 금지 A013) */
+export type ReviewRequest = RoleRequest & { canReview: boolean; approverLabel: string; expiresOn: string | null; own: boolean }
 
-const toRoleRequest = (x: AccessRequestDto): ReviewRequest => {
+const toRoleRequest = (x: AccessRequestDto, meId?: number): ReviewRequest => {
   const status = x.status as RoleRequest['status']
   const target =
     x.targetKind === 'PROJECT_SERVICE'
@@ -610,6 +610,7 @@ const toRoleRequest = (x: AccessRequestDto): ReviewRequest => {
     canReview: x.canReview,
     approverLabel: x.approverLabel,
     expiresOn: x.expiresOn,
+    own: meId !== undefined && x.requester.memberId === meId,
   }
 }
 
@@ -620,18 +621,21 @@ export function useRoleRequests() {
   return useResource<RoleRequestsData>(
     'admin-role-requests',
     () => ({
-      requests: roleRequests.map((r) => ({ ...r, canReview: true, approverLabel: '', expiresOn: null })),
+      requests: roleRequests.map((r) => ({ ...r, canReview: true, approverLabel: '', expiresOn: null, own: false })),
       // 목업에 없는 지난 처리 건수만큼 더해 시안 숫자(승인 8 · 거절 1 · 만료 3)를 맞춘다
       extra: Object.fromEntries(
         REQUEST_STATUSES.map((t) => [t, t === 'PENDING' ? 0 : ROLE_REQUEST_TOTALS[t] - roleRequests.filter((r) => r.status === t).length]),
       ) as Record<RoleRequest['status'], number>,
     }),
     async () => {
-      const res = await api<{ counts: Record<AccessStatus, number>; page: PageResponse<AccessRequestDto> }>('/auth/access-requests', {
-        query: { scope: 'REVIEW', size: 100 },
-      })
+      const [res, me] = await Promise.all([
+        api<{ counts: Record<AccessStatus, number>; page: PageResponse<AccessRequestDto> }>('/auth/access-requests', {
+          query: { scope: 'REVIEW', size: 100 },
+        }),
+        api<{ memberId: number }>('/members/me'),
+      ])
       // 취소한 신청은 이 화면에 탭이 없어 뺀다
-      const requests = res.page.content.filter((x) => x.status !== 'CANCELLED').map(toRoleRequest)
+      const requests = res.page.content.filter((x) => x.status !== 'CANCELLED').map((x) => toRoleRequest(x, me.memberId))
       const extra = Object.fromEntries(
         REQUEST_STATUSES.map((t) => [t, Math.max(0, (res.counts[t] ?? 0) - requests.filter((r) => r.status === t).length)]),
       ) as Record<RoleRequest['status'], number>
@@ -644,7 +648,7 @@ export function useRoleRequests() {
 export const reviewAccessRequest = (
   requestId: number,
   body: { decision: 'APPROVE'; expiresOn: string | null } | { decision: 'REJECT'; reason: string },
-) => api<AccessRequestDto>(`/auth/access-requests/${requestId}/review`, { method: 'POST', body }).then(toRoleRequest)
+) => api<AccessRequestDto>(`/auth/access-requests/${requestId}/review`, { method: 'POST', body }).then((x) => toRoleRequest(x))
 
 /* ---------- 관리 · 감사 로그 (50-infra AU-1, AU-2) ---------- */
 
@@ -1393,3 +1397,40 @@ export function onMembersChanged(reload: () => void) {
 export function useAddMemberPresets() {
   return useResource<PresetView[]>('add-member-presets', () => mockPresetViews().filter((p) => p.active), () => fetchPresets(false))
 }
+
+/* ---------- 관리 · 같이 가질 수 없는 역할 (3-12, MEM-5-12) ---------- */
+
+export type RoleConflictRule = { ruleCode: string; roleA: string; roleB: string; reason: string }
+export type RoleConflicts = { rules: RoleConflictRule[]; members: { memberId: number; name: string; conflicts: RoleConflictRule[] }[] }
+
+/** 목업 규칙 = 운영 기본값 (공통코드 ROLE_CONFLICT) */
+const MOCK_CONFLICT_RULES: RoleConflictRule[] = [
+  {
+    ruleCode: 'REPORT_WRITE_REVIEW',
+    roleA: 'report-write',
+    roleB: 'report-review',
+    reason: '주간 보고를 쓰는 사람(제출 대상)이 확인하는 사람이 되면 제출 현황 · 확인 흐름이 꼬인다',
+  },
+]
+
+/** 규칙과 이미 두 역할을 모두 가진 구성원 (자동으로 빼지 않는다 — 경고용) */
+export function useRoleConflicts() {
+  return useResource<RoleConflicts>(
+    'admin-role-conflicts',
+    () => ({ rules: MOCK_CONFLICT_RULES, members: [] }),
+    async () => {
+      const res = await api<{
+        rules: RoleConflictRule[]
+        members: { member: MemberRef; loginId: string; conflicts: RoleConflictRule[] }[]
+      }>('/members/role-conflicts')
+      return {
+        rules: res.rules,
+        members: res.members.map((m) => ({ memberId: m.member.memberId, name: m.member.name, conflicts: m.conflicts })),
+      }
+    },
+  )
+}
+
+/** 이 역할 목록이 어기는 규칙 */
+export const violatedRules = (roles: string[], rules: RoleConflictRule[]) =>
+  rules.filter((rule) => roles.includes(rule.roleA) && roles.includes(rule.roleB))
