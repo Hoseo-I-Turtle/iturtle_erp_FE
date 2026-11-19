@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
+  ChartGantt,
   ClipboardList,
   FlaskConical,
   Folder,
@@ -23,6 +24,7 @@ import s from './layout.module.css'
 const TABS: { to: string; label: string; icon: LucideIcon; action?: string; actionTo?: string; subtitle?: string; hideTabs?: boolean }[] = [
   { to: '', label: '개요', icon: House, action: '작업 만들기' },
   { to: 'board', label: '보드', icon: Kanban, action: '작업 만들기', subtitle: '보드 · 상태 흐름은 모든 프로젝트가 같아요' },
+  { to: 'schedule', label: '일정표', icon: ChartGantt, action: '작업 만들기', subtitle: '일정표 · 마일스톤과 작업을 기간으로 봐요' },
   { to: 'tasks', label: '작업 목록', icon: ListChecks, action: '작업 만들기' },
   { to: 'milestones', label: '마일스톤', icon: FlaskConical, action: '마일스톤 만들기' },
   { to: 'threads', label: '스레드', icon: MessageSquare, action: '글 쓰기', actionTo: 'threads/new', subtitle: '글과 답글로 이야기하고, 고정 글은 게시판처럼 모아 봐요' },
