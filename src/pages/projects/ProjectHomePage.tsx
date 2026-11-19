@@ -122,12 +122,15 @@ function ProjectHomeView({ d }: { d: ProjectHome }) {
                     </span>
                   </div>
                   <div className={s.svcBottom}>
-                    <span className={sv.status.ok ? `${s.svcStatus} ${s.svcOk}` : s.svcStatus}>
-                      {sv.status.ok && <Check size={14} />}
-                      {sv.code === 'VAULT' && <Lock size={14} />}
-                      {sv.code === 'GITHUB' && <GitCommitHorizontal size={14} />}
-                      {sv.status.text}
-                    </span>
+                    {/* 상태를 가져오지 않는 연결(NOT_SUPPORTED)은 글이 비어 빈 칩이 남지 않게 뺀다 */}
+                    {sv.status.text && (
+                      <span className={sv.status.ok ? `${s.svcStatus} ${s.svcOk}` : s.svcStatus}>
+                        {sv.status.ok && <Check size={14} />}
+                        {sv.code === 'VAULT' && <Lock size={14} />}
+                        {sv.code === 'GITHUB' && <GitCommitHorizontal size={14} />}
+                        {sv.status.text}
+                      </span>
+                    )}
                     {sv.myPerm && <span className={s.svcPerm}>{sv.myPerm}</span>}
                   </div>
                 </Tag>
