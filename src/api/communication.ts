@@ -4,6 +4,7 @@ import { api } from './client'
 import { ago, type MemberRef, type PageResponse } from './types'
 import { useResource } from './useResource'
 import { getApiBase } from '../lib/dataMode'
+import { activityLine, type ActivityDto } from './projects'
 import { formatShortDay, parseYmd, WEEKDAYS } from '../lib/date'
 import { MEMBER_TYPE_NAME } from '../mocks/members'
 import { ME, notices as mockNotices, otherNotices as mockOtherNotices, type Notice, type Vote } from '../mocks/notices'
@@ -96,6 +97,8 @@ type NoticeSummaryDto = {
   commentCount: number
   attachmentCount: number
   poll: { closesAt: string; closed: boolean; audience: boolean; voted: boolean } | null
+  /** 필독이면 읽음 · 안 읽음 숫자 (명단은 상세에서만), 아니면 null */
+  readSummary: { readCount: number; unreadCount: number } | null
 }
 type NoticeListDto = { pinned: NoticeSummaryDto[]; page: PageResponse<NoticeSummaryDto> }
 
@@ -415,6 +418,7 @@ type TaskCardDto = {
   taskId: number
   taskKey: string
   projectKey: string
+  projectName: string
   title: string
   status: 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'CANCELLED'
   dueOn: string | null
@@ -497,6 +501,8 @@ type MeetingPollDto = {
   status: 'OPEN' | 'CONFIRMED' | 'CANCELLED'
   creator: MemberRef
   projectId: number | null
+  /** 볼 수 있는 프로젝트에 연결됐을 때만 */
+  project: { projectKey: string; name: string } | null
   iAmTarget: boolean
   mySlots?: string[]
   targets: { member: MemberRef; respondedAt: string | null; remindedAt: string | null }[]
@@ -588,9 +594,8 @@ function pollFromDto(p: MeetingPollDto, me: Me, busy: OccurrenceDto[]): PollView
     id: String(p.pollId),
     pollId: p.pollId,
     title: p.title,
-    // 백엔드 MeetingPollDetailResponse 에 projectId 만 있고 프로젝트 이름 · 키가 없다 (id 로 프로젝트를 찾는 API 도 없음).
-    // 이름은 비워 두고 화면에서 칩을 숨긴다
-    project: '',
+    // 프로젝트에 연결되지 않았거나 볼 수 없으면 비워 두고 화면에서 칩을 숨긴다
+    project: p.project?.name ?? '',
     durationSlots: Math.round(p.durationMinutes / p.slotMinutes),
     slotHours,
     place: [p.location, p.onlineUrl && '온라인'].filter(Boolean).join(' / '),
@@ -659,8 +664,13 @@ export function useHomeMustCheck() {
           kind: 'notice',
           label: '필독 공지',
           title: n.title,
-          // 백엔드 NoticeSummaryResponse 에 읽음 · 안 읽음 숫자가 없다 (상세 readSummary 에만 있음). 작성자 · 시각만 보여 준다
-          meta: `${n.author.name} · ${ago(n.createdAt)}`,
+          meta: [
+            n.author.name,
+            ago(n.createdAt),
+            n.readSummary && `${n.readSummary.readCount}명 확인 / ${n.readSummary.unreadCount}명 미확인`,
+          ]
+            .filter(Boolean)
+            .join(' · '),
           action: '확인하기',
           to: `/notices/${n.noticeId}`,
         })),
@@ -728,15 +738,14 @@ const TASK_STATUS: Record<TaskCardDto['status'], Task['status']> = {
   DONE: { label: '완료', tone: 'muted' },
   CANCELLED: { label: '취소', tone: 'muted' },
 }
-function taskFromDto(t: TaskCardDto, projectNames: Map<string, string>): Task {
+function taskFromDto(t: TaskCardDto): Task {
   let due: Task['due']
   if (t.dueOn) {
     const n = daysBetween(todayKst(), t.dueOn)
     const label = n === -1 ? '어제' : n === 0 ? '오늘' : n === 1 ? '내일' : `${Number(t.dueOn.slice(5, 7))}/${Number(t.dueOn.slice(8, 10))}`
     due = { label, tone: t.overdue ? 'danger' : n <= 3 ? 'warning' : 'muted' }
   }
-  // TaskCardResponse 에는 projectKey 만 있어 내 프로젝트 목록(P-1)으로 이름을 찾는다. 못 찾으면 키를 보여 준다
-  return { key: t.taskKey, title: t.title, project: projectNames.get(t.projectKey) ?? t.projectKey, due, status: TASK_STATUS[t.status] }
+  return { key: t.taskKey, title: t.title, project: t.projectName || t.projectKey, due, status: TASK_STATUS[t.status] }
 }
 
 type ProjectSummaryDto = {
@@ -749,20 +758,13 @@ type ProjectSummaryDto = {
   memberCount: number
   memberPreview: MemberRef[]
   nextMilestone: { milestoneId: number; name: string; dueOn: string | null; progress: { done: number; total: number; ratio: number } } | null
+  recentActivity: ActivityDto | null
 }
 type ProjectListDto = { categoryCounts: Record<string, number>; page: PageResponse<ProjectSummaryDto> }
 
-/** 내 프로젝트 키 → 이름 (작업 카드에 프로젝트 이름을 붙일 때). 실패하면 빈 표 */
-const fetchMyProjectNames = () =>
-  api<ProjectListDto>('/projects', { query: { mine: true, size: 100 } })
-    .then((r) => new Map(r.page.content.map((p) => [p.projectKey, p.name])))
-    .catch(() => new Map<string, string>())
-
-/** 작업 목록 (T-1) + 프로젝트 이름 */
-async function fetchTaskCards(query: Record<string, string | number | boolean>) {
-  const [r, names] = await Promise.all([api<TaskListDto>('/tasks', { query }), fetchMyProjectNames()])
-  return r.page.content.map((t) => taskFromDto(t, names))
-}
+/** 작업 목록 (T-1). 카드에 프로젝트 이름(projectName)이 있다 */
+const fetchTaskCards = (query: Record<string, string | number | boolean>) =>
+  api<TaskListDto>('/tasks', { query }).then((r) => r.page.content.map(taskFromDto))
 
 /** 내 작업 (기한 순 10개). 상태를 비우면 완료(DONE)도 섞여 열린 상태만 받는다 */
 export function useHomeMyTasks() {
@@ -788,9 +790,8 @@ export function useHomeProjects() {
       milestone: p.nextMilestone?.name ?? '열린 마일스톤 없음',
       progress: Math.round((p.nextMilestone?.progress.ratio ?? 0) * 100),
       members: p.memberPreview.map((m) => m.name),
-      // 백엔드 ProjectSummaryResponse 에 최근 활동 한 줄이 없다 (GET /projects/{key}/activities 를 프로젝트마다 불러야 함).
-      // 칸마다 한 번 더 부르지 않고 프로젝트 요약을 대신 보여 준다
-      activity: p.summary ?? '',
+      // 기록이 없는 새 프로젝트는 요약을 대신 보여 준다
+      activity: p.recentActivity ? activityLine(p.recentActivity) : (p.summary ?? ''),
     }))
   })
 }
@@ -861,6 +862,8 @@ type NotificationDto = {
   notificationId: number
   type: string
   title: string
+  /** 종 메뉴용 짧은 문구 (제목 한 줄, 80자까지) */
+  preview?: string
   body: string | null
   actorMemberId: number | null
   target: { type: string; id: string; url: string }
@@ -893,56 +896,39 @@ function notiDay(iso: string) {
   return shortDay(day)
 }
 
+/** target.url 이 이 앱 경로가 아닐 때 갈 화면 (대상 종류 → 목록 화면) */
+const NOTI_FALLBACK: Record<string, string> = {
+  NOTICE: '/',
+  MEETING_POLL: '/calendar',
+  EVENT: '/calendar',
+  PROJECT: '/projects',
+  TASK: '/projects',
+  THREAD: '/projects',
+  MINUTE: '/projects',
+  REPORT: '/reports',
+  ACCESS_REQUEST: '/admin/role-requests',
+  SIGNUP_APPLICATION: '/admin/signups',
+  MEMBER: '/members',
+  VAULT_PATH_REQUEST: '/admin',
+  JOB: '/admin',
+}
+
 /**
- * 알림 대상 → 화면 주소.
- * 백엔드 target.url(NotificationLinkService)은 /calendar/meeting-polls/{id} · /reports/{id} · /admin/access-requests/{id} 처럼
- * 이 앱에 없는 경로를 주므로 target.type · id 로 다시 만든다. 모르는 종류는 target.url 그대로
+ * 알림 대상 → 화면 주소. 백엔드 target.url(NotificationLinkService)이 이 앱 경로를 주므로 그대로 쓴다.
+ * 비었거나 앱 안 경로('/…')가 아니면 대상 종류의 목록 화면으로, 모르는 종류면 알림 화면으로
  */
 function notiLink(n: NotificationDto) {
-  const { type, id, url } = n.target
-  const projectScoped = (kind: string) => {
-    const slash = id.indexOf('/')
-    return slash > 0 ? `/projects/${id.slice(0, slash)}/${kind}` : `/projects/${id}`
-  }
-  if (n.type === 'ACCESS_RESULT' || n.type === 'ACCESS_EXPIRING' || n.type === 'GITHUB_LINK_REQUEST' || n.type === 'GITHUB_UNLINKED') return '/me'
-  switch (type) {
-    case 'NOTICE':
-      return `/notices/${id}`
-    case 'MEETING_POLL':
-      return `/calendar/polls/${id}`
-    case 'EVENT':
-      return '/calendar'
-    case 'PROJECT':
-      return `/projects/${id}`
-    case 'TASK':
-      return `/projects/${id.slice(0, Math.max(id.lastIndexOf('-'), 0)) || id}/tasks/${id}`
-    case 'THREAD':
-      return projectScoped('threads')
-    case 'MINUTE':
-      return projectScoped('minutes')
-    case 'REPORT':
-      return '/reports'
-    case 'ACCESS_REQUEST':
-      return '/admin/role-requests'
-    case 'SIGNUP_APPLICATION':
-      return '/admin/signups'
-    case 'MEMBER':
-      return '/members'
-    // Vault 경로 신청 · 작업 실패는 아직 전용 관리 화면이 없어 관리 첫 화면으로
-    case 'VAULT_PATH_REQUEST':
-    case 'JOB':
-      return '/admin'
-    default:
-      return url
-  }
+  const { type, url } = n.target
+  if (url && url.startsWith('/') && !url.startsWith('//')) return url
+  return NOTI_FALLBACK[type] ?? '/notifications'
 }
 
 const notiFromDto = (n: NotificationDto): NotiItem => ({
   id: n.notificationId,
   type: notiType(n.type),
   title: n.title,
-  // 백엔드 NotificationResponse 에 미리보기용 짧은 제목이 없다 (title · body 뿐). 제목을 그대로 쓴다
-  short: n.title,
+  // 종 메뉴 한 줄: 서버가 제목을 한 줄 80자로 줄인 preview (예전 서버면 제목)
+  short: n.preview || n.title,
   detail: n.body ?? '',
   ago: ago(n.updatedAt),
   day: notiDay(n.updatedAt),
