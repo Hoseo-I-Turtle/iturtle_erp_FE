@@ -37,6 +37,7 @@ import { ModeGate } from './layouts/ModeGate'
 import { LoginPage } from './pages/account/LoginPage'
 import { LogoutPage } from './pages/account/LogoutPage'
 import { PasswordChangePage } from './pages/account/PasswordChangePage'
+import { AccountSetupPage } from './pages/account/AccountSetupPage'
 import { SignupPage } from './pages/account/SignupPage'
 import { ProfilePage } from './pages/account/ProfilePage'
 import { NotificationsPage } from './pages/account/NotificationsPage'
@@ -50,6 +51,7 @@ applyLoginReturn()
  * 백엔드가 브라우저를 보내는 화면 주소 (바꾸면 백엔드와 같이 바꿔야 한다)
  * - /login, /login?error, /login?logout, /login?expired  (AuthSecurityConfig, LoginFailureHandler, SsoLogoutSuccessHandler)
  * - /account/password  임시 비밀번호로 로그인했을 때 (PasswordChangeRequiredFilter.PASSWORD_PAGE)
+ * - /account/setup#token=…  초대 메일 링크 (InvitationMailService, 로그인 없이)
  * - /, /?denied=<client_id>  로그인 성공 기본 주소, SSO 접근 역할이 없을 때 (LoginSuccessHandler, SsoAppAccessFilter)
  * - /profile?github=linked | error&code=G00x  GitHub 연결 결과 (GithubProperties.profileUrl 기본값)
  */
@@ -59,6 +61,7 @@ const router = createBrowserRouter([
   { path: '/login', element: <ModeGate><LoginPage /></ModeGate> },
   { path: '/logout', element: <ModeGate><LogoutPage /></ModeGate> },
   { path: '/account/password', element: <ModeGate><PasswordChangePage /></ModeGate> },
+  { path: '/account/setup', element: <ModeGate><AccountSetupPage /></ModeGate> },
   { path: '/password', element: <Navigate to="/account/password" replace /> },
   { path: '/signup', element: <SignupPage /> },
   {

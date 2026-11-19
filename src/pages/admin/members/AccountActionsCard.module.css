@@ -22,3 +22,9 @@
 .tempPw small {
   flex-basis: 100%;
 }
+.inviteMsg {
+  margin: 0;
+  padding: 0 4px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}

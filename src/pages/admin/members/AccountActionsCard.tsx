@@ -1,6 +1,15 @@
-import { Archive, ChevronRight, LockOpen, RefreshCw, Settings, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Archive, ChevronRight, LockOpen, RefreshCw, Send, Settings, X } from 'lucide-react'
 import { Card, ListItem } from '../../../components/ui'
-import { isLive } from '../../../api/admin'
+import {
+  errorText,
+  fetchInvitation,
+  isLive,
+  resendInvitation,
+  useInvitationPolicy,
+  type InvitationView,
+} from '../../../api/admin'
+import { dotDate } from '../../../api/types'
 import type { SelectedMember } from './types'
 import a from '../admin.module.css'
 import s from './AccountActionsCard.module.css'
@@ -15,8 +24,59 @@ type Props = {
   onToggleEnabled: () => void
 }
 
-/** 계정 조치: 임시 비밀번호 · 잠금 해제 · 졸업/퇴실 · 비활성화 */
+const INVITATION_TEXT: Record<InvitationView['status'], string> = {
+  NONE: '',
+  PENDING: '초대 메일을 보내는 중',
+  SENT: '초대 메일 보냄',
+  FAILED: '초대 메일을 보내지 못했어요',
+  EXPIRED: '초대 링크 만료',
+  COMPLETED: '초대 링크로 비밀번호를 정함',
+}
+
+/** 고른 구성원의 초대 메일 상태 (3-10) — 다시 보내면 새로 읽는다 */
+function useInvitation(memberId: number) {
+  const [view, setView] = useState<InvitationView | null>(null)
+  const [tick, setTick] = useState(0)
+  useEffect(() => {
+    let alive = true
+    fetchInvitation(memberId)
+      .then((v) => alive && setView(v))
+      .catch(() => alive && setView(null))
+    return () => {
+      alive = false
+    }
+  }, [memberId, tick])
+  return { view, reload: () => setTick((t) => t + 1), setView }
+}
+
+/** 계정 조치: 임시 비밀번호 · 초대 메일 · 잠금 해제 · 졸업/퇴실 · 비활성화 */
 export function AccountActionsCard({ member: sel, tempPw, onIssueTempPw, onUnlock, onGraduate, onToggleEnabled }: Props) {
+  const mailEnabled = useInvitationPolicy().data?.mailEnabled ?? false
+  const invitation = useInvitation(sel.memberId)
+  const [inviteMsg, setInviteMsg] = useState<string | null>(null)
+  const status = invitation.view?.status ?? 'NONE'
+
+  const resend = async () => {
+    setInviteMsg(null)
+    try {
+      invitation.setView(await resendInvitation(sel.memberId))
+      setInviteMsg('새 링크를 보냈어요. 옛 링크는 더 쓸 수 없어요.')
+      // 메일은 서버가 커밋 뒤 보낸다 — 잠시 뒤 상태를 다시 읽는다
+      window.setTimeout(invitation.reload, 2500)
+    } catch (e) {
+      setInviteMsg(errorText(e, '초대 메일을 다시 보내지 못했어요.'))
+    }
+  }
+
+  const inviteMeta = [
+    INVITATION_TEXT[status],
+    status === 'SENT' && invitation.view?.expiresAt ? `${dotDate(invitation.view.expiresAt)}까지` : null,
+    status === 'FAILED' ? invitation.view?.failureReason : null,
+    invitation.view?.email,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
     <Card>
       <h3 className={a.h3}>
@@ -35,6 +95,17 @@ export function AccountActionsCard({ member: sel, tempPw, onIssueTempPw, onUnloc
         trailing={<ChevronRight size={16} />}
         onClick={onIssueTempPw}
       />
+      {status !== 'NONE' && status !== 'COMPLETED' && (
+        <ListItem
+          leading={<Send size={18} />}
+          title="초대 메일 다시 보내기"
+          meta={mailEnabled ? inviteMeta : `${inviteMeta} · 메일 설정이 없어 보낼 수 없어요`}
+          trailing={<ChevronRight size={16} />}
+          onClick={mailEnabled ? () => void resend() : undefined}
+        />
+      )}
+      {status === 'COMPLETED' && <ListItem leading={<Send size={18} />} title={INVITATION_TEXT.COMPLETED} meta={invitation.view?.email ?? ''} />}
+      {inviteMsg && <p className={s.inviteMsg}>{inviteMsg}</p>}
       {sel.state === 'LOCKED' && (
         <ListItem
           leading={<LockOpen size={18} />}

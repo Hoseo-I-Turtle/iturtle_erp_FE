@@ -67,3 +67,23 @@
   color: var(--text-primary);
   letter-spacing: 0.02em;
 }
+
+/* 계정 전달 방법 (처음 비밀번호 / 초대 메일) — 옵션 상자를 고르는 버튼으로 */
+.choice {
+  width: 100%;
+  border: 1px solid transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.choice[aria-checked='true'] {
+  border-color: var(--brand-400);
+}
+.choice:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.choice:focus-visible {
+  outline: 2px solid var(--brand-400);
+  outline-offset: 2px;
+}
