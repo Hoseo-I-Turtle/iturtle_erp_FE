@@ -5,7 +5,7 @@ import { splitRef, type CodeRowView, type CodeTable as CodeTableData } from '../
 import s from '../CodesPage.module.css'
 
 type Props = {
-  table: CodeTableData
+  table: NonNullable<CodeTableData>
   cols: CSSProperties
   ssoApp: boolean
   /** secret 발급은 sso-admin 만 (아니면 버튼을 숨긴다) */
