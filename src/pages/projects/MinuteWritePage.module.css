@@ -1,0 +1,365 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 24px;
+}
+.top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.grow {
+  flex: 1;
+}
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-caption);
+  color: var(--brand-400);
+  text-decoration: none;
+}
+.back:hover {
+  color: var(--brand-500);
+}
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.statusOk {
+  color: #1e7d4f;
+}
+.linkBtn {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--brand-500);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.titleBox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+.titleBox:focus-within {
+  border-color: var(--brand-300);
+}
+.titleBox input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.counter {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.label {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.when {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dash {
+  color: var(--text-muted);
+}
+.input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--brand-500);
+}
+.when .input:first-child {
+  flex: 1.4;
+}
+.when .input {
+  flex: 1;
+}
+.input:focus-within {
+  border-color: var(--brand-300);
+}
+.input input,
+.input select {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.people {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.person {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--radius-full);
+  background: var(--surface-tint);
+}
+.absent {
+  background: var(--surface-sunken);
+  opacity: 0.75;
+}
+.attend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px 4px 6px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+  cursor: pointer;
+}
+.attend small {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.remove {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 4px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--brand-400);
+  cursor: pointer;
+}
+.remove:hover {
+  background: var(--surface-card);
+}
+.addPerson {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+  cursor: pointer;
+}
+.addPerson select {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.todos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+}
+.todoHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+.todoHead strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+.todoHead small {
+  font-size: 12px;
+  color: var(--brand-400);
+}
+.todoCols,
+.todoRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px 170px 150px 28px;
+  align-items: center;
+  gap: 12px;
+}
+.todoCols {
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.todoRow {
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+}
+.todoText {
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.todoText:hover,
+.todoText:focus {
+  border-color: var(--border-default);
+  outline: 0;
+}
+.small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--brand-500);
+}
+.small select,
+.small input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.convert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.convert small {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.convert small.on {
+  color: var(--brand-500);
+}
+.taskChip {
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--surface-tint);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand-400);
+  text-decoration: none;
+}
+.del {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--brand-400);
+  cursor: pointer;
+}
+.del:hover:not(:disabled) {
+  background: var(--surface-sunken);
+}
+.del:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.addTodo {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+  cursor: pointer;
+}
+.addTodo:hover {
+  background: var(--surface-card);
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.footNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .todoCols {
+    display: none;
+  }
+  .todoRow {
+    grid-template-columns: 1fr 1fr;
+  }
+}

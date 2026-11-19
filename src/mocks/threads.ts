@@ -21,14 +21,14 @@ const ARCH_BODY = `모듈러 모놀리스 구조와 요청 흐름을 정리합�
 
 \`\`\`mermaid
 flowchart LR
-  B([브라우저]) --> C[Controller] --> F[Facade<br/>@Transactional] --> S[Service] --> R[Repository] --> D([MySQL])
+  B([브라우저]) --> C[Controller] --> F["Facade<br/>@Transactional"] --> S[Service] --> R[Repository] --> D([MySQL])
   F -. 같은 트랜잭션 .-> A[AuditCommandApi]
 \`\`\`
 
 \`\`\`mermaid
 sequenceDiagram
   Facade->>Service: 저장
-  Service=>Repository: save
+  Service->>Repository: save
 \`\`\`
 `
 

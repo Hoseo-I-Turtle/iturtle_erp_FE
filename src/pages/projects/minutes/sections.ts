@@ -7,4 +7,3 @@ export const SECTIONS: { key: MinuteSection; label: string }[] = [
   { key: 'decisions', label: '결정 사항' },
 ]
 
-export type MinuteDraft = Record<MinuteSection, string>
