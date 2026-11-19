@@ -1,25 +1,6 @@
 import { useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import {
-  ChevronDown,
-  ChevronRight,
-  Ellipsis,
-  FileText,
-  GripVertical,
-  Image,
-  Info,
-  MessageCircle,
-  Paperclip,
-  Pencil,
-  Pin,
-  PinOff,
-  Download,
-  Share2,
-  TriangleAlert,
-} from 'lucide-react'
-import { Avatar, Button, Card, Chip, Empty, Loadable, Modal, Note } from '../../components/ui'
-import { Markdown } from '../../components/markdown/Markdown'
-import { MarkdownEditor } from '../../components/markdown/MarkdownEditor'
+import { Loadable } from '../../components/ui'
 import { whenLive, type Resource } from '../../api/useResource'
 import {
   createThread,
@@ -32,10 +13,12 @@ import {
   type ThreadBoard,
   type ThreadPostView,
 } from '../../api/content'
+import { PinnedPostsCard } from './threads/PinnedPostsCard'
+import { PostDetail } from './threads/PostDetail'
+import { PostList } from './threads/PostList'
+import { ThreadComposer } from './threads/ThreadComposer'
 import s from './ThreadPage.module.css'
 import { useProjectHeader } from '../../api/projects'
-
-const firstLine = (p: ThreadPostView) => p.body.replace(/```[\s\S]*?```/g, '').trim()
 
 export function ThreadPage() {
   const { key } = useParams()
@@ -141,184 +124,38 @@ function ThreadView({ board, d, projectKey, projectName }: ViewProps) {
   return (
     <div className={s.layout}>
       <div className={s.left}>
-        <Card className={s.pinnedCard}>
-          <div className={s.pinnedHead}>
-            <Pin size={18} className={s.pinIcon} />
-            <h2>고정 글</h2>
-            <Chip tone="warning">
-              {pinned.length} / {d.pinnedLimit}
-            </Chip>
-            <span className={s.hint}>끌어서 순서 바꾸기</span>
-          </div>
-          {pinned.length === 0 && <Empty>고정된 글이 없어요.</Empty>}
-          {pinned.map((p) => (
-            <button
-              key={p.postId}
-              type="button"
-              draggable
-              onDragStart={() => setDragId(p.postId)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => reorder(p.postId)}
-              onDragEnd={() => setDragId(null)}
-              className={p.postId === selected?.postId ? `${s.pinned} ${s.pinnedOn}` : s.pinned}
-              onClick={() => setSelectedId(p.postId)}
-            >
-              <GripVertical size={16} className={s.grip} />
-              <span className={s.pinnedText}>
-                <strong>{p.title}</strong>
-                <small>
-                  {p.author} · {p.ago} · 답글 {p.replyCount}
-                </small>
-              </span>
-              <ChevronRight size={16} />
-            </button>
-          ))}
-        </Card>
-
-        <div className={s.allHead}>
-          <h2>
-            전체 글 <span>{d.total}</span>
-          </h2>
-          <button
-            type="button"
-            className={pinnedOnly ? `${s.pill} ${s.pillOn}` : s.pill}
-            onClick={() => setPinnedOnly(!pinnedOnly)}
-          >
-            <Pin size={14} /> 고정 글만 보기
-          </button>
-          <span className={s.pill}>
-            최근 답글 순 <ChevronDown size={14} />
-          </span>
-        </div>
-
-        {all.map((p) => (
-          <button
-            key={p.postId}
-            type="button"
-            className={p.postId === selected?.postId ? `${s.post} ${s.postOn}` : s.post}
-            onClick={() => setSelectedId(p.postId)}
-          >
-            <span className={s.postHead}>
-              <Avatar name={p.author} size={26} />
-              <strong>{p.author}</strong>
-              <small>{p.ago}</small>
-            </span>
-            {p.title && <span className={s.postTitle}>{p.title}</span>}
-            <span className={s.postBody}>{firstLine(p)}</span>
-            <span className={s.postMeta}>
-              <span>
-                <MessageCircle size={14} /> 답글 {p.replyCount}
-              </span>
-              {p.body.includes('```mermaid') && (
-                <span>
-                  <Share2 size={14} /> 다이어그램
-                </span>
-              )}
-              {p.attachments.length > 0 && (
-                <span>
-                  <Paperclip size={14} /> 첨부 {p.attachments.length}
-                </span>
-              )}
-            </span>
-          </button>
-        ))}
+        <PinnedPostsCard
+          pinned={pinned}
+          limit={d.pinnedLimit}
+          selectedId={selected?.postId}
+          onSelect={setSelectedId}
+          onDragStart={setDragId}
+          onDrop={reorder}
+          onDragEnd={() => setDragId(null)}
+        />
+        <PostList
+          total={d.total}
+          posts={all}
+          pinnedOnly={pinnedOnly}
+          onTogglePinnedOnly={() => setPinnedOnly(!pinnedOnly)}
+          selectedId={selected?.postId}
+          onSelect={setSelectedId}
+        />
       </div>
 
-      <Card className={s.detail}>
-        {error && (
-          <Note icon={TriangleAlert} tone="warning">
-            {error}
-          </Note>
-        )}
-        {!selected ? (
-          <Empty>아직 글이 없어요.</Empty>
-        ) : (
-          <>
-            <div className={s.detailTop}>
-              {selected.pinnedOrder !== null && (
-                <Chip tone="warning" icon={Pin}>
-                  고정됨 · {selected.pinnedOrder}번째
-                </Chip>
-              )}
-              <Chip tone="tint" icon={FileText}>
-                Markdown
-              </Chip>
-              <span className={s.grow} />
-              <Button
-                variant="secondary"
-                className={s.small}
-                icon={selected.pinnedOrder !== null ? PinOff : Pin}
-                onClick={() => togglePin(selected)}
-              >
-                {selected.pinnedOrder !== null ? '고정 해제' : '고정'}
-              </Button>
-              <Button variant="secondary" className={s.small} icon={Pencil}>
-                고치기
-              </Button>
-              <Button variant="icon" icon={Ellipsis} aria-label="더 보기" />
-            </div>
-            {selected.title && <h2 className={s.detailTitle}>{selected.title}</h2>}
-            <div className={s.detailMeta}>
-              <Avatar name={selected.author} size={26} />
-              <strong>{selected.author}</strong>
-              <span>
-                · {selected.createdAt} 작성
-                {selected.editedBy && ` · ${selected.editedAt} ${selected.editedBy} 수정`}
-                {selected.pinnedBy && ` · 고정: ${selected.pinnedBy}`}
-              </span>
-            </div>
-            <hr className={s.hr} />
-            <Markdown source={selected.body} projectKey={projectKey} />
-
-            {selected.attachments.length > 0 && (
-              <div className={s.files}>
-                {selected.attachments.map((a) => (
-                  <a key={a.name} href={a.url ?? '#'} className={s.file}>
-                    {a.kind === 'image' ? <Image size={16} /> : <FileText size={16} />}
-                    <strong>{a.name}</strong>
-                    <small>{a.size}</small>
-                    <Download size={16} />
-                  </a>
-                ))}
-              </div>
-            )}
-
-            <hr className={s.hr} />
-            <div className={s.repliesHead}>
-              <h3>답글 {selected.replyCount}</h3>
-              <span>글쓴이와 지켜보는 사람에게 알림</span>
-            </div>
-            {(replies.data ?? []).map((r, i) => (
-              <div key={i} className={s.reply}>
-                <Avatar name={r.author} size={26} />
-                <div>
-                  <div className={s.replyHead}>
-                    <strong>{r.author}</strong>
-                    <small>{r.ago}</small>
-                  </div>
-                  <Markdown source={r.body} projectKey={projectKey} />
-                </div>
-              </div>
-            ))}
-            <div className={s.replyBox}>
-              <input
-                value={reply}
-                onChange={(e) => setReply(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && sendReply()}
-                placeholder="답글 쓰기 · Markdown, mermaid 코드 블록 지원"
-              />
-              {/* TODO: 답글 첨부 (uploadFile → attachmentFileIds) */}
-              <Paperclip size={18} className={s.clip} />
-              <Button onClick={sendReply} className={s.small}>
-                올리기
-              </Button>
-            </div>
-          </>
-        )}
-      </Card>
+      <PostDetail
+        selected={selected}
+        replies={replies.data ?? []}
+        projectKey={projectKey}
+        error={error}
+        reply={reply}
+        onReplyChange={setReply}
+        onSendReply={sendReply}
+        onTogglePin={togglePin}
+      />
 
       {composing && (
-        <Composer
+        <ThreadComposer
           projectName={projectName}
           projectKey={projectKey}
           onClose={() => navigate(base)}
@@ -344,60 +181,5 @@ function ThreadView({ board, d, projectKey, projectName }: ViewProps) {
         />
       )}
     </div>
-  )
-}
-
-type ComposerProps = {
-  projectName: string
-  projectKey: string
-  onClose: () => void
-  onSubmit: (title: string, body: string) => Promise<void>
-}
-function Composer({ projectName, projectKey, onClose, onSubmit }: ComposerProps) {
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
-  const [sending, setSending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  // TODO: 첨부 파일 고르는 칸 (api/content.ts 의 uploadFile → attachmentFileIds). 지금은 첨부 없이 올린다
-  const submit = async () => {
-    if (!body.trim() || sending) return
-    setSending(true)
-    setError(null)
-    try {
-      await onSubmit(title, body)
-    } catch (e) {
-      setError(errorText(e, '글을 올리지 못했어요.'))
-      setSending(false)
-    }
-  }
-
-  return (
-    <Modal
-      title="새 글"
-      badge={<Chip tone="tint">{projectName} · 스레드</Chip>}
-      onClose={onClose}
-      footer={
-        <>
-          <span className={s.composerHint}>
-            {error ? <TriangleAlert size={16} /> : <Info size={16} />}
-            {error ??
-              `@이름으로 알리고, ${projectKey}-12 처럼 쓰면 작업 링크가 돼요. 상단 고정은 프로젝트 관리자가 글을 올린 뒤 할 수 있어요.`}
-          </span>
-          <Button variant="secondary" onClick={onClose}>
-            취소
-          </Button>
-          <Button onClick={submit} disabled={!body.trim() || sending}>
-            올리기
-          </Button>
-        </>
-      }
-    >
-      <label className={s.titleInput}>
-        <input value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} placeholder="제목" />
-        <small>제목 (선택) · {title.length} / 100</small>
-      </label>
-      <MarkdownEditor value={body} onChange={setBody} projectKey={projectKey} placeholder="내용을 Markdown 으로 써 주세요." />
-    </Modal>
   )
 }

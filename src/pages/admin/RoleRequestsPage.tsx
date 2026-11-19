@@ -4,6 +4,7 @@ import { Avatar, Button, Card, Empty, Loadable, Segmented } from '../../componen
 import { type RoleRequest } from '../../mocks/adminOps'
 import { whenLive } from '../../api/useResource'
 import { errorText, isLive, reviewAccessRequest, useRoleRequests, type ReviewRequest, type RoleRequestsData } from '../../api/admin'
+import { StateBadge } from './StateBadge'
 import a from './admin.module.css'
 import s from './RoleRequestsPage.module.css'
 
@@ -109,7 +110,7 @@ function RoleRequestsView({ data }: { data: RoleRequestsData }) {
                 </span>
               </span>
               <span>
-                <span className={`${a.state} ${a.info}`}>{r.target}</span>
+                <StateBadge tone="info">{r.target}</StateBadge>
               </span>
               <span className={s.reason}>{r.reason || r.note}</span>
               <span>{r.period}</span>
@@ -160,7 +161,7 @@ function RoleRequestsView({ data }: { data: RoleRequestsData }) {
         <div key={r.id} className={s.recent}>
           <Avatar name={r.who} size={26} />
           <strong>{r.who}</strong>
-          <span className={`${a.state} ${a.info}`}>{r.target}</span>
+          <StateBadge tone="info">{r.target}</StateBadge>
           <span className={`${a.state} ${TONE[r.status]}`}>{LABEL[r.status]}</span>
           <span className={s.note}>{r.note}</span>
           <span className={a.muted}>처리 · {r.handledBy}</span>

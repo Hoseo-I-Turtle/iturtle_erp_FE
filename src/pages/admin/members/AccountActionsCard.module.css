@@ -1,0 +1,24 @@
+.red {
+  color: var(--status-negative) !important;
+}
+.tempPw {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
+  font-size: var(--fs-caption);
+}
+.tempPw code {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--surface-card);
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+}
+.tempPw small {
+  flex-basis: 100%;
+}
