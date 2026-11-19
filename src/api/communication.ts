@@ -7,7 +7,15 @@ import { getApiBase } from '../lib/dataMode'
 import { activityLine, type ActivityDto } from './projects'
 import { formatShortDay, parseYmd, WEEKDAYS } from '../lib/date'
 import { MEMBER_TYPE_NAME } from '../mocks/members'
-import { ME, notices as mockNotices, otherNotices as mockOtherNotices, type Notice, type Vote } from '../mocks/notices'
+import {
+  ME,
+  noticeRows as mockNoticeRows,
+  notices as mockNotices,
+  otherNotices as mockOtherNotices,
+  type Notice,
+  type NoticeRowMock,
+  type Vote,
+} from '../mocks/notices'
 import { events as mockEvents, type CalEvent, type EventKind, type EventLayer } from '../mocks/calendar'
 import { schedulePoll as mockPoll, type SchedulePoll } from '../mocks/schedulePoll'
 import {
@@ -305,6 +313,148 @@ export function useOtherNotices(currentId: string | undefined) {
     },
   )
 }
+
+/* ================= 공지 목록 · 쓰기 (N-1, N-3) ================= */
+
+export type NoticeTab = 'all' | 'mustRead' | 'unread'
+export type NoticeRow = {
+  id: string
+  title: string
+  author: string
+  date: string
+  mustRead: boolean
+  /** 'M/D' (고정 기한) */
+  pinnedUntil?: string
+  read: boolean
+  commentCount: number
+  attachmentCount: number
+  poll: { closed: boolean; voted: boolean; audience: boolean; dday: string } | null
+  /** 필독일 때 읽음 수 */
+  readSummary: { readCount: number; total: number } | null
+}
+export type NoticeListView = {
+  pinned: NoticeRow[]
+  rows: NoticeRow[]
+  page: number
+  totalPages: number
+  counts: Record<NoticeTab, number>
+  /** 나에게 남은 것 */
+  left: { unreadMustRead: number; latestMustRead: { id: string; title: string } | null; pendingPolls: number }
+  /** 진행 중인 투표 (최신 몇 개) */
+  openPolls: { id: string; title: string; dday: string; voted: boolean; audience: boolean }[]
+}
+
+/** ISO → KST 'M/DD' */
+const monthDayKst = (iso: string) => {
+  const d = kstYmd(iso)
+  return `${Number(d.slice(5, 7))}/${d.slice(8, 10)}`
+}
+const rowFromDto = (n: NoticeSummaryDto): NoticeRow => ({
+  id: String(n.noticeId),
+  title: n.title,
+  author: n.author.name,
+  date: monthDayKst(n.createdAt),
+  mustRead: n.mustRead,
+  pinnedUntil: n.pinnedUntilOn ? `${Number(n.pinnedUntilOn.slice(5, 7))}/${Number(n.pinnedUntilOn.slice(8, 10))}` : undefined,
+  read: n.read,
+  commentCount: n.commentCount,
+  attachmentCount: n.attachmentCount,
+  poll: n.poll ? { closed: n.poll.closed, voted: n.poll.voted, audience: n.poll.audience, dday: dday(n.poll.closesAt) } : null,
+  readSummary: n.readSummary ? { readCount: n.readSummary.readCount, total: n.readSummary.readCount + n.readSummary.unreadCount } : null,
+})
+const rowFromMock = (n: NoticeRowMock): NoticeRow => ({
+  ...n,
+  poll: n.poll ? { ...n.poll, audience: true } : null,
+  readSummary: n.mustRead ? { readCount: 8, total: 11 } : null,
+})
+
+export const NOTICE_PAGE_SIZE = 20
+const TAB_QUERY: Record<NoticeTab, Record<string, boolean>> = { all: {}, mustRead: { mustRead: true }, unread: { unreadOnly: true } }
+
+/** 공지 목록 (N-1). 탭 · 검색어(2자 이상) · 페이지. 탭 숫자는 size=1 로 따로 센다 (고정 공지는 page 밖에 따로 온다) */
+export function useNoticeList(tab: NoticeTab, keyword: string, page: number) {
+  const kw = keyword.trim().length >= 2 ? keyword.trim() : undefined
+  return useResource<NoticeListView>(
+    ['notice-list', tab, kw, page],
+    () => {
+      const all = mockNoticeRows.map(rowFromMock)
+      const inTab = (r: NoticeRow) => tab === 'all' || (tab === 'mustRead' ? r.mustRead : !r.read)
+      const shown = all.filter((r) => inTab(r) && (!kw || r.title.includes(kw) || r.author.includes(kw)))
+      const unreadMust = all.filter((r) => r.mustRead && !r.read)
+      const polls = all.filter((r) => r.poll && !r.poll.closed)
+      return {
+        pinned: shown.filter((r) => r.pinnedUntil),
+        rows: shown.filter((r) => !r.pinnedUntil),
+        page: 0,
+        totalPages: 1,
+        counts: { all: all.length, mustRead: all.filter((r) => r.mustRead).length, unread: all.filter((r) => !r.read).length },
+        left: {
+          unreadMustRead: unreadMust.length,
+          latestMustRead: unreadMust[0] ? { id: unreadMust[0].id, title: unreadMust[0].title } : null,
+          pendingPolls: polls.filter((r) => !r.poll?.voted).length,
+        },
+        openPolls: polls.map((r) => ({ id: r.id, title: r.title, dday: r.poll?.dday ?? '', voted: !!r.poll?.voted, audience: true })),
+      }
+    },
+    async () => {
+      const count = (q: Record<string, boolean>) =>
+        api<NoticeListDto>('/notices', { query: { ...q, size: 1 } }).then((r) => ({
+          total: r.pinned.length + r.page.totalElements,
+          first: r.pinned[0] ?? r.page.content[0],
+        }))
+      const [list, recent, must, unread, mustUnread] = await Promise.all([
+        api<NoticeListDto>('/notices', { query: { ...TAB_QUERY[tab], keyword: kw, page, size: NOTICE_PAGE_SIZE } }),
+        api<NoticeListDto>('/notices', { query: { size: 50 } }),
+        count(TAB_QUERY.mustRead),
+        count(TAB_QUERY.unread),
+        count({ mustRead: true, unreadOnly: true }),
+      ])
+      const open = [...recent.pinned, ...recent.page.content].filter((n) => n.poll && !n.poll.closed)
+      return {
+        pinned: list.pinned.map(rowFromDto),
+        rows: list.page.content.map(rowFromDto),
+        page: list.page.page,
+        totalPages: list.page.totalPages,
+        counts: { all: recent.pinned.length + recent.page.totalElements, mustRead: must.total, unread: unread.total },
+        left: {
+          unreadMustRead: mustUnread.total,
+          latestMustRead: mustUnread.first ? { id: String(mustUnread.first.noticeId), title: mustUnread.first.title } : null,
+          pendingPolls: open.filter((n) => n.poll?.audience && !n.poll.voted).length,
+        },
+        openPolls: open.slice(0, 3).map((n) => ({
+          id: String(n.noticeId),
+          title: n.title,
+          dday: n.poll ? dday(n.poll.closesAt) : '',
+          voted: !!n.poll?.voted,
+          audience: !!n.poll?.audience,
+        })),
+      }
+    },
+  )
+}
+
+/** 공지 쓰기 요청 (백엔드 NoticeCreateRequest) */
+export type NoticeCreateBody = {
+  title: string
+  body: string
+  mustRead: boolean
+  /** 'YYYY-MM-DD' 그날 끝까지 고정. null 이면 고정 안 함 */
+  pinnedUntilOn: string | null
+  attachmentFileIds: string[]
+  poll: {
+    question: string
+    options: string[]
+    multiple: boolean
+    maxChoices: number | null
+    anonymous: boolean
+    resultVisibility: 'AFTER_VOTE' | 'AFTER_CLOSE'
+    closesAt: string
+  } | null
+}
+
+/** 공지 올리기 (notice-write 역할). 만든 공지 id 를 돌려준다 */
+export const createNotice = (body: NoticeCreateBody) =>
+  api<NoticeDetailDto>('/notices', { method: 'POST', body }).then((d) => String(d.noticeId))
 
 /* ================= 댓글 (CM-1, CM-2) ================= */
 

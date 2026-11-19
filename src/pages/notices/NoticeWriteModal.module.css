@@ -1,0 +1,269 @@
+/* 공지 쓰기 — 디자인 06 Screens · 공지 쓰기 */
+.form {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.info {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--surface-tint);
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.label {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-card);
+}
+.input:focus-within {
+  border-color: var(--brand-300);
+}
+.input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--text-primary);
+}
+.input small {
+  flex: none;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+/* ---------- 필독 · 고정 · 투표 ---------- */
+.options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 760px) {
+  .options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--surface-sunken);
+}
+.optionOn {
+  background: var(--surface-tint);
+}
+.optionText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+.optionText strong {
+  font-weight: 500;
+}
+.optionText small {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.dateChip {
+  position: relative;
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: var(--surface-card);
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+  cursor: pointer;
+}
+/* 달력은 칩 전체를 눌러 연다 (input 은 보이지 않게 덮는다) */
+.dateChip input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* ---------- 투표 ---------- */
+.poll {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  background: #f7fafd;
+}
+.pollHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.grow {
+  flex: 1;
+}
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  background: var(--surface-card);
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.toggleOn {
+  background: var(--brand-500);
+  color: var(--text-on-dark);
+}
+.resultSel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: var(--surface-card);
+  font-size: var(--fs-caption);
+  color: var(--brand-400);
+}
+.resultSel select {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--brand-500);
+}
+.optionRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-card);
+}
+.optionRow:focus-within {
+  border-color: var(--brand-300);
+}
+.optionNo {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.optionRow input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  font: inherit;
+  background: transparent;
+}
+.optionRow button {
+  display: flex;
+  color: var(--brand-400);
+}
+.pollFoot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.addOption,
+.upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  background: var(--surface-card);
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.addOption:hover,
+.upload:hover {
+  background: var(--surface-tint);
+}
+.deadline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: var(--status-warning-bg);
+  font-size: var(--fs-caption);
+  color: var(--status-warning-text);
+}
+.deadline input {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+}
+
+/* ---------- 첨부 ---------- */
+.files {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  background: var(--surface-sunken);
+  font-size: var(--fs-caption);
+}
+.file button {
+  display: flex;
+  color: var(--brand-400);
+}
+.fileFailed {
+  background: var(--status-negative-bg);
+  color: var(--status-negative);
+}
+.upload {
+  background: var(--surface-sunken);
+}
+
+.footNote {
+  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.footError {
+  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: var(--status-negative-bg);
+  font-size: var(--fs-caption);
+  color: var(--status-negative);
+}

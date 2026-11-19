@@ -11,7 +11,6 @@ import {
   Paperclip,
   Pencil,
   Pin,
-  Plus,
   Send,
   SquareCheck,
   TriangleAlert,
@@ -31,6 +30,7 @@ import {
   type VoteOptionView,
   type VoteView,
 } from '../../api/communication'
+import { NoticeWriteButton } from './NoticeWriteModal'
 import s from './NoticeDetailPage.module.css'
 
 const errText = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback)
@@ -41,7 +41,7 @@ export function NoticeDetailPage() {
 
   return (
     <>
-      <PageHeader title="공지사항" subtitle="연구실 공지와 투표" action={<Button icon={Plus}>공지 쓰기</Button>} />
+      <PageHeader title="공지사항" subtitle="연구실 공지와 투표" action={<NoticeWriteButton />} />
       <Loadable resource={notice} label="공지">
         {(n) => <NoticeBody key={n.id} notice={n} />}
       </Loadable>
