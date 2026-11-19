@@ -22,6 +22,8 @@ import { BoardPage } from './pages/projects/BoardPage'
 import { ThreadPage } from './pages/projects/ThreadPage'
 import { TaskDetailPage } from './pages/projects/TaskDetailPage'
 import { MinutesPage } from './pages/projects/MinutesPage'
+import { MinuteListPage } from './pages/projects/MinuteListPage'
+import { MinuteWritePage } from './pages/projects/MinuteWritePage'
 import { ProjectSettingsPage } from './pages/projects/ProjectSettingsPage'
 import { WeeklyReportPage } from './pages/reports/WeeklyReportPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
@@ -80,7 +82,10 @@ const router = createBrowserRouter([
           { path: 'milestones', element: <PlaceholderPage title="마일스톤" bare /> },
           { path: 'threads', element: <ThreadPage /> },
           { path: 'threads/new', element: <ThreadPage /> },
-          { path: 'minutes', element: <MinutesPage /> },
+          { path: 'minutes', element: <MinuteListPage /> },
+          { path: 'minutes/new', element: <MinuteWritePage /> },
+          { path: 'minutes/:minuteId', element: <MinutesPage /> },
+          { path: 'minutes/:minuteId/edit', element: <MinuteWritePage /> },
           { path: 'files', element: <PlaceholderPage title="자료" bare /> },
           { path: 'settings', element: <ProjectSettingsPage /> },
         ],

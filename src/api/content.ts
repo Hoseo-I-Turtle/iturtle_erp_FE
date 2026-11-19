@@ -326,7 +326,6 @@ const mdLines = (v: string | null) =>
     .split('\n')
     .map((l) => l.replace(/^\s*(?:[-*+]|\d+\.)\s+/, '').trim())
     .filter(Boolean)
-const linesMd = (lines: string[]) => lines.map((l) => `- ${l}`).join('\n')
 
 function minuteWhen(startsAt: string, endsAt: string) {
   const s = kst(startsAt)
@@ -407,60 +406,6 @@ export function useMinute(minuteId: number) {
     }),
     () => fetchMinute(minuteId),
   )
-}
-
-export type SaveMinuteResult = { ok: true; view: MinuteView } | { ok: false; conflict: MinuteConflict; latest: MinuteView }
-
-/**
- * MM-4 회의록 저장 (통째로, 버전 확인).
- * 409 P201 이면 최신 내용을 다시 불러 누가 언제 저장했는지 돌려준다.
- */
-export async function saveMinute(view: MinuteView, edited: Record<MinuteSection, string[]>): Promise<SaveMinuteResult> {
-  const raw = view.raw
-  if (!raw) throw new Error('회의록 원본이 없어요.')
-  // 고치지 않은 칸은 서버 원문(Markdown)을 그대로 보내 서식을 잃지 않게 한다
-  const section = (k: MinuteSection) =>
-    edited[k].join('\n') === view.minute[k].join('\n') ? raw[k] : linesMd(edited[k])
-  try {
-    const saved = await api<MinuteDetail>(`/meeting-minutes/${raw.minuteId}`, {
-      method: 'PUT',
-      body: {
-        version: view.minute.version,
-        title: raw.title,
-        startsAt: raw.startsAt,
-        endsAt: raw.endsAt,
-        location: raw.location,
-        onlineUrl: raw.onlineUrl,
-        templateCode: raw.templateCode,
-        calendarEventId: raw.calendarEvent?.eventId ?? null,
-        attendees: raw.attendees.map((a) => ({ memberId: a.member.memberId, attended: a.attended })),
-        agenda: section('agenda'),
-        discussion: section('discussion'),
-        decisions: section('decisions'),
-        actions: raw.actions.map((a) => ({
-          actionId: a.actionId,
-          content: a.content,
-          assigneeMemberId: a.assignee?.memberId ?? null,
-          dueOn: a.dueOn,
-          done: a.done,
-        })),
-        attachmentFileIds: raw.attachments.map((f) => f.publicId),
-      },
-    })
-    const revisions = await api<PageResponse<MinuteRevision>>(`/meeting-minutes/${raw.minuteId}/revisions`, { query: { size: 10 } }).catch(
-      () => null,
-    )
-    return {
-      ok: true,
-      view: { minute: toMinute(saved), history: revisions ? revisions.content.map(toHistory) : view.history, initialConflict: null, raw: saved },
-    }
-  } catch (e) {
-    if (e instanceof ApiError && e.code === 'P201') {
-      const latest = await fetchMinute(raw.minuteId)
-      return { ok: false, conflict: { who: latest.raw!.lastEditor.name, ago: ago(latest.raw!.updatedAt) }, latest }
-    }
-    throw e
-  }
 }
 
 /** MM-8 할 일 여러 개를 작업으로. 바뀐 할 일을 돌려준다 */

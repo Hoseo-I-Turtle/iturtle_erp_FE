@@ -1,34 +1,22 @@
-import { Calendar, Clock, FileText, MapPin, Pencil, Save, TriangleAlert, X } from 'lucide-react'
+import { Calendar, Clock, FileText, MapPin, Pencil, TriangleAlert } from 'lucide-react'
 import { Avatar, Button, Chip, Note } from '../../../components/ui'
 import type { Minute } from '../../../mocks/minutes'
 import s from '../MinutesPage.module.css'
 
 type Props = {
   m: Minute
-  editing: boolean
-  saving: boolean
+  canEdit: boolean
   error: string | null
   onEdit: () => void
-  onCancel: () => void
-  onSave: () => void
 }
 
-/** 제목 · 수정/저장 버튼 · 일시 · 장소 · 일정 · 참석/불참 */
-export function MinuteHeader({ m, editing, saving, error, onEdit, onCancel, onSave }: Props) {
+/** 제목 · 수정 버튼(쓰기 화면으로) · 일시 · 장소 · 일정 · 참석/불참 */
+export function MinuteHeader({ m, canEdit, error, onEdit }: Props) {
   return (
     <>
       <div className={s.titleRow}>
         <h2>{m.title}</h2>
-        {editing ? (
-          <>
-            <Button variant="secondary" icon={X} onClick={onCancel}>
-              취소
-            </Button>
-            <Button icon={Save} onClick={onSave} disabled={saving}>
-              저장
-            </Button>
-          </>
-        ) : (
+        {canEdit && (
           <Button variant="secondary" icon={Pencil} onClick={onEdit}>
             수정
           </Button>
