@@ -11,6 +11,7 @@ import { CodesPage } from './pages/admin/CodesPage'
 import { GithubPage } from './pages/admin/GithubPage'
 import { HomePage } from './pages/home/HomePage'
 import { NoticeDetailPage } from './pages/notices/NoticeDetailPage'
+import { NoticeListPage } from './pages/notices/NoticeListPage'
 import { CalendarPage } from './pages/calendar/CalendarPage'
 import { SchedulePollPage } from './pages/calendar/SchedulePollPage'
 import { LibraryPage } from './pages/library/LibraryPage'
@@ -61,7 +62,7 @@ const router = createBrowserRouter([
       { path: '/', element: <HomePage /> },
       // 공지 목록 화면은 디자인에 아직 없어 최신 공지 상세로 보낸다
       // 공지 목록 화면은 아직 디자인 전 (docs/missing-screens.md) — 목업 공지로 보내지 않는다
-      { path: '/notices', element: <PlaceholderPage title="공지 목록" /> },
+      { path: '/notices', element: <NoticeListPage /> },
       { path: '/notices/:id', element: <NoticeDetailPage /> },
       { path: '/calendar', element: <CalendarPage /> },
       { path: '/calendar/polls/:id', element: <SchedulePollPage /> },

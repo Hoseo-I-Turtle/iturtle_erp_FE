@@ -3,11 +3,20 @@
 import { api } from './client'
 import { ago, type MemberRef, type PageResponse } from './types'
 import { useResource } from './useResource'
-import { getApiBase } from '../lib/dataMode'
+import { getApiBase, getDataMode } from '../lib/dataMode'
 import { activityLine, type ActivityDto } from './projects'
 import { formatShortDay, parseYmd, WEEKDAYS } from '../lib/date'
 import { MEMBER_TYPE_NAME } from '../mocks/members'
-import { ME, notices as mockNotices, otherNotices as mockOtherNotices, type Notice, type Vote } from '../mocks/notices'
+import {
+  ME,
+  noticeDrafts as mockNoticeDrafts,
+  noticeRows as mockNoticeRows,
+  notices as mockNotices,
+  otherNotices as mockOtherNotices,
+  type Notice,
+  type NoticeRowMock,
+  type Vote,
+} from '../mocks/notices'
 import { events as mockEvents, type CalEvent, type EventKind, type EventLayer } from '../mocks/calendar'
 import { schedulePoll as mockPoll, type SchedulePoll } from '../mocks/schedulePoll'
 import {
@@ -92,15 +101,34 @@ type NoticeSummaryDto = {
   pinnedUntilOn: string | null
   author: MemberRef
   createdAt: string
+  /** 게시 시각 (임시 저장이면 null) */
+  publishedAt: string | null
+  draft: boolean
+  audience: NoticeAudienceDto
   editedAt: string | null
   read: boolean
   commentCount: number
   attachmentCount: number
-  poll: { closesAt: string; closed: boolean; audience: boolean; voted: boolean } | null
+  poll: { closesAt: string; closed: boolean; audience: boolean; voted: boolean; participantCount: number; audienceCount: number } | null
   /** 필독이면 읽음 · 안 읽음 숫자 (명단은 상세에서만), 아니면 null */
   readSummary: { readCount: number; unreadCount: number } | null
 }
 type NoticeListDto = { pinned: NoticeSummaryDto[]; page: PageResponse<NoticeSummaryDto> }
+
+/** 공지 대상 (NoticeAudienceResponse / NoticeAudienceRequest) */
+export type NoticeAudienceType = 'ALL' | 'PROJECT' | 'MEMBER_TYPES'
+type NoticeAudienceDto = {
+  type: NoticeAudienceType
+  projectKey?: string | null
+  projectName?: string | null
+  memberTypes?: MemberRef['memberType'][] | null
+}
+/** '전체 구성원' · 'DEFME 백엔드 참여자' · '학생 · 인턴' */
+export const audienceLabel = (a: NoticeAudienceDto | null | undefined) => {
+  if (!a || a.type === 'ALL') return '전체 구성원'
+  if (a.type === 'PROJECT') return `${a.projectName ?? a.projectKey ?? '프로젝트'} 참여자`
+  return (a.memberTypes ?? []).map((t) => MEMBER_TYPE_NAME[t]).join(' · ') || '구분 선택'
+}
 
 type PollDto = {
   pollId: number
@@ -131,6 +159,9 @@ type NoticeDetailDto = {
   pinnedUntilOn: string | null
   author: MemberRef
   createdAt: string
+  publishedAt: string | null
+  draft: boolean
+  audience: NoticeAudienceDto
   editedAt: string | null
   attachments: FileRef[]
   poll: PollDto | null
@@ -221,6 +252,8 @@ export type NoticeView = Omit<Notice, 'attachments' | 'vote' | 'comments' | 'rea
   read: { total: number; readCount: number; unread: { name: string; role: string }[] | null } | null
   canEdit: boolean
   meName: string
+  /** 게시 전 임시 저장 (작성자만 본다) */
+  draft: boolean
 }
 
 function noticeFromMock(n: Notice): NoticeView {
@@ -232,13 +265,14 @@ function noticeFromMock(n: Notice): NoticeView {
     read: n.read,
     canEdit: true,
     meName: ME,
+    draft: false,
   }
 }
 
 function noticeFromDto(d: NoticeDetailDto, me: Me): NoticeView {
   const total = d.attachments.reduce((sum, a) => sum + a.size, 0)
   const info: [string, string][] = []
-  if (d.readSummary) info.push(['대상', `전체 구성원 (${d.readSummary.readCount + d.readSummary.unreadCount}명)`])
+  info.push(['대상', audienceLabel(d.audience) + (d.readSummary ? ` (${d.readSummary.readCount + d.readSummary.unreadCount}명)` : '')])
   if (d.poll) {
     info.push([
       '투표 대상',
@@ -254,7 +288,7 @@ function noticeFromDto(d: NoticeDetailDto, me: Me): NoticeView {
     title: d.title,
     body: d.body,
     author: d.author.name,
-    createdAt: shortDayTime(d.createdAt),
+    createdAt: shortDayTime(d.publishedAt ?? d.createdAt),
     edited: !!d.editedAt,
     important: d.mustRead,
     pinnedUntil: d.pinnedUntilOn ? `${Number(d.pinnedUntilOn.slice(5, 7))}/${Number(d.pinnedUntilOn.slice(8, 10))}` : undefined,
@@ -270,6 +304,7 @@ function noticeFromDto(d: NoticeDetailDto, me: Me): NoticeView {
     info,
     canEdit: d.canEdit,
     meName: me.name,
+    draft: d.draft,
   }
 }
 
@@ -305,6 +340,300 @@ export function useOtherNotices(currentId: string | undefined) {
     },
   )
 }
+
+/* ================= 공지 목록 · 쓰기 (N-1, N-3, N-4) ================= */
+
+export type NoticeTab = 'all' | 'mustRead' | 'poll' | 'unread'
+export type NoticeSort = 'LATEST' | 'DEADLINE'
+export type NoticeRow = {
+  id: string
+  title: string
+  author: string
+  date: string
+  mustRead: boolean
+  /** 'M/D' (고정 기한) */
+  pinnedUntil?: string
+  read: boolean
+  commentCount: number
+  attachmentCount: number
+  /** 전체가 아니면 '학생 · 인턴' 같은 대상 이름, 전체면 null */
+  audience: string | null
+  poll: { closed: boolean; voted: boolean; audience: boolean; dday: string; participantCount: number; audienceCount: number } | null
+  /** 필독일 때 읽음 수 */
+  readSummary: { readCount: number; total: number } | null
+}
+export type NoticeListView = {
+  pinned: NoticeRow[]
+  rows: NoticeRow[]
+  page: number
+  totalPages: number
+  counts: Record<NoticeTab, number>
+  /** 나에게 남은 것 */
+  left: { unreadMustRead: number; latestMustRead: { id: string; title: string } | null; pendingPolls: number }
+  /** 진행 중인 투표 (마감 가까운 순 몇 개) */
+  openPolls: { id: string; title: string; dday: string; voted: boolean; audience: boolean; participantCount: number; audienceCount: number }[]
+}
+
+/** ISO → KST 'M/DD' */
+const monthDayKst = (iso: string) => {
+  const d = kstYmd(iso)
+  return `${Number(d.slice(5, 7))}/${d.slice(8, 10)}`
+}
+const rowFromDto = (n: NoticeSummaryDto): NoticeRow => ({
+  id: String(n.noticeId),
+  title: n.title,
+  author: n.author.name,
+  date: monthDayKst(n.publishedAt ?? n.createdAt),
+  mustRead: n.mustRead,
+  pinnedUntil: n.pinnedUntilOn ? `${Number(n.pinnedUntilOn.slice(5, 7))}/${Number(n.pinnedUntilOn.slice(8, 10))}` : undefined,
+  read: n.read,
+  commentCount: n.commentCount,
+  attachmentCount: n.attachmentCount,
+  audience: !n.audience || n.audience.type === 'ALL' ? null : audienceLabel(n.audience),
+  poll: n.poll
+    ? {
+        closed: n.poll.closed,
+        voted: n.poll.voted,
+        audience: n.poll.audience,
+        dday: dday(n.poll.closesAt),
+        participantCount: n.poll.participantCount,
+        audienceCount: n.poll.audienceCount,
+      }
+    : null,
+  readSummary: n.readSummary ? { readCount: n.readSummary.readCount, total: n.readSummary.readCount + n.readSummary.unreadCount } : null,
+})
+const rowFromMock = (n: NoticeRowMock): NoticeRow => ({
+  ...n,
+  audience: n.audience ?? null,
+  poll: n.poll ? { ...n.poll, audience: true } : null,
+  readSummary: n.mustRead ? { readCount: 8, total: 11 } : null,
+})
+
+export const NOTICE_PAGE_SIZE = 20
+const TAB_QUERY: Record<NoticeTab, Record<string, boolean>> = {
+  all: {},
+  mustRead: { mustRead: true },
+  poll: { hasPoll: true },
+  unread: { unreadOnly: true },
+}
+type NoticeCountsDto = { all: number; mustRead: number; poll: number; unread: number }
+
+/**
+ * 공지 목록 (N-1). 탭 · 검색어(2자 이상) · 정렬 · 페이지.
+ * 탭 숫자는 GET /notices/counts 한 번, 오른쪽 "나에게 남은 것"은 필독 · 안 읽음 1건과 열린 투표(마감 가까운 순)를 따로 받는다.
+ */
+export function useNoticeList(tab: NoticeTab, keyword: string, sort: NoticeSort, page: number) {
+  const kw = keyword.trim().length >= 2 ? keyword.trim() : undefined
+  return useResource<NoticeListView>(
+    ['notice-list', tab, kw, sort, page],
+    () => {
+      const all = mockNoticeRows.map(rowFromMock)
+      const inTab = (r: NoticeRow) =>
+        tab === 'all' || (tab === 'mustRead' ? r.mustRead : tab === 'poll' ? !!r.poll : !r.read)
+      const found = all.filter((r) => !kw || r.title.includes(kw) || r.author.includes(kw))
+      const shown = found.filter(inTab)
+      if (sort === 'DEADLINE') {
+        // 열린 투표가 마감 가까운 순으로 앞, 나머지는 그대로 (목업 D-day 숫자로 비교)
+        const left = (r: NoticeRow) => (r.poll && !r.poll.closed ? Number(r.poll.dday.replace(/\D/g, '') || 0) : Infinity)
+        shown.sort((a, b) => left(a) - left(b))
+      }
+      const unreadMust = all.filter((r) => r.mustRead && !r.read)
+      const polls = all.filter((r) => r.poll && !r.poll.closed)
+      return {
+        pinned: shown.filter((r) => r.pinnedUntil),
+        rows: shown.filter((r) => !r.pinnedUntil),
+        page: 0,
+        totalPages: 1,
+        counts: {
+          all: found.length,
+          mustRead: found.filter((r) => r.mustRead).length,
+          poll: found.filter((r) => r.poll).length,
+          unread: found.filter((r) => !r.read).length,
+        },
+        left: {
+          unreadMustRead: unreadMust.length,
+          latestMustRead: unreadMust[0] ? { id: unreadMust[0].id, title: unreadMust[0].title } : null,
+          pendingPolls: polls.filter((r) => !r.poll?.voted).length,
+        },
+        openPolls: polls.map((r) => ({
+          id: r.id,
+          title: r.title,
+          dday: r.poll?.dday ?? '',
+          voted: !!r.poll?.voted,
+          audience: true,
+          participantCount: r.poll?.participantCount ?? 0,
+          audienceCount: r.poll?.audienceCount ?? 0,
+        })),
+      }
+    },
+    async () => {
+      const [list, counts, mustUnread, polls] = await Promise.all([
+        api<NoticeListDto>('/notices', { query: { ...TAB_QUERY[tab], keyword: kw, sort, page, size: NOTICE_PAGE_SIZE } }),
+        api<NoticeCountsDto>('/notices/counts', { query: { keyword: kw } }),
+        api<NoticeListDto>('/notices', { query: { mustRead: true, unreadOnly: true, size: 1 } }),
+        api<NoticeListDto>('/notices', { query: { hasPoll: true, sort: 'DEADLINE', size: 20 } }),
+      ])
+      const firstMust = mustUnread.pinned[0] ?? mustUnread.page.content[0]
+      const open = [...polls.pinned, ...polls.page.content].filter((n) => n.poll && !n.poll.closed)
+      return {
+        pinned: list.pinned.map(rowFromDto),
+        rows: list.page.content.map(rowFromDto),
+        page: list.page.page,
+        totalPages: list.page.totalPages,
+        counts,
+        left: {
+          unreadMustRead: mustUnread.pinned.length + mustUnread.page.totalElements,
+          latestMustRead: firstMust ? { id: String(firstMust.noticeId), title: firstMust.title } : null,
+          pendingPolls: open.filter((n) => n.poll?.audience && !n.poll.voted).length,
+        },
+        openPolls: open
+          .sort((a, b) => Date.parse(a.poll?.closesAt ?? '') - Date.parse(b.poll?.closesAt ?? ''))
+          .slice(0, 3)
+          .map((n) => ({
+            id: String(n.noticeId),
+            title: n.title,
+            dday: n.poll ? dday(n.poll.closesAt) : '',
+            voted: !!n.poll?.voted,
+            audience: !!n.poll?.audience,
+            participantCount: n.poll?.participantCount ?? 0,
+            audienceCount: n.poll?.audienceCount ?? 0,
+          })),
+      }
+    },
+  )
+}
+
+/** 공지 대상 요청 (NoticeAudienceRequest) */
+export type NoticeAudienceBody = { type: NoticeAudienceType; projectKey: string | null; memberTypes: MemberRef['memberType'][] | null }
+/** 투표 (만들 때 PollCreateRequest, 고칠 때 PollUpdateRequest — 선택지는 optionId 로 같은 것을 잇는다) */
+export type NoticePollBody = {
+  question: string
+  options: { optionId: number | null; label: string }[]
+  multiple: boolean
+  maxChoices: number | null
+  anonymous: boolean
+  resultVisibility: 'AFTER_VOTE' | 'AFTER_CLOSE'
+  closesAt: string
+}
+/** 쓰기 화면의 내용 (만들기 · 임시 저장 이어 쓰기 공통) */
+export type NoticeForm = {
+  title: string
+  body: string
+  mustRead: boolean
+  /** 'YYYY-MM-DD' 그날 끝까지 고정. null 이면 고정 안 함 */
+  pinnedUntilOn: string | null
+  attachmentFileIds: string[]
+  poll: NoticePollBody | null
+  audience: NoticeAudienceBody
+}
+
+const createPoll = (p: NoticePollBody) => ({
+  question: p.question,
+  options: p.options.map((o) => o.label),
+  multiple: p.multiple,
+  maxChoices: p.maxChoices,
+  anonymous: p.anonymous,
+  resultVisibility: p.resultVisibility,
+  closesAt: p.closesAt,
+})
+
+/** 공지 올리기 · 임시 저장 (POST /notices, draft=true 면 게시하지 않고 저장). 공지 id 를 돌려준다 */
+export const createNotice = (f: NoticeForm, draft: boolean) =>
+  api<NoticeDetailDto>('/notices', {
+    method: 'POST',
+    body: { ...f, poll: f.poll ? createPoll(f.poll) : null, draft },
+  }).then((d) => String(d.noticeId))
+
+/**
+ * 임시 저장한 공지 고치기 (PATCH). 고정 · 투표는 null 을 보내면 지운다.
+ * hadPoll: 저장된 공지에 이미 투표가 있었는지 (있으면 고치기, 없으면 새로 만들기 모양으로 보낸다)
+ */
+export const updateNotice = (id: string, f: NoticeForm, hadPoll: boolean) =>
+  api<NoticeDetailDto>(`/notices/${id}`, {
+    method: 'PATCH',
+    body: {
+      ...f,
+      // 고칠 때는 PollUpdateRequest 모양 (선택지 {optionId, label}). 투표가 없던 공지면 optionId 없이 새로 만든다
+      poll: f.poll ? { ...f.poll, options: f.poll.options.map((o) => ({ optionId: hadPoll ? o.optionId : null, label: o.label })) } : null,
+    },
+  }).then((d) => String(d.noticeId))
+
+/** 임시 저장 게시 (작성자만, 이미 게시면 N019) */
+export const publishNotice = (id: string) => api<NoticeDetailDto>(`/notices/${id}/publish`, { method: 'POST' }).then((d) => String(d.noticeId))
+
+/** 공지 지우기 (임시 저장 버리기에도 쓴다) */
+export const deleteNotice = (id: string) => api<void>(`/notices/${id}`, { method: 'DELETE' })
+
+export type NoticeDraftItem = { id: string; title: string; savedAt: string }
+/** 내 임시 저장 목록 (GET /notices/drafts) */
+export const fetchNoticeDrafts = () =>
+  api<NoticeSummaryDto[]>('/notices/drafts').then((list) =>
+    list.map((n) => ({ id: String(n.noticeId), title: n.title || '(제목 없음)', savedAt: ago(n.editedAt ?? n.createdAt) })),
+  )
+
+export type NoticeDraft = {
+  id: string
+  form: NoticeForm
+  attachments: { publicId: string; name: string; size: number }[]
+  /** 투표 마감을 쓰기 화면 칸('YYYY-MM-DDTHH:mm', KST)으로 */
+  pollClosesLocal: string | null
+}
+/** 임시 저장 하나를 쓰기 화면 모양으로 (GET /notices/{id}) */
+export const fetchNoticeDraft = (id: string) =>
+  api<NoticeDetailDto>(`/notices/${id}`).then(
+    (d): NoticeDraft => ({
+      id: String(d.noticeId),
+      form: {
+        title: d.title,
+        body: d.body,
+        mustRead: d.mustRead,
+        pinnedUntilOn: d.pinnedUntilOn,
+        attachmentFileIds: d.attachments.map((a) => a.publicId),
+        poll: d.poll
+          ? {
+              question: d.poll.question,
+              options: d.poll.options.map((o) => ({ optionId: o.optionId, label: o.label })),
+              multiple: d.poll.multiple,
+              maxChoices: d.poll.maxChoices,
+              anonymous: d.poll.anonymous,
+              resultVisibility: d.poll.resultVisibility,
+              closesAt: d.poll.closesAt,
+            }
+          : null,
+        audience: {
+          type: d.audience?.type ?? 'ALL',
+          projectKey: d.audience?.projectKey ?? null,
+          memberTypes: d.audience?.memberTypes ?? null,
+        },
+      },
+      attachments: d.attachments.map((a) => ({ publicId: a.publicId, name: a.name, size: a.size })),
+      pollClosesLocal: d.poll ? `${kstYmd(d.poll.closesAt)}T${kstHm(d.poll.closesAt)}` : null,
+    }),
+  )
+
+/** 내 임시 저장 목록 (쓰기 모달 "이어 쓰기") */
+export function useNoticeDrafts() {
+  return useResource<NoticeDraftItem[]>('notice-drafts', () => mockNoticeDrafts, fetchNoticeDrafts)
+}
+
+/** 임시 저장 하나 불러오기. 목업 모드는 예시 글 */
+export const loadNoticeDraft = (id: string): Promise<NoticeDraft> =>
+  getDataMode() === 'live'
+    ? fetchNoticeDraft(id)
+    : Promise.resolve({
+        id,
+        form: {
+          title: '12월 장비 점검 일정',
+          body: '12월 첫 주에 서버실 장비를 점검해요.\n\n- 12/2(화) 오전: GPU 서버\n- 12/3(수) 오후: 스토리지',
+          mustRead: true,
+          pinnedUntilOn: null,
+          attachmentFileIds: [],
+          poll: null,
+          audience: { type: 'MEMBER_TYPES', projectKey: null, memberTypes: ['STUDENT', 'INTERN'] },
+        },
+        attachments: [],
+        pollClosesLocal: null,
+      })
 
 /* ================= 댓글 (CM-1, CM-2) ================= */
 

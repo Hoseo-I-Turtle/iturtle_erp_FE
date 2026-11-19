@@ -1,11 +1,13 @@
 import { useParams } from 'react-router-dom'
-import { Ellipsis, Paperclip, Pencil, Pin, Plus, SquareCheck, TriangleAlert } from 'lucide-react'
+import { Ellipsis, Paperclip, Pencil, Pin, SquareCheck, TriangleAlert } from 'lucide-react'
 import { Avatar, Breadcrumb, Button, Card, Chip, Columns, Loadable } from '../../components/ui'
+import { Markdown } from '../../components/markdown/Markdown'
 import { PageHeader } from '../../layouts/PageHeader'
 import { useNoticeDetail, useOtherNotices, type NoticeView } from '../../api/communication'
 import { NoticeComments } from './detail/NoticeComments'
 import { NoticeInfoCard, OtherNoticesCard, ReadCheckCard } from './detail/NoticeSideCards'
 import { VoteBox } from './detail/VoteBox'
+import { NoticeWriteButton } from './NoticeWriteModal'
 import s from './NoticeDetailPage.module.css'
 
 export function NoticeDetailPage() {
@@ -14,7 +16,7 @@ export function NoticeDetailPage() {
 
   return (
     <>
-      <PageHeader title="공지사항" subtitle="연구실 공지와 투표" action={<Button icon={Plus}>공지 쓰기</Button>} />
+      <PageHeader title="공지사항" subtitle="연구실 공지와 투표" action={<NoticeWriteButton />} />
       <Loadable resource={notice} label="공지">
         {(n) => <NoticeBody key={n.id} notice={n} />}
       </Loadable>
@@ -33,6 +35,7 @@ function NoticeBody({ notice }: { notice: NoticeView }) {
           <Breadcrumb items={[{ label: '공지사항', to: '/notices' }, { label: '상세' }]} />
 
           <div className={s.chips}>
+            {notice.draft && <Chip tone="warning">임시 저장 · 아직 게시 전</Chip>}
             {notice.important && (
               <Chip tone="danger" icon={TriangleAlert}>
                 필독
@@ -67,7 +70,9 @@ function NoticeBody({ notice }: { notice: NoticeView }) {
             )}
           </div>
 
-          <p className={s.body}>{notice.body}</p>
+          <div className={s.body}>
+            <Markdown source={notice.body} />
+          </div>
 
           {notice.attachments.map((a) => (
             <a key={a.name} href={a.url} className={s.attachment}>
