@@ -100,6 +100,10 @@ type ProjectSummaryDto = {
   memberCount: number
   memberPreview: MemberRef[]
   nextMilestone: { milestoneId: number; name: string; dueOn: string | null; progress: { done: number; total: number; ratio: number } } | null
+  /** 가장 최근 활동 하나 (P-9 와 같은 모양) */
+  recentActivity: ActivityDto | null
+  /** 연결된 연동 서비스 종류 (OTHER 제외, PENPOT → VAULT → JENKINS → GITHUB) */
+  linkedServices: ServiceCode[]
 }
 /** ProjectListResponse — categoryCounts 는 ALL + 프로젝트가 있는 카테고리만 (공통코드 표시 순서) */
 type ProjectListResponse = { categoryCounts: Record<string, number>; page: PageResponse<ProjectSummaryDto> }
@@ -122,8 +126,7 @@ const toCard = (x: ProjectSummaryDto): ProjectCard => {
     endsOn: x.endsOn ?? '',
     myRole: x.myRole,
     memberPreview: x.memberPreview.map((m) => m.name),
-    // 백엔드 ProjectSummaryResponse 에 연동 서비스 목록이 없어 카드의 서비스 아이콘은 실서버에서 비어 있다
-    services: [],
+    services: x.linkedServices ?? [],
     nextMilestone: x.nextMilestone
       ? { name: x.nextMilestone.name, dueOn: monthDay(x.nextMilestone.dueOn), ratio: x.nextMilestone.progress.ratio }
       : null,
@@ -257,7 +260,7 @@ type ActivityType =
   | 'SETTINGS_CHANGED'
 
 /** ActivityResponse. ref.type 은 PROJECT_THREAD · MEETING_MINUTE · MEMBER */
-type ActivityDto = {
+export type ActivityDto = {
   activityId: number
   type: ActivityType
   actor: MemberRef | null
@@ -385,6 +388,12 @@ const toActivity = (a: ActivityDto, inTask: boolean): ActivityLine => ({
   text: activityText(a, inTask),
   ago: ago(a.createdAt),
 })
+
+/** 카드 · 홈의 "최근 활동 한 줄" ('방금 · 김민서 님이 DEFME-44 를 완료로 옮겼어요') */
+export const activityLine = (a: ActivityDto) => {
+  const line = toActivity(a, false)
+  return `${line.ago} · ${line.who} 님이 ${line.text}`
+}
 
 // ───────────────────────── 프로젝트 홈 ─────────────────────────
 
