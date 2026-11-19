@@ -328,12 +328,19 @@ function changedValue(field: string, v: string | null): string | undefined {
   return v
 }
 
+/** 목적격 조사: 받침이 있으면 '을', 없으면 '를'. 한글이 아니면 '을(를)' */
+function objectParticle(word: string) {
+  const c = word.trim().slice(-1).charCodeAt(0)
+  if (c >= 0xac00 && c <= 0xd7a3) return (c - 0xac00) % 28 === 0 ? '를' : '을'
+  return '을(를)'
+}
+
 function changeText(names: Record<string, string>, a: ActivityDto) {
   const field = a.field ?? ''
   const name = names[field] ?? (field || '항목')
   const before = changedValue(field, a.before)
   const after = changedValue(field, a.after)
-  return `${name}을 바꿨어요${before !== undefined && after !== undefined ? ` (${before} → ${after})` : ''}`
+  return `${name}${objectParticle(name)} 바꿨어요${before !== undefined && after !== undefined ? ` (${before} → ${after})` : ''}`
 }
 
 /** 활동 문장 ("님이" 뒤에 붙는 부분). 화면이 type · field · 값으로 만든다 (P-9) */
@@ -504,14 +511,16 @@ function linkToService(l: LinkDto & { service: ServiceCode }, st: LinkStatusDto 
   else if (l.service === 'VAULT') status = { ok: null, text: l.description ?? '비밀값은 Vault 에서만 보여요' }
   else if (st?.jenkins?.lastBuild) {
     const b = st.jenkins.lastBuild
-    const sec = b.durationMs === null ? null : Math.round(b.durationMs / 1000)
+    // 진행 중인 빌드는 서버가 result 를 null 또는 IN_PROGRESS 로 준다 — 성공 · 실패가 아니고 걸린 시간도 아직 없다
+    const running = b.result === null || b.result === 'IN_PROGRESS'
+    const sec = b.durationMs === null || running ? null : Math.round(b.durationMs / 1000)
     const result = b.result ?? 'IN_PROGRESS'
     status = {
-      ok: b.result === null ? null : b.result === 'SUCCESS',
+      ok: running ? null : b.result === 'SUCCESS',
       text: [
         `${b.number !== null ? `#${b.number} ` : ''}${BUILD_RESULT[result] ?? result}`,
         b.startedAt ? ago(b.startedAt) : null,
-        sec !== null && b.result !== null ? `${Math.floor(sec / 60)}분 ${sec % 60}초` : null,
+        sec !== null ? `${Math.floor(sec / 60)}분 ${sec % 60}초` : null,
       ]
         .filter(Boolean)
         .join(' · '),
