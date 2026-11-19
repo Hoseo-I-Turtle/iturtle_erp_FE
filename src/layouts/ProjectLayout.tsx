@@ -1,3 +1,4 @@
+import { useCallback, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   ClipboardList,
@@ -15,6 +16,8 @@ import { Button } from '../components/ui'
 import { PageHeader } from './PageHeader'
 import { findProject, MY_ROLE_NAME } from '../mocks/projects'
 import { projectCategoryName, useProjectHeader } from '../api/projects'
+import { useTaskCreateRequests, type TaskCreateOpen } from '../api/tasks'
+import { TaskCreateModal } from '../pages/projects/TaskCreateModal'
 import s from './layout.module.css'
 
 const TABS: { to: string; label: string; icon: LucideIcon; action?: string; actionTo?: string; subtitle?: string; hideTabs?: boolean }[] = [
@@ -35,6 +38,9 @@ export function ProjectLayout() {
   const navigate = useNavigate()
   // 실서버면 GET /projects/{key}, 목업이면 mocks 에서 찾는다. 불러오는 동안은 이전 값 또는 목업으로 자리만 채운다.
   const header = useProjectHeader(key)
+  // 작업 만들기 창: 머리 버튼과 보드 열의 + 가 연다 (openTaskCreate)
+  const [creating, setCreating] = useState<TaskCreateOpen | null>(null)
+  useTaskCreateRequests(useCallback((d: TaskCreateOpen) => setCreating(d), []))
   const p = header.data ?? findProject(key)
   const loadingHeader = header.data === undefined
   const base = `/projects/${key ?? p.projectKey}`
@@ -57,7 +63,10 @@ export function ProjectLayout() {
         subtitle={loadingHeader ? (header.error ?? '') : isTaskDetail ? '작업 상세' : (tab.subtitle ?? subtitle)}
         action={
           tab.action ? (
-            <Button icon={Plus} onClick={() => tab.actionTo && navigate(`${base}/${tab.actionTo}`)}>
+            <Button
+              icon={Plus}
+              onClick={() => (tab.action === '작업 만들기' ? setCreating({}) : tab.actionTo && navigate(`${base}/${tab.actionTo}`))}
+            >
               {tab.action}
             </Button>
           ) : null
@@ -79,6 +88,7 @@ export function ProjectLayout() {
       </nav>
       )}
       <Outlet />
+      {creating && <TaskCreateModal projectKey={key ?? p.projectKey} open={creating} onClose={() => setCreating(null)} />}
     </>
   )
 }
