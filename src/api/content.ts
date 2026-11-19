@@ -418,16 +418,21 @@ export async function convertMinuteActions(minuteId: number, actionIds: number[]
 }
 
 /* ======================================================================
- * 주간 보고 (32-minute-report.md WR-1 ~ WR-7)
+ * 주간 보고 (32-minute-report.md WR-1 ~ WR-8)
+ * 2026-11-20: 한 사람 한 장 안에 진행 중 프로젝트마다 칸(한 일 · 계획 · 이슈) + 공통 메모
  * ==================================================================== */
 
 export type ReportFields = { done: string; next: string; issues: string }
-export type ReportTaskChip = { key: string; title: string; status: string }
+export type ReportTaskChip = { key: string; title: string; status: string; projectKey: string }
+/** 프로젝트 칸. detached = 이제 그 프로젝트에 진행 중으로 참여하지 않지만 쓴 내용이 있어 남은 칸 (제출 때 필수 아님) */
+export type ReportSectionView = { projectKey: string; projectName: string; fields: ReportFields; detached: boolean }
 export type WeekRef = ReportWeek & { weekStartOn: string }
 export type MyWeekReport = {
   reportId: number | null
   meId: number | null
-  fields: ReportFields
+  /** 프로젝트 밖 일 (선택) */
+  note: string
+  sections: ReportSectionView[]
   tasks: ReportTaskChip[]
   /** 작업 연동에서 뺀 작업 (WR-3 의 tasks[].excluded) */
   excludedKeys: string[]
@@ -440,13 +445,13 @@ export type MyWeekReport = {
   deadline?: string
 }
 export type LastWeek = {
-  /** "지난 주 복사" 때 지금 칸에 덮어쓸 값 */
-  copy: Partial<ReportFields>
+  /** "지난 주 복사" 때 칸마다 덮어쓸 값 (프로젝트 키 → 지난 주 계획을 이번 주 한 일로) */
+  copy: Record<string, Partial<ReportFields>>
   comment: { author: string; confirmed: boolean; body: string } | null
 }
 export type GithubActivity = {
   fetchedAgo: string
-  rows: { repo: string; branch: string; commits: number; add: number; del: number }[]
+  rows: { repo: string; branch: string; commits: number; add: number; del: number; projectKey: string | null }[]
   totals: { c: number; add: number; del: number }
   mergeCount: number
 }
@@ -465,14 +470,23 @@ type ReportDetail = {
   submittedAt: string | null
   confirmedAt: string | null
   confirmedBy: MemberRef | null
-  doneText: string | null
-  planText: string | null
-  issueText: string | null
+  commonNote: string | null
+  sections: ReportSectionDto[]
+  hiddenSectionCount: number
   tasks: ReportTask[]
   hiddenTaskCount: number
   updatedAt: string | null
   editable: boolean
-  permissions: { edit: boolean; confirm: boolean; comment: boolean }
+  /** confirmBlockedReason: 확인 권한은 있지만 지금 확인할 수 없는 이유 (자기 보고 등) */
+  permissions: { edit: boolean; confirm: boolean; comment: boolean; confirmBlockedReason: string | null }
+}
+/** ReportSectionResponse */
+type ReportSectionDto = {
+  project: { projectKey: string; name: string }
+  doneText: string | null
+  planText: string | null
+  issueText: string | null
+  detached: boolean
 }
 /** ReportSummaryResponse */
 type ReportSummary = {
@@ -483,6 +497,7 @@ type ReportSummary = {
   late: boolean
   submittedAt: string | null
   doneSummary: string | null
+  projectKeys: string[] | null
   taskCounts: { done: number; inProgress: number }
   commentCount: number
 }
@@ -558,12 +573,25 @@ function deadlineText(iso: string) {
   return `${md(d)}(${WEEKDAY[d.getUTCDay()]}) ${hm(d)}`
 }
 
-const toChip = (t: ReportTask): ReportTaskChip => ({ key: t.task.taskKey, title: t.task.title, status: taskStatusName(t.task.status) })
+const toChip = (t: ReportTask): ReportTaskChip => ({
+  key: t.task.taskKey,
+  title: t.task.title,
+  status: taskStatusName(t.task.status),
+  projectKey: t.projectKey,
+})
+
+const toSection = (x: ReportSectionDto): ReportSectionView => ({
+  projectKey: x.project.projectKey,
+  projectName: x.project.name,
+  fields: { done: x.doneText ?? '', next: x.planText ?? '', issues: x.issueText ?? '' },
+  detached: x.detached,
+})
 
 const toMyReport = (r: ReportDetail): MyWeekReport => ({
   reportId: r.reportId,
   meId: r.member.memberId,
-  fields: { done: r.doneText ?? '', next: r.planText ?? '', issues: r.issueText ?? '' },
+  note: r.commonNote ?? '',
+  sections: r.sections.map(toSection),
   tasks: r.tasks.filter((t) => !t.excluded).map(toChip),
   excludedKeys: r.tasks.filter((t) => t.excluded).map((t) => t.task.taskKey),
   excluded: r.tasks.filter((t) => t.excluded).map(toChip),
@@ -586,7 +614,10 @@ export function useMyReport(weekStartOn: string, isCurrent: boolean) {
     () => mockReportStore.get(weekStartOn) ?? {
       reportId: null,
       meId: null,
-      fields: isCurrent ? { done: myReport.done, next: myReport.next, issues: myReport.issues } : lastWeekReport,
+      note: isCurrent ? myReport.note : '',
+      sections: isCurrent
+        ? myReport.sections.map((x) => ({ ...x, fields: { ...x.fields } }))
+        : myReport.sections.map((x) => ({ ...x, fields: lastWeekReport[x.projectKey] ?? { done: '', next: '', issues: '' } })),
       tasks: isCurrent ? myReport.tasks : [],
       excludedKeys: [],
       excluded: [],
@@ -604,13 +635,23 @@ export function useMyReport(weekStartOn: string, isCurrent: boolean) {
  * 그래서 뺀 작업은 excluded: true, 되돌린 작업(includedKeys)은 excluded: false 로 보낸다.
  * 자동 채우기 대상이 아닌 작업 키는 P238 이라 서버가 준 목록 안의 키만 보낸다.
  */
-export async function saveMyReport(weekStartOn: string, fields: ReportFields, excludedKeys: string[], includedKeys: string[] = []) {
+export async function saveMyReport(
+  weekStartOn: string,
+  content: Pick<MyWeekReport, 'note' | 'sections'>,
+  excludedKeys: string[],
+  includedKeys: string[] = [],
+) {
   const r = await api<ReportDetail>(`/weekly-reports/me/${weekStartOn}`, {
     method: 'PUT',
     body: {
-      doneText: fields.done,
-      planText: fields.next,
-      issueText: fields.issues,
+      commonNote: content.note,
+      // 칸은 서버가 진행 중 프로젝트에 맞춰 만든다. 화면에 있는 칸만 보낸다 (없는 칸이면 P243)
+      sections: content.sections.map((x) => ({
+        projectKey: x.projectKey,
+        doneText: x.fields.done,
+        planText: x.fields.next,
+        issueText: x.fields.issues,
+      })),
       tasks: [
         ...includedKeys.map((taskKey) => ({ taskKey, excluded: false, note: null })),
         ...excludedKeys.map((taskKey) => ({ taskKey, excluded: true, note: null })),
@@ -622,7 +663,7 @@ export async function saveMyReport(weekStartOn: string, fields: ReportFields, ex
 
 /** WR-5 제출 (PATCH /weekly-reports/{id} { status: SUBMITTED }). 아직 한 번도 저장하지 않았으면 먼저 WR-3 으로 만든다 */
 export async function submitMyReport(weekStartOn: string, report: MyWeekReport) {
-  const saved = await saveMyReport(weekStartOn, report.fields, report.excludedKeys)
+  const saved = await saveMyReport(weekStartOn, report, report.excludedKeys)
   const id = saved.reportId ?? report.reportId
   if (id === null) throw new ApiError(500, 'NO_REPORT', '보고를 만들지 못했어요.')
   return toMyReport(await api<ReportDetail>(`/weekly-reports/${id}`, { method: 'PATCH', body: { status: 'SUBMITTED' } }))
@@ -640,7 +681,13 @@ export function useWeekSubmissions(weekStartOn: string) {
       const done: Submission[] = res.page.content
         // 작성 중(DRAFT)은 본인 것만 오고, 미제출 명단에도 들어 있다
         .filter((r) => r.status !== 'DRAFT' && !missingIds.has(r.member.memberId))
-        .map((r) => ({ name: r.member.name, state: r.late ? 'LATE' : 'SUBMITTED', summary: r.doneSummary ?? '' }))
+        .map((r) => ({
+          name: r.member.name,
+          state: r.late ? 'LATE' : 'SUBMITTED',
+          summary: r.doneSummary ?? '',
+          reportId: r.reportId,
+          projectKeys: r.projectKeys ?? [],
+        }))
       return [...done, ...missing.map((m): Submission => ({ name: m.name, state: 'MISSING' }))]
     },
   )
@@ -650,11 +697,15 @@ export function useWeekSubmissions(weekStartOn: string) {
 export function useLastWeek(currentWeekStartOn: string) {
   return useResource<LastWeek>(
     ['report-last-week', currentWeekStartOn],
-    () => ({ copy: lastWeekReport, comment: lastWeekComment }),
+    () => ({
+      copy: Object.fromEntries(Object.entries(lastWeekReport).map(([key, f]) => [key, { done: f.next }])),
+      comment: lastWeekComment,
+    }),
     async () => {
       const last = await api<ReportDetail>(`/weekly-reports/me/${prevMonday(currentWeekStartOn)}`)
-      // 지난 주 계획을 이번 주 한 일로 옮긴다 (32 문서 "지난 주 복사")
-      const copy = { done: last.planText ?? '' }
+      // 지난 주 칸마다 계획을 이번 주 같은 프로젝트 칸의 한 일로 옮긴다 (32 문서 "지난 주 복사", 칸별)
+      const copy: LastWeek['copy'] = {}
+      for (const x of last.sections ?? []) copy[x.project.projectKey] = { done: x.planText ?? '' }
       if (last.reportId === null || last.status === 'DRAFT') return { copy, comment: null }
       const page = await listComments('WEEKLY_REPORT', last.reportId)
       const c = page.content.find((x) => !x.deleted && x.body)
@@ -684,13 +735,14 @@ export function useGithubActivity(weekStartOn: string, memberId: number | null |
         fetchedAgo: res.lastFetchedAt ? ago(res.lastFetchedAt) : '아직 받지 않음',
         rows: res.rows.flatMap((r) =>
           r.hidden || !r.repository
-            ? [{ repo: '비공개 저장소', branch: '', commits: r.commitCount, add: r.additions, del: r.deletions }]
+            ? [{ repo: '비공개 저장소', branch: '', commits: r.commitCount, add: r.additions, del: r.deletions, projectKey: null as string | null }]
             : r.branches.map((b) => ({
                 repo: r.repository!.fullName,
                 branch: b.branch,
                 commits: b.commitCount,
                 add: b.additions,
                 del: b.deletions,
+                projectKey: r.repository!.projectKey,
               })),
         ),
         // 브랜치 합은 같은 커밋을 여러 번 셀 수 있어 합계는 서버 값을 쓴다
@@ -700,6 +752,126 @@ export function useGithubActivity(weekStartOn: string, memberId: number | null |
     },
   )
 }
+
+/** 남의 보고 한 장 (WR-4) — 구성원별 보고에서 펼쳐 보기 · 확인 */
+export type ReportView = {
+  reportId: number
+  author: string
+  status: 'DRAFT' | 'SUBMITTED' | 'CONFIRMED'
+  late: boolean
+  note: string
+  sections: ReportSectionView[]
+  hiddenSectionCount: number
+  tasks: ReportTaskChip[]
+  confirmedBy: string | null
+  canConfirm: boolean
+  /** 확인 권한은 있지만 막힌 이유 (자기 보고 — P245) */
+  confirmBlockedReason: string | null
+  canComment: boolean
+}
+
+const toReportView = (r: ReportDetail): ReportView => ({
+  reportId: r.reportId ?? 0,
+  author: r.member.name ?? '알 수 없음',
+  status: r.status,
+  late: r.late,
+  note: r.commonNote ?? '',
+  sections: r.sections.map(toSection),
+  hiddenSectionCount: r.hiddenSectionCount,
+  tasks: r.tasks.filter((t) => !t.excluded).map(toChip),
+  confirmedBy: r.confirmedBy?.name ?? null,
+  canConfirm: r.permissions.confirm,
+  confirmBlockedReason: r.permissions.confirmBlockedReason,
+  canComment: r.permissions.comment,
+})
+
+export function useReportView(reportId: number | null) {
+  return useResource<ReportView>(
+    ['report-view', reportId],
+    () => {
+      // 목업의 나는 김민서(11번 보고). 자기 보고는 확인을 막는다 (P245)
+      const own = reportId === 11
+      return {
+        reportId: reportId ?? 0,
+        author: own ? '김민서' : '박지훈',
+        status: 'SUBMITTED',
+        late: false,
+        note: own ? myReport.note : '',
+        sections: own ? myReport.sections : myReport.sections.slice(0, 1),
+        hiddenSectionCount: 0,
+        tasks: myReport.tasks,
+        confirmedBy: null,
+        canConfirm: !own,
+        confirmBlockedReason: own ? '자기 주간 보고는 확인할 수 없어요. 다른 검토자가 확인해야 해요.' : null,
+        canComment: true,
+      }
+    },
+    async () => toReportView(await api<ReportDetail>(`/weekly-reports/${reportId}`)),
+  )
+}
+
+/** WR-5 확인 (report-review). 자기 보고는 P245 */
+export async function confirmReport(reportId: number) {
+  return toReportView(await api<ReportDetail>(`/weekly-reports/${reportId}`, { method: 'PATCH', body: { status: 'CONFIRMED' } }))
+}
+
+/** 프로젝트의 그 주 주간 보고 (WR-8) */
+export type ProjectWeekRow = {
+  memberId: number
+  name: string
+  role: string
+  reportId: number | null
+  state: 'SUBMITTED' | 'LATE' | 'CONFIRMED' | 'MISSING'
+  section: ReportFields | null
+}
+export type ProjectWeek = { target: boolean; rows: ProjectWeekRow[]; counts: { submitted: number; late: number; missing: number } }
+
+type ProjectReportWeekResponse = {
+  target: boolean
+  counts: { submitted: number; late: number; missing: number }
+  rows: {
+    member: MemberRef
+    role: string
+    reportId: number | null
+    status: 'SUBMITTED' | 'CONFIRMED' | null
+    late: boolean
+    section: ReportSectionDto | null
+  }[]
+}
+
+export function useProjectWeek(projectKey: string | undefined, weekStartOn: string) {
+  return useResource<ProjectWeek>(
+    ['project-report-week', projectKey, weekStartOn],
+    () => ({
+      target: true,
+      counts: { submitted: 1, late: 0, missing: 1 },
+      rows: [
+        { memberId: 2, name: '김민서', role: 'MANAGER', reportId: 11, state: 'SUBMITTED', section: myReport.sections[0].fields },
+        { memberId: 4, name: '한유진', role: 'MEMBER', reportId: null, state: 'MISSING', section: null },
+      ],
+    }),
+    async () => {
+      const res = await api<ProjectReportWeekResponse>(`/weekly-reports/projects/${encodeURIComponent(projectKey ?? '')}`, {
+        query: { weekStartOn },
+      })
+      return {
+        target: res.target,
+        counts: res.counts,
+        rows: res.rows.map((r) => ({
+          memberId: r.member.memberId,
+          name: r.member.name ?? '알 수 없음',
+          role: r.role,
+          reportId: r.reportId,
+          state: r.status === null ? 'MISSING' : r.status === 'CONFIRMED' ? 'CONFIRMED' : r.late ? 'LATE' : 'SUBMITTED',
+          section: r.section ? { done: r.section.doneText ?? '', next: r.section.planText ?? '', issues: r.section.issueText ?? '' } : null,
+        })),
+      }
+    },
+  )
+}
+
+/** 프로젝트 칸 코멘트: 공통 댓글(WEEKLY_REPORT)의 본문 맨 앞에 [프로젝트 키] 를 붙여 그 칸 것으로 본다 */
+export const sectionCommentPrefix = (projectKey: string) => `[${projectKey}] `
 
 /** WR-7 지금 새로 받기 */
 export async function refreshGithubActivity() {

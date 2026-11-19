@@ -278,3 +278,126 @@
   font-size: var(--fs-caption);
   color: var(--brand-500);
 }
+
+/* ---------- 프로젝트 칸 (2026-11-20) ---------- */
+.section {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
+}
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 0;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+div.sectionHead {
+  cursor: default;
+}
+.sectionHead strong {
+  font-weight: 600;
+}
+.sectionKey {
+  margin-left: 4px;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.sectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 14px 14px;
+}
+.sectionGithub {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fs-caption);
+}
+.sectionGithub li {
+  display: flex;
+  gap: 12px;
+}
+.sectionGithub li > span:first-child {
+  flex: 1;
+}
+.sectionComments {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fs-caption);
+}
+.sectionComments p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+}
+.sectionComments small {
+  color: var(--text-muted);
+}
+.sectionCommentInput {
+  display: flex;
+  gap: 8px;
+}
+.sectionCommentInput input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  outline: none;
+}
+.sectionCommentInput input:focus {
+  border-color: var(--brand-300);
+}
+.error {
+  font-size: var(--fs-caption);
+  color: var(--status-negative);
+}
+
+/* 구성원별 보고 펼치기 · 확인 */
+.memberReports li.memberReport {
+  flex-direction: column;
+  align-items: stretch;
+}
+.memberReportRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.reportView {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+.reviewBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.blocked {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  font-size: var(--fs-caption);
+  color: var(--status-warning-text);
+}

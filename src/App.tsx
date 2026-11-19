@@ -31,6 +31,7 @@ import { WeeklyReportPage } from './pages/reports/WeeklyReportPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { TaskListPage } from './pages/projects/TaskListPage'
 import { SchedulePage } from './pages/projects/SchedulePage'
+import { ProjectReportsPage } from './pages/projects/ProjectReportsPage'
 import { MilestonesPage } from './pages/projects/MilestonesPage'
 import { StartPage } from './pages/start/StartPage'
 import { ModeGate } from './layouts/ModeGate'
@@ -93,6 +94,7 @@ const router = createBrowserRouter([
           { path: 'minutes/:minuteId', element: <MinutesPage /> },
           { path: 'minutes/:minuteId/edit', element: <MinuteWritePage /> },
           { path: 'files', element: <ProjectFilesPage /> },
+          { path: 'reports', element: <ProjectReportsPage /> },
           { path: 'settings', element: <ProjectSettingsPage /> },
         ],
       },

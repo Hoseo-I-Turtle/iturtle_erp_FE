@@ -7,37 +7,54 @@ export const weeks: ReportWeek[] = [
 ]
 
 export const myReport = {
-  done: 'OIDC 로그아웃 6가지 테스트 작성 · 로그인 화면 리팩터링 리뷰 반영 · 세미나 발표 자료 초안',
-  next: 'v1.2 공지 투표 화면 시안 · MinIO 업로드 API 설계 · 세미나 발표',
-  issues: 'Testcontainers 가 Windows 에서 느림 — 설정 공유 부탁드려요',
+  note: '연구실 세미나 발표 자료 초안',
+  sections: [
+    {
+      projectKey: 'DEFME',
+      projectName: 'DEFME 백엔드',
+      detached: false,
+      fields: {
+        done: 'OIDC 로그아웃 6가지 테스트 작성 · 로그인 화면 리팩터링 리뷰 반영',
+        next: 'v1.2 공지 투표 화면 시안 · MinIO 업로드 API 설계',
+        issues: 'Testcontainers 가 Windows 에서 느림 — 설정 공유 부탁드려요',
+      },
+    },
+    { projectKey: 'SEM', projectName: '11월 기술 세미나', detached: false, fields: { done: '발표 목차 정리', next: '', issues: '' } },
+  ],
   tasks: [
-    { key: 'DEFME-40', title: 'client_id 로그아웃', status: '완료' },
-    { key: 'DEFME-39', title: '포털 로그인 화면', status: '완료' },
-    { key: 'SEM-5', title: '발표 목차', status: '완료' },
-    { key: 'DEFME-44', title: '로그아웃 테스트', status: '검토' },
-    { key: 'DEFME-41', title: '로그인 리팩터링', status: '진행 중' },
+    { key: 'DEFME-40', title: 'client_id 로그아웃', status: '완료', projectKey: 'DEFME' },
+    { key: 'DEFME-39', title: '포털 로그인 화면', status: '완료', projectKey: 'DEFME' },
+    { key: 'SEM-5', title: '발표 목차', status: '완료', projectKey: 'SEM' },
+    { key: 'DEFME-44', title: '로그아웃 테스트', status: '검토', projectKey: 'DEFME' },
+    { key: 'DEFME-41', title: '로그인 리팩터링', status: '진행 중', projectKey: 'DEFME' },
   ],
 }
 
-export const lastWeekReport = {
-  done: 'SSO 5단계 마무리 · Penpot 콜백 경로 조사',
-  next: 'OIDC 로그아웃 테스트 · 로그인 화면 리팩터링',
-  issues: '',
+/** 지난 주 칸 (프로젝트 키 → 한 일 · 계획 · 이슈) */
+export const lastWeekReport: Record<string, { done: string; next: string; issues: string }> = {
+  DEFME: { done: 'SSO 5단계 마무리 · Penpot 콜백 경로 조사', next: 'OIDC 로그아웃 테스트 · 로그인 화면 리팩터링', issues: '' },
+  SEM: { done: '세미나 주제 정하기', next: '발표 목차 · 실습 예제', issues: '' },
 }
 
 export const github = {
   fetchedAgo: '3분 전',
   rows: [
-    { repo: 'Hoseo-I-Turtle/defme_BE', branch: 'feature/oidc-logout', commits: 6, add: 320, del: 40 },
-    { repo: 'Hoseo-I-Turtle/defme_BE', branch: 'test/logout-cases', commits: 3, add: 120, del: 30 },
-    { repo: 'Hoseo-I-Turtle/defme_BE', branch: 'main', commits: 2, add: 18, del: 4 },
+    { repo: 'Hoseo-I-Turtle/defme_BE', branch: 'feature/oidc-logout', commits: 6, add: 320, del: 40, projectKey: 'DEFME' },
+    { repo: 'Hoseo-I-Turtle/defme_BE', branch: 'test/logout-cases', commits: 3, add: 120, del: 30, projectKey: 'DEFME' },
+    { repo: 'Hoseo-I-Turtle/defme_BE', branch: 'main', commits: 2, add: 18, del: 4, projectKey: 'DEFME' },
   ],
 }
 
-export type Submission = { name: string; state: 'SUBMITTED' | 'LATE' | 'MISSING'; summary?: string }
+export type Submission = {
+  name: string
+  state: 'SUBMITTED' | 'LATE' | 'MISSING'
+  summary?: string
+  reportId?: number
+  projectKeys?: string[]
+}
 export const submissions: Submission[] = [
-  { name: '김민서', state: 'SUBMITTED', summary: 'OIDC 로그아웃 테스트 · 로그인 리팩터링' },
-  { name: '박지훈', state: 'SUBMITTED', summary: 'Penpot 이관 · Jenkins 파이프라인' },
+  { name: '김민서', state: 'SUBMITTED', summary: 'OIDC 로그아웃 테스트 · 로그인 리팩터링', reportId: 11, projectKeys: ['DEFME', 'SEM'] },
+  { name: '박지훈', state: 'SUBMITTED', summary: 'Penpot 이관 · Jenkins 파이프라인', reportId: 12, projectKeys: ['DEFME'] },
   { name: '최현우', state: 'SUBMITTED', summary: '센서 수집기 안정화' },
   { name: '이정훈', state: 'SUBMITTED', summary: '코드 리뷰 세미나 준비' },
   { name: '강다은', state: 'SUBMITTED', summary: 'ML 실험 환경 구성' },
