@@ -190,7 +190,8 @@ async function fetchSchedule(key: string): Promise<ScheduleData> {
     milestones: withMilestoneStarts(ms.milestones, projectStart, tasks),
     tasks,
     canEdit: p.permissions.canWriteTasks || p.permissions.canManage,
-    supportsStart: cards.some((c) => 'startOn' in c),
+    // 서버는 시작일(startOn)을 늘 받는다 (V20261119_08). 작업이 없거나 시작일이 null 이라 키가 빠져도 지원으로 본다
+    supportsStart: true,
   }
 }
 
