@@ -9,6 +9,7 @@ import { getProject, toMembers, toTask, type BoardTask, type TaskCardDto, type T
 import { projectDetail } from '../mocks/projectDetail'
 import { findProject } from '../mocks/projects'
 import { tasks as mockTasks, TYPE_NAME, type TaskPriority, type TaskStatus, type TaskType } from '../mocks/tasks'
+import { mockTagsOf } from './memberTags'
 
 const MOCK_ME = '김민서'
 
@@ -44,6 +45,8 @@ export function useTaskCreateRequests(open: (d: TaskCreateOpen) => void) {
 // ───────────────────────── 작업 만들기 창에 쓰는 고를 거리 ─────────────────────────
 
 export type Option = { id: number; name: string }
+/** 담당 후보: 맡은 일 태그로 찾을 수 있게 (ERP-14) */
+export type MemberOption = Option & { tags: string[] }
 export type LabelOption = Option & { color: string }
 /** 공통코드 TASK_TYPE (GET /codes/TASK_TYPE) */
 export type TypeOption = { code: string; name: string; icon: string | null }
@@ -51,7 +54,7 @@ export type TaskFormOptions = {
   projectKey: string
   projectName: string
   me: Option
-  members: Option[]
+  members: MemberOption[]
   milestones: Option[]
   labels: LabelOption[]
   types: TypeOption[]
@@ -67,7 +70,7 @@ export function useTaskFormOptions(key: string | undefined, enabled = true) {
     ['task-form', key, enabled],
     () => {
       const p = findProject(key)
-      const members = projectDetail.members.map((m, i) => ({ id: i + 1, name: m.name }))
+      const members = projectDetail.members.map((m, i) => ({ id: i + 1, name: m.name, tags: mockTagsOf(m.name) }))
       return {
         projectKey: p.projectKey,
         projectName: p.name,
@@ -94,7 +97,7 @@ export function useTaskFormOptions(key: string | undefined, enabled = true) {
         projectKey: d.projectKey,
         projectName: d.name,
         me: { id: me.memberId, name: me.name },
-        members: toMembers(d).map((m) => ({ id: m.memberId, name: m.name })),
+        members: toMembers(d).map((m) => ({ id: m.memberId, name: m.name, tags: m.tags ?? [] })),
         milestones: ms.milestones.filter((m) => m.status === 'OPEN').map((m) => ({ id: m.milestoneId, name: m.name })),
         labels: ls.labels.map((l) => ({ id: l.labelId, name: l.name, color: l.color })),
         types,

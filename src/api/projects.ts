@@ -176,7 +176,14 @@ export function useProjectList(f: ProjectListFilter) {
 
 // ───────────────────────── P-3 프로젝트 상세 ─────────────────────────
 
-type ProjectMemberRefDto = { member: MemberRef; role: 'MANAGER' | 'MEMBER' | 'FORMER'; joinedAt: string; leftAt: string | null }
+type ProjectMemberRefDto = {
+  member: MemberRef
+  role: 'MANAGER' | 'MEMBER' | 'FORMER'
+  joinedAt: string
+  leftAt: string | null
+  /** 맡은 일 태그 (ERP-4, 권한과 상관없음) */
+  tags?: string[]
+}
 /** ProjectDetailResponse */
 export type ProjectDetailDto = {
   projectId: number
@@ -206,6 +213,7 @@ export const toMembers = (d: ProjectDetailDto): (ProjectMember & { memberId: num
       name: m.member.name,
       role: m.role as 'MANAGER' | 'MEMBER',
       note: m.member.memberType === 'INTERN' ? '인턴' : undefined,
+      tags: m.tags ?? [],
     }))
 
 const detailToCard = (d: ProjectDetailDto): ProjectCard => {
@@ -252,6 +260,7 @@ type ActivityType =
   | 'MEMBER_ADDED'
   | 'MEMBER_REMOVED'
   | 'MEMBER_ROLE_CHANGED'
+  | 'MEMBER_TAGS_CHANGED'
   | 'THREAD_POSTED'
   | 'THREAD_PINNED'
   | 'THREAD_EDITED'
@@ -379,6 +388,8 @@ function activityText(a: ActivityDto, inTask: boolean) {
       return `${refTitle || '구성원'} 님을 ${ROLE_NAME[a.after ?? ''] ?? '참여자'}로 더했어요`
     case 'MEMBER_ROLE_CHANGED':
       return `${refTitle || '구성원'} 님의 역할을 ${ROLE_NAME[a.before ?? ''] ?? a.before ?? ''} → ${ROLE_NAME[a.after ?? ''] ?? a.after ?? ''}로 바꿨어요`
+    case 'MEMBER_TAGS_CHANGED':
+      return `${refTitle || '구성원'} 님의 맡은 일을 ${a.before ?? '없음'} → ${a.after ?? '없음'}로 바꿨어요`
     case 'MEMBER_REMOVED':
       return `${refTitle || '구성원'} 님을 참여자에서 뺐어요`
     case 'SETTINGS_CHANGED':

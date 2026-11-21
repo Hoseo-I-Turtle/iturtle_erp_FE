@@ -7,6 +7,8 @@ import { useProjectHeader } from '../../api/projects'
 import { useMe } from '../../api/members'
 import { FIELDS } from '../reports/weekly/constants'
 import { SectionComments } from '../reports/weekly/SectionComments'
+import { tagsFor, useMemberTagMap } from '../../api/memberTags'
+import { MemberTags } from './common'
 import s from '../reports/WeeklyReportPage.module.css'
 
 const STATE: Record<ProjectWeekRow['state'], { label: string; tone: 'brand' | 'tint' | 'warning' | 'muted' }> = {
@@ -22,6 +24,7 @@ const STATE: Record<ProjectWeekRow['state'], { label: string; tone: 'brand' | 't
  */
 export function ProjectReportsPage() {
   const { key } = useParams()
+  const tagMap = useMemberTagMap(key)
   const [weeks] = useState(reportWeeks)
   const [idx, setIdx] = useState(weeks.length - 1)
   const week = weeks[idx]
@@ -54,6 +57,7 @@ export function ProjectReportsPage() {
                   <Avatar name={r.name} size={26} />
                   <strong>{r.name}</strong>
                   <span className={s.sectionKey}>{r.role === 'MANAGER' ? '프로젝트 관리자' : '참여자'}</span>
+                  <MemberTags tags={tagsFor(tagMap.data, r.memberId, r.name)} />
                   <span className={s.grow} />
                   <Chip tone={STATE[r.state].tone}>{STATE[r.state].label}</Chip>
                 </div>

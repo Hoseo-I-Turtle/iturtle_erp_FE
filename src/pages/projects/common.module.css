@@ -17,3 +17,51 @@
   background: #eef2f6;
   color: var(--text-disabled);
 }
+
+/* 맡은 일 태그 (ERP-14) */
+.tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  background: var(--surface-tint);
+  color: var(--text-secondary);
+  font-size: var(--fs-overline);
+  white-space: nowrap;
+}
+.tagEditor {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 140px;
+}
+.tagRemove {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.tagInput {
+  width: 120px;
+  min-width: 60px;
+  padding: 2px 6px;
+  border: 1px solid var(--border-default, #d7dde4);
+  border-radius: var(--radius-sm, 6px);
+  font-size: var(--fs-caption);
+  background: transparent;
+  color: var(--text-primary);
+}
+.tagWarn {
+  color: var(--status-danger-text, #c0392b);
+  font-size: var(--fs-overline);
+}
+

@@ -53,6 +53,10 @@ function TaskForm({ o, open, onClose }: { o: TaskFormOptions; open: TaskCreateOp
   const navigate = useNavigate()
   const [d, setD] = useState<TaskDraft>(() => emptyDraft(o, open))
   const [again, setAgain] = useState(false)
+  // 맡은 일 태그로 담당 후보 좁히기 (ERP-14)
+  const [tagFilter, setTagFilter] = useState<string | null>(null)
+  const memberTags = [...new Set(o.members.flatMap((m) => m.tags))]
+  const candidates = o.members.filter((m) => !tagFilter || m.tags.includes(tagFilter) || m.id === d.assigneeMemberId)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<{ slot: ErrorSlot; message: string } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -159,13 +163,29 @@ function TaskForm({ o, open, onClose }: { o: TaskFormOptions; open: TaskCreateOp
           onChange={(v) => set('assigneeMemberId', v ? Number(v) : null)}
         >
           <option value="">없음</option>
-          {o.members.map((m) => (
+          {candidates.map((m) => (
             <option key={m.id} value={m.id}>
               {m.name}
               {m.id === o.me.id ? ' (나)' : ''}
+              {m.tags.length > 0 ? ` · ${m.tags.join(', ')}` : ''}
             </option>
           ))}
         </SelectField>
+        {memberTags.length > 0 && (
+          <div className={s.tagFilter} role="group" aria-label="맡은 일로 담당 찾기">
+            <span>맡은 일</span>
+            {memberTags.map((t) => (
+              <button
+                key={t}
+                type="button"
+                className={tagFilter === t ? `${s.tagChip} ${s.tagChipOn}` : s.tagChip}
+                onClick={() => setTagFilter(tagFilter === t ? null : t)}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
 
         <label className={s.field}>
           <span className={s.label}>시작일 (선택)</span>

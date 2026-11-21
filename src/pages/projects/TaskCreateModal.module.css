@@ -261,3 +261,28 @@
     flex-wrap: wrap;
   }
 }
+
+/* 맡은 일 태그로 담당 찾기 (ERP-14) */
+.tagFilter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.tagChip {
+  padding: 2px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+  cursor: pointer;
+}
+.tagChipOn {
+  border-color: var(--brand-400);
+  background: var(--surface-tint);
+  color: var(--text-primary);
+}
+

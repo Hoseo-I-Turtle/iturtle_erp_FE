@@ -1,5 +1,5 @@
 // 프로젝트 홈(개요) 목업 — DEFME 기준. 다른 프로젝트도 같은 모양으로 보여 준다.
-export type ProjectMember = { name: string; role: 'MANAGER' | 'MEMBER'; note?: string }
+export type ProjectMember = { name: string; role: 'MANAGER' | 'MEMBER'; note?: string; /** 맡은 일 태그 (ERP-14) */ tags?: string[] }
 
 export const projectDetail = {
   description: '연구실 ERP 와 SSO. Vault · Jenkins · Penpot 계정을 하나로 묶고, 공지 · 일정 · 프로젝트 기능을 더한다.',

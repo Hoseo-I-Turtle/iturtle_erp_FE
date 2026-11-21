@@ -2,9 +2,10 @@ import { useParams } from 'react-router-dom'
 import { Calendar, Clock, FlaskConical, ListChecks, Shield, Users } from 'lucide-react'
 import { Avatar, Card, Chip, Columns, Empty, ListItem, Loadable, Progress, SectionHead } from '../../components/ui'
 import { useProjectHome, type ProjectHome } from '../../api/projects'
-import { StatusChip } from './common'
+import { MemberTags, StatusChip } from './common'
 import { LinkedServices } from './home/LinkedServices'
 import s from './ProjectHomePage.module.css'
+import { mockTagsOf } from '../../api/memberTags'
 
 export function ProjectHomePage() {
   const { key } = useParams()
@@ -48,6 +49,7 @@ function ProjectHomeView({ d }: { d: ProjectHome }) {
                       {m.role === 'MANAGER' ? '프로젝트 관리자' : '참여자'}
                       {m.note && ` · ${m.note}`}
                     </small>
+                    <MemberTags tags={m.tags ?? mockTagsOf(m.name)} />
                   </span>
                 </li>
               ))}
