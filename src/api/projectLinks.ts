@@ -22,7 +22,7 @@ export const LINK_URL_HINT: Record<LinkService, string> = {
   GITHUB: 'https://github.com/조직/저장소',
   JENKINS: 'https://lab.iturtle.win/jenkins/job/조직/job/작업/',
   PENPOT: 'Penpot 파일 · 프로젝트 주소 (주소창 그대로)',
-  VAULT: 'https://vault.iturtle.win/ui/vault/secrets/secret/kv/list/경로/',
+  VAULT: 'https://vault.iturtle.win/ui/vault/secrets-engines/secret/kv/list/경로/',
   OTHER: 'https://…',
 }
 
