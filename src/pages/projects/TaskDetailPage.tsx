@@ -4,28 +4,61 @@ import {
   Check,
   ChevronRight,
   ClipboardList,
-  Clock,
   Eye,
   GitBranch,
   Link2,
   ListChecks,
   MessageSquare,
   Paperclip,
+  Pencil,
   Play,
+  Plus,
   SquareCheck,
+  X,
 } from 'lucide-react'
-import { Avatar, AvatarStack, Breadcrumb, Button, Card, Checkbox, Chip, Columns, Empty, SectionHead, Segmented, ListItem, Loadable } from '../../components/ui'
+import { Avatar, AvatarStack, Breadcrumb, Button, Card, Checkbox, Columns, Empty, SectionHead, Segmented, ListItem, Loadable } from '../../components/ui'
 import { Markdown } from '../../components/markdown/Markdown'
-import { PRIORITY_NAME, STATUS_NAME, TYPE_NAME, type TaskStatus } from '../../mocks/tasks'
+import { MarkdownEditor } from '../../components/markdown/MarkdownEditor'
+import { STATUS_NAME, type TaskStatus } from '../../mocks/tasks'
 import { ApiError } from '../../api/client'
 import { whenLive } from '../../api/useResource'
-import { postTaskComment, setChecklistDone, setWatching, transitionRule, transitionTask, useTaskDetail, type TaskDetailData } from '../../api/projects'
+import {
+  addChecklistItem,
+  deleteChecklistItem,
+  postTaskComment,
+  renameChecklistItem,
+  setChecklistDone,
+  setWatching,
+  transitionRule,
+  transitionTask,
+  updateTask,
+  useTaskDetail,
+  type TaskDetailData,
+  type TaskFields,
+  type TaskPatch,
+} from '../../api/projects'
+import { useTaskFormOptions } from '../../api/tasks'
+import { TaskFieldsPanel } from './TaskFieldsPanel'
 import s from './TaskDetailPage.module.css'
 
 const FLOW: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE']
 const LINK_ICON = { minutes: ClipboardList, pr: GitBranch, build: Play, thread: MessageSquare, task: SquareCheck }
 
 const errMsg = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback)
+
+/** 바뀐 칸 → T-4 본문 (빈 날짜 · 설명은 null = 비우기) */
+function toPatch(next: Partial<TaskFields>): TaskPatch {
+  const p: TaskPatch = {}
+  if (next.title !== undefined) p.title = next.title
+  if (next.description !== undefined) p.description = next.description.trim() ? next.description : null
+  if (next.priority !== undefined) p.priority = next.priority
+  if (next.assigneeId !== undefined) p.assigneeMemberId = next.assigneeId
+  if (next.startOn !== undefined) p.startOn = next.startOn || null
+  if (next.dueOn !== undefined) p.dueOn = next.dueOn || null
+  if (next.labelIds !== undefined) p.labelIds = next.labelIds
+  if (next.milestoneId !== undefined) p.milestoneId = next.milestoneId
+  return p
+}
 
 export function TaskDetailPage() {
   const { key, taskKey } = useParams()
@@ -53,6 +86,16 @@ function TaskDetailView({ d, projectKey, reload }: { d: TaskDetailData; projectK
   const [subscribed, setSubscribed] = useState(d.watching)
   const [watchCount, setWatchCount] = useState(d.watchCount)
   const [notice, setNotice] = useState<string | null>(null)
+  // 바로 고치기 (ERP-12)
+  const [fields, setFields] = useState(d.fields)
+  const formOptions = useTaskFormOptions(projectKey, d.fields.canEdit)
+  const editable = fields.canEdit && !cancelled
+  const options = editable ? (formOptions.data ?? null) : null
+  const [editingText, setEditingText] = useState(false)
+  const [titleDraft, setTitleDraft] = useState(d.fields.title)
+  const [descDraft, setDescDraft] = useState(d.fields.description)
+  const [newItem, setNewItem] = useState('')
+  const [renaming, setRenaming] = useState<{ index: number; text: string } | null>(null)
 
   const canComplete = task.requester === ME || d.isManager
   const done = checklist.filter((c) => c.done).length
@@ -120,6 +163,65 @@ function TaskDetailView({ d, projectKey, reload }: { d: TaskDetailData; projectK
     })
   }
 
+  /** 칸을 바로 고친다: 화면에서 먼저 바꾸고, 서버가 거절하면 되돌린다. 다른 사람이 먼저 고쳤으면(P101) 새로 불러온다 */
+  const saveFields = (next: Partial<TaskFields>) => {
+    const before = fields
+    setFields({ ...fields, ...next })
+    setNotice(null)
+    whenLive(() => updateTask(task.taskKey, version, toPatch(next)))
+      .then((r) => r && setVersion(r.version))
+      .catch((e: unknown) => {
+        setFields(before)
+        setNotice(errMsg(e, '저장하지 못했어요.'))
+        if (e instanceof ApiError && e.code === 'P101') reload()
+      })
+  }
+  const saveText = () => {
+    if (!titleDraft.trim()) return setNotice('제목을 써 주세요.')
+    const next: Partial<TaskFields> = {}
+    if (titleDraft.trim() !== fields.title) next.title = titleDraft.trim()
+    if (descDraft !== fields.description) next.description = descDraft
+    if (Object.keys(next).length > 0) saveFields(next)
+    setEditingText(false)
+  }
+
+  const addItem = () => {
+    const text = newItem.trim()
+    if (!text) return
+    const temp = { text, done: false }
+    setChecklist((cl) => [...cl, temp])
+    setNewItem('')
+    whenLive(() => addChecklistItem(task.taskKey, text))
+      .then((saved) => saved && setChecklist((cl) => cl.map((x) => (x === temp ? saved : x))))
+      .catch((e: unknown) => {
+        setChecklist((cl) => cl.filter((x) => x !== temp))
+        setNewItem(text)
+        setNotice(errMsg(e, '체크리스트 항목을 더하지 못했어요.'))
+      })
+  }
+  const renameItem = (i: number, text: string) => {
+    const item = checklist[i]
+    setRenaming(null)
+    if (!text.trim() || text.trim() === item.text) return
+    setChecklist((cl) => cl.map((x, j) => (j === i ? { ...x, text: text.trim() } : x)))
+    if (item.itemId === undefined) return
+    const itemId = item.itemId
+    whenLive(() => renameChecklistItem(task.taskKey, itemId, text.trim())).catch((e: unknown) => {
+      setChecklist((cl) => cl.map((x, j) => (j === i ? item : x)))
+      setNotice(errMsg(e, '체크리스트를 저장하지 못했어요.'))
+    })
+  }
+  const removeItem = (i: number) => {
+    const item = checklist[i]
+    setChecklist((cl) => cl.filter((_, j) => j !== i))
+    if (item.itemId === undefined) return
+    const itemId = item.itemId
+    whenLive(() => deleteChecklistItem(task.taskKey, itemId)).catch((e: unknown) => {
+      setChecklist((cl) => [...cl.slice(0, i), item, ...cl.slice(i)])
+      setNotice(errMsg(e, '체크리스트 항목을 지우지 못했어요.'))
+    })
+  }
+
   const toggleCheck = (i: number, v: boolean) => {
     const item = checklist[i]
     setChecklist((cl) => cl.map((x, j) => (j === i ? { ...x, done: v } : x)))
@@ -157,11 +259,27 @@ function TaskDetailView({ d, projectKey, reload }: { d: TaskDetailData; projectK
               { label: task.taskKey },
             ]}
           />
-          <h2 className={s.title}>
-            <SquareCheck size={20} />
-            <span className={s.key}>{task.taskKey}</span>
-            {task.title}
-          </h2>
+          {editingText ? (
+            <input className={s.titleInput} value={titleDraft} maxLength={200} onChange={(e) => setTitleDraft(e.target.value)} aria-label="제목" autoFocus />
+          ) : (
+            <h2 className={s.title}>
+              <SquareCheck size={20} />
+              <span className={s.key}>{task.taskKey}</span>
+              {fields.title}
+              {editable && (
+                <Button
+                  variant="icon"
+                  icon={Pencil}
+                  aria-label="제목 · 설명 고치기"
+                  onClick={() => {
+                    setTitleDraft(fields.title)
+                    setDescDraft(fields.description)
+                    setEditingText(true)
+                  }}
+                />
+              )}
+            </h2>
+          )}
 
           <div className={s.flow}>
             {FLOW.map((st, i) => (
@@ -196,9 +314,23 @@ function TaskDetailView({ d, projectKey, reload }: { d: TaskDetailData; projectK
           )}
 
           <div className={s.label}>설명</div>
-          <Markdown source={d.description} projectKey={projectKey} />
+          {editingText ? (
+            <>
+              <MarkdownEditor value={descDraft} onChange={setDescDraft} projectKey={projectKey} placeholder="설명을 Markdown 으로 써 주세요." />
+              <div className={s.editActions}>
+                <Button variant="secondary" onClick={() => setEditingText(false)}>
+                  취소
+                </Button>
+                <Button icon={Check} onClick={saveText} disabled={!titleDraft.trim()}>
+                  저장
+                </Button>
+              </div>
+            </>
+          ) : (
+            <Markdown source={fields.description} projectKey={projectKey} />
+          )}
 
-          {checklist.length > 0 && (
+          {(checklist.length > 0 || editable) && (
             <div className={s.checklist}>
               <div className={s.checkHead}>
                 <ListChecks size={18} />
@@ -208,10 +340,52 @@ function TaskDetailView({ d, projectKey, reload }: { d: TaskDetailData; projectK
                 </strong>
               </div>
               {checklist.map((c, i) => (
-                <Checkbox key={c.itemId ?? c.text} checked={c.done} color="var(--status-positive)" onChange={(v) => toggleCheck(i, v)}>
-                  <span className={c.done ? s.checkDone : undefined}>{c.text}</span>
-                </Checkbox>
+                <div key={c.itemId ?? `${i}-${c.text}`} className={s.checkRow}>
+                  {renaming?.index === i ? (
+                    <input
+                      className={s.inlineInput}
+                      value={renaming.text}
+                      maxLength={200}
+                      autoFocus
+                      onChange={(e) => setRenaming({ index: i, text: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.nativeEvent.isComposing) renameItem(i, renaming.text)
+                        if (e.key === 'Escape') setRenaming(null)
+                      }}
+                      onBlur={() => renameItem(i, renaming.text)}
+                      aria-label="항목 고치기"
+                    />
+                  ) : (
+                    <Checkbox checked={c.done} color="var(--status-positive)" onChange={(v) => toggleCheck(i, v)}>
+                      <span className={c.done ? s.checkDone : undefined}>{c.text}</span>
+                    </Checkbox>
+                  )}
+                  {editable && renaming?.index !== i && (
+                    <span className={s.checkTools}>
+                      <button type="button" className={s.iconBtn} onClick={() => setRenaming({ index: i, text: c.text })} aria-label={`${c.text} 고치기`}>
+                        <Pencil size={14} />
+                      </button>
+                      <button type="button" className={s.iconBtn} onClick={() => removeItem(i)} aria-label={`${c.text} 지우기`}>
+                        <X size={14} />
+                      </button>
+                    </span>
+                  )}
+                </div>
               ))}
+              {editable && (
+                <div className={s.checkRow}>
+                  <Plus size={16} />
+                  <input
+                    className={s.inlineInput}
+                    value={newItem}
+                    maxLength={200}
+                    placeholder="항목 더하기 (Enter)"
+                    onChange={(e) => setNewItem(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && addItem()}
+                    aria-label="체크리스트 항목 더하기"
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -284,54 +458,7 @@ function TaskDetailView({ d, projectKey, reload }: { d: TaskDetailData; projectK
       side={
         <>
           <Card>
-            <dl className={s.props}>
-              <dt>상태</dt>
-              <dd>
-                {cancelled ? (
-                  <span className={s.statusChip}>취소</span>
-                ) : (
-                  <span className={`${s.statusChip} ${s[`st${status}`]}`}>{STATUS_NAME[status] ?? status}</span>
-                )}
-              </dd>
-              <dt>담당자</dt>
-              <dd>{task.assignee ? <Person name={task.assignee} /> : '없음'}</dd>
-              <dt>요청자</dt>
-              <dd>
-                <Person name={task.requester} />
-              </dd>
-              <dt>우선순위</dt>
-              <dd>
-                <Chip tone={task.priority === 'URGENT' ? 'danger' : task.priority === 'HIGH' ? 'warning' : 'tint'}>
-                  {PRIORITY_NAME[task.priority]}
-                </Chip>
-              </dd>
-              <dt>유형</dt>
-              <dd>
-                <Chip tone="brand" icon={SquareCheck}>
-                  {task.typeName ?? TYPE_NAME[task.type]}
-                </Chip>
-              </dd>
-              <dt>기한</dt>
-              <dd>
-                {task.dueOn ? (
-                  <Chip tone={task.dueState === 'overdue' ? 'danger' : 'warning'} icon={Clock}>
-                    {task.dueOn}
-                  </Chip>
-                ) : (
-                  '없음'
-                )}
-              </dd>
-              <dt>라벨</dt>
-              <dd className={s.labels}>
-                {task.labels.map((l) => (
-                  <Chip key={l} tone="tint">
-                    {l}
-                  </Chip>
-                ))}
-              </dd>
-              <dt>마일스톤</dt>
-              <dd>{task.milestone ?? '없음'}</dd>
-            </dl>
+            <TaskFieldsPanel task={task} status={status} cancelled={cancelled} fields={fields} options={options} onChange={saveFields} />
           </Card>
 
           <Card>
@@ -357,14 +484,5 @@ function TaskDetailView({ d, projectKey, reload }: { d: TaskDetailData; projectK
         </>
       }
     />
-  )
-}
-
-function Person({ name }: { name: string }) {
-  return (
-    <span className={s.person}>
-      <Avatar name={name} size={20} />
-      {name}
-    </span>
   )
 }

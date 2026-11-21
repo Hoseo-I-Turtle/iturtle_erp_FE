@@ -137,3 +137,22 @@ export async function createMilestone(key: string, f: MilestoneForm) {
     },
   })
 }
+
+// ───────────────────────── 고치기 · 닫기 · 다시 열기 (P-30) ─────────────────────────
+
+export type MilestonePatch = {
+  name?: string
+  /** null 이면 비움 */
+  description?: string | null
+  startOn?: string | null
+  dueOn?: string | null
+  status?: 'OPEN' | 'CLOSED'
+  /** 닫을 때 끝나지 않은 작업이 있으면 필요 (P038): 다른 마일스톤으로 옮기기 · 마일스톤 없음 */
+  openTasks?: { action: 'MOVE' | 'CLEAR'; targetMilestoneId?: number }
+}
+
+/** 목업이면 아무것도 보내지 않는다 (화면이 그 자리에서 바꾼다) */
+export async function updateMilestone(key: string, milestoneId: number, patch: MilestonePatch) {
+  if (getDataMode() !== 'live') return
+  await api(`/projects/${encodeURIComponent(key)}/milestones/${milestoneId}`, { method: 'PATCH', body: patch })
+}
