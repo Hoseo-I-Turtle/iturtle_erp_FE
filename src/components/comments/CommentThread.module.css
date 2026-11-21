@@ -84,6 +84,7 @@
   font-weight: 600;
 }
 .composer {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;

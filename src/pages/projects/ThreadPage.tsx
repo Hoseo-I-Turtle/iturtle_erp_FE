@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Loadable } from '../../components/ui'
+import { Trash2 } from 'lucide-react'
+import { Button, Loadable, Modal } from '../../components/ui'
 import { whenLive, type Resource } from '../../api/useResource'
 import {
   createThread,
+  deleteThread,
+  updateThread,
   errorText,
   pinThread,
   replyToThread,
@@ -59,6 +62,10 @@ function ThreadView({ board, d, projectKey, projectName }: ViewProps) {
     if (linkedId !== undefined) setSelectedId(linkedId)
   }
   const [editingDocs, setEditingDocs] = useState<ThreadPostView | null>(null)
+  // 글 고치기 · 지우기 (ERP-33)
+  const [editingPost, setEditingPost] = useState<ThreadPostView | null>(null)
+  const [deletingPost, setDeletingPost] = useState<ThreadPostView | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [savingDocs, setSavingDocs] = useState(false)
   const [pinnedOnly, setPinnedOnly] = useState(false)
   const [dragId, setDragId] = useState<number | null>(null)
@@ -166,7 +173,69 @@ function ThreadView({ board, d, projectKey, projectName }: ViewProps) {
         onSendReply={sendReply}
         onTogglePin={togglePin}
         onEditDocuments={setEditingDocs}
+        onEdit={setEditingPost}
+        onDelete={setDeletingPost}
       />
+
+      {editingPost && (
+        <ThreadComposer
+          projectName={projectName}
+          projectKey={projectKey}
+          initial={{ title: editingPost.title, body: editingPost.body }}
+          onClose={() => setEditingPost(null)}
+          onSubmit={async (title, body) => {
+            const post = editingPost
+            const saved = await whenLive(() => updateThread(projectKey, post.postId, title, body))
+            update(post.postId, (x) =>
+              saved ? { ...saved, replies: x.replies } : { ...x, title: title.trim() || null, body, editedBy: ME, editedAt: '방금' },
+            )
+            setEditingPost(null)
+          }}
+        />
+      )}
+
+      {deletingPost && (
+        <Modal
+          title="글을 지울까요?"
+          width={440}
+          onClose={() => setDeletingPost(null)}
+          footer={
+            <>
+              <span className={s.grow} />
+              <Button variant="secondary" onClick={() => setDeletingPost(null)}>
+                취소
+              </Button>
+              <Button
+                icon={Trash2}
+                disabled={deleting}
+                onClick={async () => {
+                  const post = deletingPost
+                  setDeleting(true)
+                  setError(null)
+                  try {
+                    await whenLive(() => deleteThread(projectKey, post.postId))
+                    board.setData((x) => ({ ...x, posts: x.posts.filter((p) => p.postId !== post.postId), total: Math.max(0, x.total - 1) }))
+                    setSelectedId(posts.find((p) => p.postId !== post.postId)?.postId ?? 0)
+                    setDeletingPost(null)
+                    if (linkedId === post.postId) navigate(base)
+                  } catch (e) {
+                    setDeletingPost(null)
+                    fail(e)
+                  } finally {
+                    setDeleting(false)
+                  }
+                }}
+              >
+                {deleting ? '지우는 중…' : '지우기'}
+              </Button>
+            </>
+          }
+        >
+          <p className={s.deleteText}>
+            &lsquo;{deletingPost.title ?? deletingPost.body.split('\n')[0].slice(0, 40)}&rsquo; 글과 답글이 보이지 않게 돼요.
+          </p>
+        </Modal>
+      )}
 
       {editingDocs && (
         <DocumentPicker

@@ -97,6 +97,7 @@
 .md :global(.md-mention),
 .md :global(.md-task) {
   padding: 1px 6px;
+  white-space: nowrap;
   border-radius: 6px;
   background: var(--surface-tint);
   color: var(--brand-400);
@@ -199,4 +200,9 @@
   margin: 8px 0 0;
   color: var(--brand-500);
   white-space: pre-wrap;
+}
+
+/* 본문 속 스레드 인용 카드 자리 (ERP-32) */
+.embed {
+  margin: 6px 0 10px;
 }

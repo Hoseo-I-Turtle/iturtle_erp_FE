@@ -248,6 +248,7 @@
   color: var(--text-muted);
 }
 .replyBox {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -290,4 +291,46 @@
   gap: 8px;
   font-size: var(--fs-overline);
   color: var(--text-muted);
+}
+
+/* 글 '…' 메뉴 · 지우기 확인 (ERP-33) */
+.moreWrap {
+  position: relative;
+}
+.moreMenu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  min-width: 140px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  box-shadow: 0 8px 24px rgb(0 15 34 / 0.12);
+}
+.moreMenu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.moreMenu button:hover {
+  background: var(--surface-sunken);
+}
+.danger {
+  color: var(--status-negative);
+}
+.deleteText {
+  margin: 0;
+  font-size: var(--fs-body);
+  color: var(--text-primary);
 }

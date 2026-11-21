@@ -167,3 +167,71 @@
   gap: 8px;
   margin-top: 8px;
 }
+
+/* 본문 속 스레드 인용 카드 (ERP-32): 접혀 있으면 한 줄, 펼치면 미리 보기 */
+.quote {
+  border: 1px solid var(--border-default);
+  border-left: 3px solid var(--brand-300);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+.quoteOff {
+  border-left-color: var(--border-default);
+  color: var(--text-secondary);
+}
+.quoteHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.quoteOff .quoteHead {
+  cursor: default;
+}
+.quoteTitle {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.quoteHead .cardMeta {
+  flex-shrink: 0;
+}
+.chev {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: transform 0.15s;
+}
+.chevOpen {
+  transform: rotate(180deg);
+}
+.quoteBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 12px 10px 35px;
+}
+.quoteLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  font-size: var(--fs-caption);
+  color: var(--brand-400);
+  text-decoration: none;
+}
+.quoteLink:hover {
+  text-decoration: underline;
+}
+.quoteBody .excerpt {
+  -webkit-line-clamp: 6;
+}
