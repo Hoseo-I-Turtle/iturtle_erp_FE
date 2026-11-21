@@ -203,7 +203,7 @@ const accountState = (x: { enabled?: boolean; locked?: boolean }): AdminMember['
   x.enabled === false ? 'DISABLED' : x.locked ? 'LOCKED' : 'ACTIVE'
 
 /** 목업 AdminMember + 역할 수 (목록 응답에는 역할 코드 없이 숫자만 온다) + 휴학 */
-export type AdminRow = AdminMember & { roleCount: number; onLeave?: boolean; /** WARP 가입 이메일이 없음 (ERP-35) */ noEmail?: boolean }
+export type AdminRow = AdminMember & { roleCount: number; onLeave?: boolean; /** Cloudflare 가입 이메일이 없음 (ERP-35) */ noEmail?: boolean }
 
 const toAdminRow = (x: MemberListItem): AdminRow => ({
   memberId: x.memberId,

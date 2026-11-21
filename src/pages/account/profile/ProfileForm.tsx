@@ -33,14 +33,14 @@ export function ProfileForm({ data, form, onChange, emailOk, phoneOk, dirty, sav
       <div className={s.label}>내가 바꿀 수 있는 정보</div>
       <div className={s.two}>
         <label className={s.field}>
-          Cloudflare WARP 가입 이메일
+          Cloudflare 가입 이메일
           <input className={emailOk ? s.input : `${s.input} ${s.invalid}`} value={form.email} onChange={(e) => onChange({ ...form, email: e.target.value })} />
           <small className={emailOk ? s.hint : s.err}>
             {emailOk
-              ? '연구실 사설망(WARP) 접속 허용 목록에 쓰여요. 바꿀 수는 있지만 비울 수는 없어요'
+              ? '연구실 Cloudflare 접속 허용 목록에 쓰여요. 바꿀 수는 있지만 비울 수는 없어요'
               : form.email
                 ? '이메일 형식을 확인해 주세요'
-                : 'WARP 가입 이메일은 비울 수 없어요'}
+                : 'Cloudflare 가입 이메일은 비울 수 없어요'}
           </small>
         </label>
         <label className={s.field}>

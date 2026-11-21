@@ -62,7 +62,7 @@ export function MemberTable({ list, counts, filter, onFilter, q, onQuery, select
               <strong>
                 {m.name}
                 {'noEmail' in m && m.noEmail && (
-                  <span className={s.conflictMark} title="Cloudflare WARP 가입 이메일이 없어 WARP 접속 허용 목록에 넣지 못해요">
+                  <span className={s.conflictMark} title="Cloudflare 가입 이메일이 없어 Cloudflare 접속 허용 목록에 넣지 못해요">
                     이메일 없음
                   </span>
                 )}

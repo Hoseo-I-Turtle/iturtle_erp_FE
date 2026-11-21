@@ -49,7 +49,7 @@ export function AccountSetupPage() {
     let alive = true
     api<Target>('/public/v1/member-invitations/verify', { method: 'POST', root: true, body: { token } })
       .then((t) => alive && setTarget(t))
-      .catch((e) => alive && setLinkError(e instanceof ApiError ? e.message : '서버에 닿지 못했어요. 연구실 망(WARP)이 켜져 있는지 봐 주세요.'))
+      .catch((e) => alive && setLinkError(e instanceof ApiError ? e.message : '서버에 닿지 못했어요. 연구실 망(Cloudflare)이 켜져 있는지 봐 주세요.'))
     return () => {
       alive = false
     }
