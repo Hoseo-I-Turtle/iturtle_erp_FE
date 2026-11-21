@@ -60,3 +60,25 @@
 .conflict small {
   font-size: 12px;
 }
+
+/* Cloudflare 가입 이메일 (ERP-37) */
+.emailRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.emailInput {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font: inherit;
+}
+.emailMissing {
+  border-color: var(--status-warning-text, #b26a00);
+}

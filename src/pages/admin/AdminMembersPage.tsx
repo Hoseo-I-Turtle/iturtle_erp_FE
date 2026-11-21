@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Empty, Loadable } from '../../components/ui'
 import { whenLive } from '../../api/useResource'
 import {
@@ -40,7 +41,12 @@ function AdminMembersView({ data }: { data: AdminMembersData }) {
   const [members, setMembers] = useState(data.members)
   const [filter, setFilter] = useState<MemberFilter>('ACTIVE')
   const [q, setQ] = useState('')
-  const [selectedId, setSelectedId] = useState(() => (isLive() ? (data.members[0]?.memberId ?? 0) : 3))
+  // ?member=12 로 들어오면 그 사람을 고른다 (관리 › Cloudflare 의 "이메일 넣기", ERP-37)
+  const [params] = useSearchParams()
+  const linked = Number(params.get('member'))
+  const [selectedId, setSelectedId] = useState(() =>
+    linked && data.members.some((m) => m.memberId === linked) ? linked : isLive() ? (data.members[0]?.memberId ?? 0) : 3,
+  )
   const [draftRoles, setDraftRoles] = useState<string[] | null>(null)
   const [tempPw, setTempPw] = useState<string | null>(null)
   const [graduating, setGraduating] = useState(false)
@@ -161,6 +167,20 @@ function AdminMembersView({ data }: { data: AdminMembersData }) {
     )
   }
 
+  /** Cloudflare 가입 이메일 (ERP-37): 30초 안에 관리 › Cloudflare 허용 목록에 반영된다 */
+  const saveEmail = async (email: string) => {
+    const id = sel.memberId
+    setErr('')
+    try {
+      await whenLive(() => patchMember(id, { email }))
+      update(id, { email, noEmail: false })
+      return true
+    } catch (e) {
+      setErr(errorText(e, '이메일을 저장하지 못했어요.'))
+      return false
+    }
+  }
+
   const unlock = () => {
     const id = sel.memberId
     const prev = { state: sel.state, failCount: sel.failCount }
@@ -214,6 +234,7 @@ function AdminMembersView({ data }: { data: AdminMembersData }) {
                 onApplyPreset={applyPresets}
                 onSaveRoles={saveRoles}
                 conflictRules={conflicts.data?.rules ?? []}
+                onSaveEmail={saveEmail}
               />
               <AccountActionsCard
                 member={sel}
