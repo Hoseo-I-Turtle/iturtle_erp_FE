@@ -51,7 +51,7 @@
   cursor: pointer;
 }
 .tagInput {
-  width: 120px;
+  width: 150px;
   min-width: 60px;
   padding: 2px 6px;
   border: 1px solid var(--border-default, #d7dde4);
