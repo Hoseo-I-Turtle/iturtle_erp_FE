@@ -179,6 +179,9 @@ export function useProjectList(f: ProjectListFilter) {
 type ProjectMemberRefDto = {
   member: MemberRef
   role: 'MANAGER' | 'MEMBER' | 'FORMER'
+  /** 프로젝트 역할 (ERP-26, 참여자만 · 없으면 null) */
+  customRoleId?: number | null
+  customRoleName?: string | null
   joinedAt: string
   leftAt: string | null
   /** 맡은 일 태그 (ERP-4, 권한과 상관없음) */
@@ -458,7 +461,17 @@ type ServiceAccessDto = {
     provisionStatus: 'PENDING' | 'DONE' | 'FAILED'
     provisionError?: string | null
   }[]
-  members: { member: MemberRef; projectRole: 'MANAGER' | 'MEMBER'; vault: Level; jenkins: Level }[]
+  members: {
+    member: MemberRef
+    projectRole: 'MANAGER' | 'MEMBER'
+    /** 프로젝트 역할 (ERP-26, 없으면 null) */
+    customRoleId?: number | null
+    customRoleName?: string | null
+    vault: Level
+    jenkins: Level
+  }[]
+  /** 프로젝트 역할 (ERP-26, 만든 순) */
+  roles?: { roleId: number; name: string; vaultLevel: string; jenkinsLevel: string; memberCount: number }[]
   notice: string
 }
 /** TaskCardResponse. taskKey 는 '{projectKey}-{번호}' */
@@ -497,7 +510,10 @@ const BUILD_RESULT: Record<string, string> = { SUCCESS: '성공', FAILURE: '실�
 export type HomeService = {
   code: ServiceCode
   name: string
+  /** 연결의 표시 이름 (ERP-31). Penpot 프로젝트 연결이면 파일 수를 붙인다 */
   target: string
+  /** 대상 경로 (저장소 · 작업 · Vault 경로) — 마우스를 올렸을 때만 보인다 */
+  ref?: string
   status: { ok: boolean | null; text: string }
   myPerm: string | null
   url?: string
@@ -548,13 +564,10 @@ function linkToService(l: LinkDto & { service: ServiceCode }, st: LinkStatusDto 
   return {
     code: l.service,
     name: SERVICE_NAME[l.service],
-    // Penpot 파일 하나만 연결했으면(file:) 파일 수 대신 이름만, 프로젝트 연결이면 이름 · 파일 수
+    // 표시 이름을 보인다 (ERP-31). Penpot 프로젝트 연결이면 이름 · 파일 수 (파일 하나만 연결했으면 이름만)
     target:
-      l.service === 'PENPOT' && l.externalRef?.startsWith('file:')
-        ? l.displayName
-        : l.service === 'PENPOT' && st?.penpot
-          ? `${l.displayName} · 파일 ${st.penpot.fileCount}개`
-          : (l.externalRef ?? l.displayName),
+      l.service === 'PENPOT' && !l.externalRef?.startsWith('file:') && st?.penpot ? `${l.displayName} · 파일 ${st.penpot.fileCount}개` : l.displayName,
+    ref: l.service === 'PENPOT' ? undefined : (l.externalRef ?? undefined),
     status,
     myPerm: !leveled ? null : l.myAccess.granted ? `내 권한 · ${LEVEL_NAME[l.myAccess.level ?? ''] ?? l.myAccess.level ?? '있음'}` : '내 권한 · 없음',
     url: l.url,
@@ -980,9 +993,12 @@ export type AccessState = {
   members: Record<string, AccessOverride>
 }
 export type ProvisionStatus = 'PENDING' | 'DONE' | 'FAILED'
+/** 프로젝트 역할 (ERP-26): PM · 참여자 말고 만든 역할. Vault · Jenkins 수준만 다르다 */
+export type CustomRole = { roleId: number; name: string; vault: VaultLevel; jenkins: JenkinsLevel; memberCount: number }
 export type ServiceAccessView = {
   state: AccessState
-  members: (ProjectMember & { memberId?: number })[]
+  members: (ProjectMember & { memberId?: number; customRoleId?: number | null; customRoleName?: string | null })[]
+  customRoles: CustomRole[]
   vault: { paths: string[]; pending: string[]; status: ProvisionStatus; error: string | null }
   jenkins: { jobs: string[]; status: ProvisionStatus; error: string | null }
   notice: string
@@ -1002,6 +1018,7 @@ const MOCK_ACCESS: ServiceAccessView = {
     },
   },
   members: projectDetail.members,
+  customRoles: [{ roleId: 1, name: '인프라', vault: 'WRITE', jenkins: 'BUILD', memberCount: 0 }],
   vault: { paths: ['secret/projects/defme/'], pending: ['secret/defme/'], status: 'DONE', error: null },
   jenkins: { jobs: ['^Hoseo-I-Turtle/defme_BE(/.*)?$'], status: 'FAILED', error: 'Jenkins 가 응답하지 않았어요' },
   notice: '바꾼 권한은 다음 로그인부터 반영돼요. 뺀 권한은 이미 로그인한 세션이 끝나야 적용돼요 (Vault 토큰 최대 8시간, Jenkins 세션).',
@@ -1031,6 +1048,15 @@ export function toAccessView(sa: ServiceAccessDto): ServiceAccessView {
       name: m.member.name,
       role: m.projectRole,
       note: m.member.memberType === 'INTERN' ? '인턴' : undefined,
+      customRoleId: m.customRoleId ?? null,
+      customRoleName: m.customRoleName ?? null,
+    })),
+    customRoles: (sa.roles ?? []).map((r) => ({
+      roleId: r.roleId,
+      name: r.name,
+      vault: r.vaultLevel as VaultLevel,
+      jenkins: r.jenkinsLevel as JenkinsLevel,
+      memberCount: r.memberCount,
     })),
     vault: {
       paths: (v?.resources ?? []).map((r) => r.ref),
@@ -1049,6 +1075,21 @@ const accessPath = (key: string) => `/projects/${encodeURIComponent(key)}/servic
 export function useServiceAccess(key: string | undefined) {
   return useResource<ServiceAccessView>(['service-access', key], () => MOCK_ACCESS, async () => toAccessView(await api<ServiceAccessDto>(accessPath(key ?? ''))))
 }
+
+/** P-17a 프로젝트 역할 만들기 (ERP-26). 응답은 P-16 */
+export const createCustomRole = (key: string, name: string, vault: VaultLevel, jenkins: JenkinsLevel) =>
+  api<ServiceAccessDto>(`${accessPath(key)}/roles`, { method: 'POST', body: { name, vaultLevel: vault, jenkinsLevel: jenkins } }).then(toAccessView)
+
+/** P-17b 프로젝트 역할 고치기 (보낸 것만) */
+export const updateCustomRole = (key: string, roleId: number, patch: { name?: string; vault?: VaultLevel; jenkins?: JenkinsLevel }) =>
+  api<ServiceAccessDto>(`${accessPath(key)}/roles/${roleId}`, {
+    method: 'PATCH',
+    body: { name: patch.name, vaultLevel: patch.vault, jenkinsLevel: patch.jenkins },
+  }).then(toAccessView)
+
+/** P-17c 프로젝트 역할 지우기 (그 역할이던 사람은 기본 참여자로) */
+export const deleteCustomRole = (key: string, roleId: number) =>
+  api<ServiceAccessDto>(`${accessPath(key)}/roles/${roleId}`, { method: 'DELETE' }).then(toAccessView)
 
 /**
  * 서비스 권한 저장이 중간에 실패했을 때. 백엔드는 서비스 설정(P-17 PATCH /service-access/{service})과

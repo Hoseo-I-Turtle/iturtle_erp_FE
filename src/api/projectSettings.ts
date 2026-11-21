@@ -133,6 +133,8 @@ export type SettingsMember = {
   leftAt: string | null
   /** 맡은 일 태그 (ERP-14) */
   tags: string[]
+  /** 프로젝트 역할 (ERP-27, 참여자만 · 없으면 null) */
+  customRoleId: number | null
 }
 export type SettingsLabel = { labelId: number; name: string; color: string; description: string | null; taskCount: number }
 export type ProjectSettings = {
@@ -145,6 +147,8 @@ export type ProjectSettings = {
   startsOn: string
   endsOn: string
   members: SettingsMember[]
+  /** 프로젝트 역할 (ERP-27) — 참여자 역할 고르기에 쓴다 */
+  customRoles: { roleId: number; name: string }[]
   labels: SettingsLabel[]
   taskTotal: number
   canManage: boolean
@@ -153,7 +157,7 @@ export type ProjectSettings = {
 }
 
 type LabelsDto = { labels: SettingsLabel[] }
-type ServiceAccessDto = { services: { service: string; enabled: boolean }[] }
+type ServiceAccessDto = { services: { service: string; enabled: boolean }[]; roles?: { roleId: number; name: string }[] }
 
 const MOCK_LABELS: SettingsLabel[] = [
   { labelId: 1, name: '보안', color: '#E5484D', description: '인증 · 권한 · 비밀값', taskCount: 6 },
@@ -175,6 +179,7 @@ export function useProjectSettings(key: string | undefined) {
           joinedAt: '2026-09-01',
           leftAt: null,
           tags: mockTagsOf(m.name),
+          customRoleId: null,
         })),
         ...mockMembers.slice(5, 6).map((m): SettingsMember => ({
           memberId: m.memberId,
@@ -184,6 +189,7 @@ export function useProjectSettings(key: string | undefined) {
           joinedAt: '2026-09-01',
           leftAt: '2026-10-31',
           tags: mockTagsOf(m.name),
+          customRoleId: null,
         })),
       ]
       return {
@@ -196,6 +202,7 @@ export function useProjectSettings(key: string | undefined) {
         startsOn: p.startsOn,
         endsOn: p.endsOn,
         members,
+        customRoles: [{ roleId: 1, name: '인프라' }],
         labels: MOCK_LABELS,
         taskTotal: 46,
         canManage: true,
@@ -208,7 +215,7 @@ export function useProjectSettings(key: string | undefined) {
       const [d, labels, access] = await Promise.all([
         getProject(key ?? ''),
         api<LabelsDto>(`/projects/${k}/labels`),
-        api<ServiceAccessDto>(`/projects/${k}/service-access`).catch(() => ({ services: [] })),
+        api<ServiceAccessDto>(`/projects/${k}/service-access`).catch((): ServiceAccessDto => ({ services: [] })),
       ])
       return {
         projectKey: d.projectKey,
@@ -227,7 +234,9 @@ export function useProjectSettings(key: string | undefined) {
           joinedAt: m.joinedAt?.slice(0, 10) ?? '',
           leftAt: m.leftAt?.slice(0, 10) ?? null,
           tags: m.tags ?? [],
+          customRoleId: m.customRoleId ?? null,
         })),
+        customRoles: (access.roles ?? []).map((r) => ({ roleId: r.roleId, name: r.name })),
         labels: labels.labels,
         taskTotal: d.taskCounts.total,
         canManage: d.permissions.canManage,
@@ -260,8 +269,9 @@ export const changeProjectKey = (key: string, projectKey: string) =>
 export const addProjectMember = (key: string, memberId: number, role: 'MANAGER' | 'MEMBER') =>
   api(`/projects/${enc(key)}/members`, { method: 'POST', body: { memberId, role } })
 
-export const changeMemberRole = (key: string, memberId: number, role: 'MANAGER' | 'MEMBER') =>
-  api(`/projects/${enc(key)}/members/${memberId}`, { method: 'PATCH', body: { role } })
+/** P-7 역할 바꾸기. customRoleId 는 참여자(MEMBER)에게만 (ERP-27), 빼면 기본 참여자 */
+export const changeMemberRole = (key: string, memberId: number, role: 'MANAGER' | 'MEMBER', customRoleId: number | null = null) =>
+  api(`/projects/${enc(key)}/members/${memberId}`, { method: 'PATCH', body: { role, customRoleId } })
 
 // ───────────────────────── 라벨 (P-25 ~ P-27) ─────────────────────────
 

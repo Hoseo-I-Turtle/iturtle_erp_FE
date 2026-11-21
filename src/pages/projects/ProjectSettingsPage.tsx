@@ -6,9 +6,12 @@ import { ApiError } from '../../api/client'
 import { whenLive } from '../../api/useResource'
 import {
   AccessSaveError,
+  createCustomRole,
+  deleteCustomRole,
   requestVaultPath,
   retryProvision,
   saveServiceAccess,
+  updateCustomRole,
   useServiceAccess,
   type AccessState,
   type ServiceAccessView,
@@ -93,6 +96,23 @@ function AccessPanel({ projectKey, view, onSaved }: { projectKey: string; view: 
   const [pathDraft, setPathDraft] = useState('')
   const [pathMsg, setPathMsg] = useState<string | null>(null)
   const dirty = JSON.stringify(st) !== JSON.stringify(saved)
+  // 프로젝트 역할 (ERP-27): 바꾸면 바로 저장하고 서버가 준 P-16 으로 화면을 맞춘다
+  const [roleBusy, setRoleBusy] = useState(false)
+  const [roleError, setRoleError] = useState<string | null>(null)
+  const roleCall = (call: () => Promise<ServiceAccessView>, mock: (v: ServiceAccessView) => ServiceAccessView) => {
+    setRoleBusy(true)
+    setRoleError(null)
+    return whenLive(call)
+      .then((nv) => {
+        onSaved(nv ?? mock(view))
+        return true
+      })
+      .catch((e: unknown) => {
+        setRoleError(errMsg(e, '역할을 저장하지 못했어요.'))
+        return false
+      })
+      .finally(() => setRoleBusy(false))
+  }
 
   const retry = (svc: SyncService) => {
     setSync((x) => ({ ...x, [svc]: { ...x[svc], status: 'retrying' } }))
@@ -171,8 +191,41 @@ function AccessPanel({ projectKey, view, onSaved }: { projectKey: string; view: 
         onRequestPath={requestPath}
         pathMsg={pathMsg}
       />
-      <RoleDefaultsCard roles={st.roles} onChange={(r, level) => setSt({ ...st, roles: { ...st.roles, [r]: level } })} />
-      <MemberOverridesCard members={view.members} state={st} onChange={(name, o) => setSt({ ...st, members: { ...st.members, [name]: o } })} />
+      <RoleDefaultsCard
+        roles={st.roles}
+        onChange={(r, level) => setSt({ ...st, roles: { ...st.roles, [r]: level } })}
+        customRoles={view.customRoles}
+        busy={roleBusy}
+        error={roleError}
+        onCreate={(name, vault, jenkins) =>
+          roleCall(
+            () => createCustomRole(projectKey, name, vault, jenkins),
+            (v) => ({ ...v, customRoles: [...v.customRoles, { roleId: Date.now(), name, vault, jenkins, memberCount: 0 }] }),
+          )
+        }
+        onUpdate={(roleId, patch) =>
+          void roleCall(
+            () => updateCustomRole(projectKey, roleId, patch),
+            (v) => ({ ...v, customRoles: v.customRoles.map((r) => (r.roleId === roleId ? { ...r, ...patch } : r)) }),
+          )
+        }
+        onDelete={(roleId) =>
+          void roleCall(
+            () => deleteCustomRole(projectKey, roleId),
+            (v) => ({
+              ...v,
+              customRoles: v.customRoles.filter((r) => r.roleId !== roleId),
+              members: v.members.map((m) => (m.customRoleId === roleId ? { ...m, customRoleId: null, customRoleName: null } : m)),
+            }),
+          )
+        }
+      />
+      <MemberOverridesCard
+        members={view.members}
+        customRoles={view.customRoles}
+        state={st}
+        onChange={(name, o) => setSt({ ...st, members: { ...st.members, [name]: o } })}
+      />
 
       <Note icon={Clock} tone="warning">
         {view.notice}

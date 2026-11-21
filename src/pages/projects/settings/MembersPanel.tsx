@@ -55,8 +55,15 @@ export function MembersPanel({ settings, onChange, onReload }: Props) {
       .finally(() => setBusy(null))
   }
 
-  const role = (m: SettingsMember, r: 'MANAGER' | 'MEMBER') =>
-    run(m.memberId, () => changeMemberRole(settings.projectKey, m.memberId, r), () => patchMember(m.memberId, { role: r }))
+  /** 고른 값: MANAGER · MEMBER, 또는 프로젝트 역할 'R<id>' (참여자 + 그 역할, ERP-27) */
+  const role = (m: SettingsMember, value: string) => {
+    const customRoleId = value.startsWith('R') ? Number(value.slice(1)) : null
+    const r = value === 'MANAGER' ? 'MANAGER' : 'MEMBER'
+    run(m.memberId, () => changeMemberRole(settings.projectKey, m.memberId, r, customRoleId), () => patchMember(m.memberId, { role: r, customRoleId }))
+  }
+  const roleValue = (m: SettingsMember) => (m.role === 'MEMBER' && m.customRoleId !== null ? `R${m.customRoleId}` : m.role)
+  const roleName = (m: SettingsMember) =>
+    settings.customRoles.find((r) => m.role === 'MEMBER' && r.roleId === m.customRoleId)?.name ?? ROLE_NAME[m.role]
   /** 확인 창에서 고른 사람에게 끝나지 않은 담당 작업을 넘기고 뺀다 (없으면 담당 없음) */
   const remove = (m: SettingsMember, tasks: { taskKey: string; title: string; status: string }[], handoverTo: number | null) =>
     run(
@@ -82,7 +89,7 @@ export function MembersPanel({ settings, onChange, onReload }: Props) {
       onChange({
         members: [
           ...settings.members.filter((m) => m.memberId !== memberId),
-          { memberId, name, memberType, role: 'MEMBER', joinedAt: new Date().toISOString().slice(0, 10), leftAt: null, tags: [] },
+          { memberId, name, memberType, role: 'MEMBER', joinedAt: new Date().toISOString().slice(0, 10), leftAt: null, tags: [], customRoleId: null },
         ],
       }),
     )
@@ -143,17 +150,27 @@ export function MembersPanel({ settings, onChange, onReload }: Props) {
                 <td className={s.muted}>{typeName(m.memberType)}</td>
                 <td>
                   {readOnly ? (
-                    ROLE_NAME[m.role]
+                    roleName(m)
                   ) : (
                     <select
                       className={s.select}
-                      value={m.role}
+                      value={roleValue(m)}
                       disabled={busy === m.memberId || lastManager}
-                      title={lastManager ? '마지막 프로젝트 관리자예요' : undefined}
-                      onChange={(e) => role(m, e.target.value as 'MANAGER' | 'MEMBER')}
+                      title={lastManager ? '마지막 프로젝트 관리자예요' : '프로젝트 역할은 설정 › 서비스 권한에서 만들어요'}
+                      onChange={(e) => role(m, e.target.value)}
+                      aria-label={`${m.name} 역할`}
                     >
                       <option value="MANAGER">프로젝트 관리자</option>
                       <option value="MEMBER">참여자</option>
+                      {settings.customRoles.length > 0 && (
+                        <optgroup label="프로젝트 역할 (참여자)">
+                          {settings.customRoles.map((r) => (
+                            <option key={r.roleId} value={`R${r.roleId}`}>
+                              {r.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
                     </select>
                   )}
                 </td>

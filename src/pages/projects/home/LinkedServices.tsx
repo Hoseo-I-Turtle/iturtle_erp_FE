@@ -52,7 +52,9 @@ function ServiceRow({ sv }: { sv: HomeService }) {
   const body = (
     <>
       <span className={s.text}>
-        <span className={s.target}>{sv.target}</span>
+        <span className={s.target} title={sv.ref}>
+          {sv.target}
+        </span>
         {sv.status.text && (
           <span className={`${s.status} ${tone}`}>
             <StatusIcon sv={sv} />
@@ -65,7 +67,13 @@ function ServiceRow({ sv }: { sv: HomeService }) {
   )
   // 주소가 있으면 줄 전체가 그 서비스로 가는 링크, 없으면 그냥 줄
   return sv.url ? (
-    <a className={`${s.row} ${s.link}`} href={sv.url} target="_blank" rel="noopener noreferrer" title={`${sv.name} 열기`}>
+    <a
+      className={`${s.row} ${s.link}`}
+      href={sv.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={sv.ref ? `${sv.ref} — ${sv.name} 열기` : `${sv.name} 열기`}
+    >
       {body}
     </a>
   ) : (

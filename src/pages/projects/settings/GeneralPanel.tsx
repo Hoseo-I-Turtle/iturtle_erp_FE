@@ -197,7 +197,7 @@ function KeyCard({ settings, readOnly }: { settings: ProjectSettings; readOnly: 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const changed = key !== settings.projectKey
-  const blocked = settings.servicesOn || settings.projectKey === 'LAB'
+  const blocked = settings.servicesOn
 
   useEffect(() => {
     if (!changed || !KEY_PATTERN.test(key)) return

@@ -25,10 +25,10 @@ export const projectDetail = {
     { who: '이정훈', text: '님이 스레드에 "PR 리뷰 규칙 정리" 를 올렸어요', ago: '어제' },
   ],
   services: [
-    { code: 'JENKINS', name: 'Jenkins', target: 'Hoseo-I-Turtle/defme_BE', status: { ok: true, text: '#142 성공 · 3분 전 · 4분 12초' }, myPerm: '내 권한 · 빌드' },
-    { code: 'VAULT', name: 'Vault', target: 'secret/projects/defme/', status: { ok: null, text: '비밀값은 Vault 에서만 보여요' }, myPerm: '내 권한 · 쓰기' },
+    { code: 'JENKINS', name: 'Jenkins', target: 'DEFME 백엔드 배포', ref: 'Hoseo-I-Turtle/defme_BE', status: { ok: true, text: '#142 성공 · 3분 전 · 4분 12초' }, myPerm: '내 권한 · 빌드' },
+    { code: 'VAULT', name: 'Vault', target: 'DEFME 비밀값', ref: 'secret/projects/defme/', status: { ok: null, text: '비밀값은 Vault 에서만 보여요' }, myPerm: '내 권한 · 쓰기' },
     { code: 'PENPOT', name: 'Penpot', target: 'DEFME 디자인 · 파일 4개', status: { ok: null, text: '2시간 전 수정 · 홈 화면 시안' }, myPerm: null },
-    { code: 'GITHUB', name: 'GitHub', target: 'Hoseo-I-Turtle/defme_BE', status: { ok: null, text: '이번 주 커밋 23 · 열린 PR 2' }, myPerm: null },
+    { code: 'GITHUB', name: 'GitHub', target: 'DEFME 백엔드', ref: 'Hoseo-I-Turtle/defme_BE', status: { ok: null, text: '이번 주 커밋 23 · 열린 PR 2' }, myPerm: null },
   ] as const,
   permissions: [
     { who: '프로젝트 관리자 (기본)', vault: 'Vault 쓰기', jenkins: 'Jenkins 빌드' },
