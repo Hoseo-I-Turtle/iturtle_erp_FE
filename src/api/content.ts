@@ -201,6 +201,8 @@ const toThreadPost = (t: ThreadItem): ThreadPostView => ({
   documents: (t.documents ?? []).map((d) => ({ ...d, author: d.author?.name ?? null })),
   mentions: (t.mentions ?? []).map((m) => ({ ...m, author: m.author?.name ?? null, createdAt: m.createdAt ? ago(m.createdAt) : null })),
   canEdit: t.permissions.canEdit,
+  canDelete: t.permissions.canDelete,
+  canPin: t.permissions.canPin,
 })
 
 /** 스레드 화면: 고정 글 + 최근 답글 순 글 목록 */
@@ -251,6 +253,19 @@ export async function createThread(projectKey: string, title: string, body: stri
   })
   return toThreadPost(t)
 }
+
+/** H-4 제목 · 본문 고치기 (ERP-33). 빈 제목은 지운다 (null) */
+export async function updateThread(projectKey: string, threadId: number, title: string, body: string) {
+  const t = await api<ThreadItem>(`/projects/${projectKey}/threads/${threadId}`, {
+    method: 'PATCH',
+    body: { title: title.trim() || null, body },
+  })
+  return toThreadPost(t)
+}
+
+/** H-6 글 지우기 (ERP-33) */
+export const deleteThread = (projectKey: string, threadId: number) =>
+  api<unknown>(`/projects/${projectKey}/threads/${threadId}`, { method: 'DELETE' })
 
 /** H-4 연결한 자료 바꾸기 (통째로, 빈 목록이면 모두 뺌) */
 export async function updateThreadDocuments(projectKey: string, threadId: number, documentIds: number[]) {

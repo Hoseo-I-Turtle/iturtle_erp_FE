@@ -11,6 +11,7 @@ import {
   type CommentItem,
   type CommentTargetType,
 } from '../../api/comments'
+import { useAtMention } from '../markdown/useAtMention'
 import s from './CommentThread.module.css'
 
 const MAX = 2000
@@ -193,6 +194,8 @@ function Composer({
   const [text, setText] = useState(initial)
   const [sending, setSending] = useState(false)
   const [tooLong, setTooLong] = useState(false)
+  // @ 를 치면 사람 고르기 (ERP-34)
+  const { ref: mentionRef, detect: detectMention, onKeyDown: mentionKeyDown, popup: mentionPopup, close: closeMention } = useAtMention<HTMLTextAreaElement>(text, setText)
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -209,14 +212,22 @@ function Composer({
   return (
     <form onSubmit={submit} className={s.composer}>
       <textarea
+        ref={mentionRef}
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          setText(e.target.value)
+          detectMention()
+        }}
+        onClick={() => detectMention()}
+        onKeyDown={mentionKeyDown}
+        onBlur={() => closeMention()}
         placeholder={placeholder}
         aria-label={placeholder ?? '댓글'}
         rows={2}
         maxLength={MAX}
         className={s.textarea}
       />
+      {mentionPopup}
       <div className={s.composerButtons}>
         {onCancel && (
           <Button variant="secondary" onClick={onCancel}>

@@ -13,11 +13,14 @@ type ComposerProps = {
   projectKey: string
   onClose: () => void
   onSubmit: (title: string, body: string, documentIds: number[]) => Promise<void>
+  /** 고치기 (ERP-33): 처음 값. 있으면 "글 고치기" 창이 되고 자료 연결은 글 화면에서 따로 한다 */
+  initial?: { title: string | null; body: string }
 }
-/** 새 글 쓰기 모달 */
-export function ThreadComposer({ projectName, projectKey, onClose, onSubmit }: ComposerProps) {
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
+/** 새 글 쓰기 · 고치기 모달 */
+export function ThreadComposer({ projectName, projectKey, onClose, onSubmit, initial }: ComposerProps) {
+  const editing = initial !== undefined
+  const [title, setTitle] = useState(initial?.title ?? '')
+  const [body, setBody] = useState(initial?.body ?? '')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // 자료 연결 (ERP-23) · 다른 스레드 언급 (ERP-21)
@@ -33,14 +36,14 @@ export function ThreadComposer({ projectName, projectKey, onClose, onSubmit }: C
     try {
       await onSubmit(title, body, documents.map((d) => d.documentId))
     } catch (e) {
-      setError(errorText(e, '글을 올리지 못했어요.'))
+      setError(errorText(e, editing ? '고치지 못했어요.' : '글을 올리지 못했어요.'))
       setSending(false)
     }
   }
 
   return (
     <Modal
-      title="새 글"
+      title={editing ? '글 고치기' : '새 글'}
       badge={<Chip tone="tint">{projectName} · 스레드</Chip>}
       onClose={onClose}
       footer={
@@ -48,13 +51,13 @@ export function ThreadComposer({ projectName, projectKey, onClose, onSubmit }: C
           <span className={s.composerHint}>
             {error ? <TriangleAlert size={16} /> : <Info size={16} />}
             {error ??
-              `@이름으로 알리고, ${projectKey}-12 처럼 쓰면 작업 링크가 돼요. 상단 고정은 프로젝트 관리자가 글을 올린 뒤 할 수 있어요.`}
+              `@ 를 치면 사람을 골라 알리고, ${projectKey}-12 처럼 쓰면 작업 링크가 돼요.${editing ? ' 고친 뒤 새로 언급한 사람에게만 알림이 가요.' : ' 상단 고정은 프로젝트 관리자가 글을 올린 뒤 할 수 있어요.'}`}
           </span>
           <Button variant="secondary" onClick={onClose}>
             취소
           </Button>
           <Button onClick={submit} disabled={!body.trim() || sending}>
-            올리기
+            {editing ? '저장' : '올리기'}
           </Button>
         </>
       }
@@ -67,9 +70,11 @@ export function ThreadComposer({ projectName, projectKey, onClose, onSubmit }: C
         <Button variant="secondary" icon={AtSign} onClick={() => setMentioning(!mentioning)}>
           스레드 언급
         </Button>
-        <Button variant="secondary" icon={Paperclip} onClick={() => setPickingDocs(true)}>
-          자료 연결{documents.length > 0 && ` ${documents.length}`}
-        </Button>
+        {!editing && (
+          <Button variant="secondary" icon={Paperclip} onClick={() => setPickingDocs(true)}>
+            자료 연결{documents.length > 0 && ` ${documents.length}`}
+          </Button>
+        )}
       </div>
       {mentioning && (
         <MentionPicker

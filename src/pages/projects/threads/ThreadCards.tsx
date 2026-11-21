@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { EyeOff, FileText, MessagesSquare, Paperclip, Pencil } from 'lucide-react'
+import { ArrowRight, ChevronDown, EyeOff, FileText, MessagesSquare, Paperclip, Pencil } from 'lucide-react'
 import { Button } from '../../../components/ui'
 import type { ThreadDocumentCard, ThreadMentionCard } from '../../../mocks/threads'
 import s from './cards.module.css'
@@ -45,7 +46,43 @@ export function DocumentCards({ documents, onEdit }: { documents: ThreadDocument
   )
 }
 
-/** 본문에 링크한 다른 스레드의 미리보기 (ERP-20 · 21). 볼 수 없거나 없는 글은 "볼 수 없는 스레드" */
+/**
+ * 본문에서 링크한 자리에 들어가는 스레드 인용 카드 (ERP-32). 처음에는 제목 한 줄로 접혀 있고 눌러서 펼친다.
+ * 볼 수 없거나 없는 글은 "볼 수 없는 스레드".
+ */
+export function ThreadQuote({ m }: { m: ThreadMentionCard }) {
+  const [open, setOpen] = useState(false)
+  const meta = [m.projectKey, m.author, m.createdAt].filter(Boolean).join(' · ')
+  if (!m.available)
+    return (
+      <div className={`${s.quote} ${s.quoteOff}`} title="권한이 없거나 없는 · 지운 글이에요">
+        <span className={s.quoteHead}>
+          <EyeOff size={15} /> <span className={s.quoteTitle}>볼 수 없는 스레드</span>
+          <span className={s.cardMeta}>{m.projectKey}</span>
+        </span>
+      </div>
+    )
+  return (
+    <div className={s.quote}>
+      <button type="button" className={s.quoteHead} onClick={() => setOpen(!open)} aria-expanded={open}>
+        <MessagesSquare size={15} />
+        <span className={s.quoteTitle}>{m.title}</span>
+        <span className={s.cardMeta}>{meta}</span>
+        <ChevronDown size={16} className={open ? `${s.chev} ${s.chevOpen}` : s.chev} aria-hidden />
+      </button>
+      {open && (
+        <div className={s.quoteBody}>
+          {m.excerpt ? <p className={s.excerpt}>{m.excerpt}</p> : <p className={s.cardMeta}>본문 미리 보기가 없어요.</p>}
+          <Link to={`/projects/${m.projectKey}/threads/${m.threadId}`} className={s.quoteLink}>
+            스레드로 가기 <ArrowRight size={14} />
+          </Link>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** 본문에서 찾지 못한 언급 (코드 블록 안 등)의 미리보기 (ERP-20 · 21). 볼 수 없거나 없는 글은 "볼 수 없는 스레드" */
 export function MentionCards({ mentions }: { mentions: ThreadMentionCard[] }) {
   if (mentions.length === 0) return null
   return (

@@ -19,6 +19,9 @@ export type ThreadPost = {
   mentions?: ThreadMentionCard[]
   /** 내가 고칠 수 있는 글인지 (서버 permissions.canEdit) */
   canEdit?: boolean
+  /** 지울 수 있는지 · 고정할 수 있는지 (서버 permissions, ERP-33). 목업은 없으면 된다고 본다 */
+  canDelete?: boolean
+  canPin?: boolean
 }
 
 export type ThreadDocumentCard = {
@@ -60,7 +63,7 @@ export const threadPosts: ThreadPost[] = [
   { postId: 1, title: '백엔드 아키텍처 정리', author: '박지훈', createdAt: '10/21', ago: '10/21', editedBy: '김서연', editedAt: '11/14', body: ARCH_BODY, pinnedOrder: 1, pinnedBy: '박지훈', replyCount: 6, attachments: [{ name: 'erd-v2.pdf', size: '1.2MB', kind: 'pdf' }, { name: 'module-deps.png', size: '340KB', kind: 'image' }], replies: [{ author: '김서연', ago: '11/14', body: 'Facade 아래 감사 로그 흐름 추가했어요. 고정 글이라 관리자도 고칠 수 있어서 바로 반영했습니다.' }] },
   { postId: 2, title: '개발 규칙 · 브랜치 전략', author: '김서연', createdAt: '10/25', ago: '11/03 수정', body: '- `main` 은 배포 가능한 상태만\n- 기능은 `feat/DEFME-12-설명` 브랜치\n- PR 은 리뷰어 1명 이상 승인', pinnedOrder: 2, pinnedBy: '박지훈', replyCount: 2, attachments: [], replies: [] },
   { postId: 3, title: '로컬 개발 환경 세팅', author: '박지훈', createdAt: '10/20', ago: '10/28 수정', body: '1. JDK 21 설치\n2. `docker compose up -d`\n3. `./gradlew bootRun`', pinnedOrder: 3, pinnedBy: '박지훈', replyCount: 4, attachments: [], replies: [] },
-  { postId: 4, title: null, author: '이도윤', createdAt: '방금', ago: '방금', body: 'Vault 경로 묶기 승인 났어요. 이제 secret/projects/defme/ 에서 DB 계정 읽을 수 있습니다. DEFME-44 확인 부탁드려요.\n\n로컬 설정은 [로컬 개발 환경 세팅](/projects/DEFME/threads/3) 참고.', pinnedOrder: null, replyCount: 3, attachments: [], replies: [],
+  { postId: 4, title: null, author: '이도윤', createdAt: '방금', ago: '방금', body: 'Vault 경로 묶기 승인 났어요. 이제 secret/projects/defme/ 에서 DB 계정 읽을 수 있습니다. @jihoon DEFME-44 확인 부탁드려요.\n\n로컬 설정은 [로컬 개발 환경 세팅](/projects/DEFME/threads/3) 참고.', pinnedOrder: null, replyCount: 3, attachments: [], replies: [],
     mentions: [{ projectKey: 'DEFME', threadId: 3, available: true, title: '로컬 개발 환경 세팅', excerpt: '1. JDK 21 설치 2. `docker compose up -d` 3. `./gradlew bootRun`', author: '박지훈', createdAt: '10/20' }],
     documents: [
       { documentId: 2, available: true, title: 'SSO 로그인 흐름도', categoryName: '개발 문서', visibility: 'LAB', author: '김민서' },
