@@ -82,12 +82,12 @@ export function MemberAddModal({ onClose }: { onClose: () => void }) {
     if (!name.trim()) list.push('이름')
     if (!/^[a-z][a-z0-9._-]{3,29}$/.test(loginId.trim())) list.push('아이디')
     if (!/^[A-Z0-9]{1,20}$/.test(number)) list.push('구성원 번호')
-    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) list.push('이메일')
-    if (invite && !email.trim()) list.push('이메일(초대 메일에 필요)')
+    // WARP 가입 이메일은 필수 (ERP-35)
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) list.push('WARP 가입 이메일')
     if (phone.trim() && !/^[0-9-]{9,20}$/.test(phone.trim())) list.push('연락처')
     if (!joinedOn) list.push('입실일')
     return list
-  }, [name, loginId, number, email, phone, joinedOn, invite])
+  }, [name, loginId, number, email, phone, joinedOn])
 
   const submit = async () => {
     setError(null)
@@ -272,12 +272,16 @@ export function MemberAddModal({ onClose }: { onClose: () => void }) {
 
         <div className={f.row2}>
           <label className={f.field}>
-            <span className={f.label}>이메일</span>
+            <span className={f.label}>
+              Cloudflare WARP 가입 이메일<span className={f.req}>*</span>
+            </span>
             <span className={f.input}>
               <Mail size={18} />
               <input type="email" value={email} maxLength={254} onChange={(e) => setEmail(e.target.value)} placeholder="daeun@hoseo.edu" />
             </span>
-            <span className={f.hint}>{invite ? '초대 메일을 이 주소로 보내요' : '알림 · 비밀번호 재설정에 쓰여요'}</span>
+            <span className={f.hint}>
+              연구실 사설망(WARP)에 가입할 때 쓰는 이메일이에요. WARP 접속 허용 목록에 들어가고{invite ? ', 초대 메일도 이 주소로 보내요' : ', 알림 · 비밀번호 재설정에도 쓰여요'}
+            </span>
           </label>
           <label className={f.field}>
             <span className={f.label}>연락처</span>

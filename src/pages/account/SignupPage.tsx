@@ -43,7 +43,7 @@ export function SignupPage() {
             name: f.name.trim(),
             studentNumber: f.studentNo || null,
             desiredLoginId: f.loginId,
-            email: f.email || null,
+            email: f.email.trim(),
             phone: f.phone,
             reason: f.reason,
             privacyAgreed: agree,
@@ -109,8 +109,9 @@ export function SignupPage() {
               </div>
               <div className={s.two}>
                 <label className={a.field}>
-                  이메일 (선택)
-                  <input className={s.input} type="email" value={f.email} onChange={set('email')} placeholder="example@hoseo.edu" />
+                  Cloudflare WARP 가입 이메일
+                  <input className={s.input} type="email" value={f.email} onChange={set('email')} placeholder="example@hoseo.edu" required />
+                  <span className={a.hint}>연구실 사설망(WARP)에 가입할 때 쓸 이메일이에요. 승인되면 이 이메일로 접속할 수 있어요</span>
                 </label>
                 <label className={a.field}>
                   연락처
