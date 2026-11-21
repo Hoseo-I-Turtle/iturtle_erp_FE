@@ -55,6 +55,7 @@ export const ADMIN_TAB_AUTHORITIES: Record<string, string[]> = {
   audit: ['audit-read'],
   codes: ['code-manage'],
   github: ['github-manage'],
+  cloudflare: ['member-manage'],
 }
 /** 내 역할(1-1 roles)로 볼 수 있는 관리 탭인지. 프로젝트 관리자의 권한 신청 검토는 역할로 알 수 없어 따로 본다 */
 export const canSeeAdminTab = (tab: string, myRoles: readonly string[]) =>
