@@ -89,6 +89,7 @@ const router = createBrowserRouter([
           { path: 'milestones', element: <MilestonesPage /> },
           { path: 'threads', element: <ThreadPage /> },
           { path: 'threads/new', element: <ThreadPage /> },
+          { path: 'threads/:threadId', element: <ThreadPage /> },
           { path: 'minutes', element: <MinuteListPage /> },
           { path: 'minutes/new', element: <MinuteWritePage /> },
           { path: 'minutes/:minuteId', element: <MinutesPage /> },

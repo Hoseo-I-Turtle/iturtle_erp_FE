@@ -2,6 +2,7 @@ import { Download, Ellipsis, FileText, Image, Paperclip, Pencil, Pin, PinOff, Tr
 import { Avatar, Button, Card, Chip, Empty, Note } from '../../../components/ui'
 import { Markdown } from '../../../components/markdown/Markdown'
 import type { ThreadPostView } from '../../../api/content'
+import { DocumentCards, MentionCards } from './ThreadCards'
 import s from '../ThreadPage.module.css'
 
 type Props = {
@@ -13,10 +14,12 @@ type Props = {
   onReplyChange: (v: string) => void
   onSendReply: () => void
   onTogglePin: (p: ThreadPostView) => void
+  /** 연결한 자료 바꾸기 (ERP-23) — 고칠 수 있는 글에서만 */
+  onEditDocuments?: (post: ThreadPostView) => void
 }
 
 /** 고른 글: 본문 · 첨부 · 답글 · 답글 쓰기 */
-export function PostDetail({ selected, replies, projectKey, error, reply, onReplyChange, onSendReply, onTogglePin }: Props) {
+export function PostDetail({ selected, replies, projectKey, error, reply, onReplyChange, onSendReply, onTogglePin, onEditDocuments }: Props) {
   return (
     <Card className={s.detail}>
       {error && (
@@ -63,6 +66,8 @@ export function PostDetail({ selected, replies, projectKey, error, reply, onRepl
           </div>
           <hr className={s.hr} />
           <Markdown source={selected.body} projectKey={projectKey} />
+          <MentionCards mentions={selected.mentions ?? []} />
+          <DocumentCards documents={selected.documents ?? []} onEdit={selected.canEdit && onEditDocuments ? () => onEditDocuments(selected) : undefined} />
 
           {selected.attachments.length > 0 && (
             <div className={s.files}>

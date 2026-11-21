@@ -176,7 +176,14 @@ export function useProjectList(f: ProjectListFilter) {
 
 // ───────────────────────── P-3 프로젝트 상세 ─────────────────────────
 
-type ProjectMemberRefDto = { member: MemberRef; role: 'MANAGER' | 'MEMBER' | 'FORMER'; joinedAt: string; leftAt: string | null }
+type ProjectMemberRefDto = {
+  member: MemberRef
+  role: 'MANAGER' | 'MEMBER' | 'FORMER'
+  joinedAt: string
+  leftAt: string | null
+  /** 맡은 일 태그 (ERP-4, 권한과 상관없음) */
+  tags?: string[]
+}
 /** ProjectDetailResponse */
 export type ProjectDetailDto = {
   projectId: number
@@ -206,6 +213,7 @@ export const toMembers = (d: ProjectDetailDto): (ProjectMember & { memberId: num
       name: m.member.name,
       role: m.role as 'MANAGER' | 'MEMBER',
       note: m.member.memberType === 'INTERN' ? '인턴' : undefined,
+      tags: m.tags ?? [],
     }))
 
 const detailToCard = (d: ProjectDetailDto): ProjectCard => {
@@ -252,6 +260,7 @@ type ActivityType =
   | 'MEMBER_ADDED'
   | 'MEMBER_REMOVED'
   | 'MEMBER_ROLE_CHANGED'
+  | 'MEMBER_TAGS_CHANGED'
   | 'THREAD_POSTED'
   | 'THREAD_PINNED'
   | 'THREAD_EDITED'
@@ -379,6 +388,8 @@ function activityText(a: ActivityDto, inTask: boolean) {
       return `${refTitle || '구성원'} 님을 ${ROLE_NAME[a.after ?? ''] ?? '참여자'}로 더했어요`
     case 'MEMBER_ROLE_CHANGED':
       return `${refTitle || '구성원'} 님의 역할을 ${ROLE_NAME[a.before ?? ''] ?? a.before ?? ''} → ${ROLE_NAME[a.after ?? ''] ?? a.after ?? ''}로 바꿨어요`
+    case 'MEMBER_TAGS_CHANGED':
+      return `${refTitle || '구성원'} 님의 맡은 일을 ${a.before ?? '없음'} → ${a.after ?? '없음'}로 바꿨어요`
     case 'MEMBER_REMOVED':
       return `${refTitle || '구성원'} 님을 참여자에서 뺐어요`
     case 'SETTINGS_CHANGED':
@@ -797,7 +808,38 @@ export type TaskDetailData = {
   links: TaskLink[]
   me: string
   isManager: boolean
+  /** 바로 고치기 (ERP-12): 지금 값 (ID · YYYY-MM-DD) */
+  fields: TaskFields
 }
+
+/** 작업 상세에서 고치는 칸 (T-4) */
+export type TaskFields = {
+  title: string
+  description: string
+  priority: TaskPriority
+  assigneeId: number | null
+  /** YYYY-MM-DD, 없으면 '' */
+  startOn: string
+  dueOn: string
+  labelIds: number[]
+  milestoneId: number | null
+  canEdit: boolean
+}
+/** T-4 로 보낼 칸 (보낸 것만 바뀐다, null 은 비우기) */
+export type TaskPatch = {
+  title?: string
+  description?: string | null
+  priority?: TaskPriority
+  assigneeMemberId?: number | null
+  startOn?: string | null
+  dueOn?: string | null
+  labelIds?: number[]
+  milestoneId?: number | null
+}
+
+/** 목업 작업의 'M/D' → 'YYYY-MM-DD' */
+const mockIso = (md: string | null | undefined) => (md ? `2026-${md.split('/').map((x) => x.padStart(2, '0')).join('-')}` : '')
+const MOCK_LABELS = ['알림', '프로필', '공지', '캘린더', '보안']
 
 const toComment = (c: CommentDto): TaskComment => ({
   commentId: c.commentId,
@@ -832,6 +874,18 @@ export function useTaskDetail(projectKey: string | undefined, taskKey: string | 
         links: [...extra.links],
         me: MOCK_ME,
         isManager: projectDetail.members.some((m) => m.name === MOCK_ME && m.role === 'MANAGER'),
+        fields: ((t: Task): TaskFields => ({
+          title: t.title,
+          description: extra.description,
+          priority: t.priority,
+          // 목업의 작업 만들기 후보 ID 는 projectDetail.members 순서 (useTaskFormOptions 와 같음)
+          assigneeId: t.assignee ? projectDetail.members.findIndex((m) => m.name === t.assignee) + 1 || null : null,
+          startOn: mockIso(t.startOn),
+          dueOn: mockIso(t.dueOn),
+          labelIds: t.labels.map((l) => MOCK_LABELS.indexOf(l) + 1).filter((i) => i > 0),
+          milestoneId: projectDetail.milestones.find((m) => m.name === t.milestone)?.id ?? null,
+          canEdit: true,
+        }))(findTask(taskKey)),
       }
     },
     async () => {
@@ -863,10 +917,44 @@ export function useTaskDetail(projectKey: string | undefined, taskKey: string | 
         ],
         me: me.name,
         isManager: p.permissions.canManage,
+        fields: {
+          title: t.title,
+          description: t.description ?? '',
+          priority: t.priority,
+          assigneeId: t.assignee?.memberId ?? null,
+          startOn: t.startOn ?? '',
+          dueOn: t.dueOn ?? '',
+          labelIds: t.labels.map((l) => l.labelId),
+          milestoneId: t.milestone?.milestoneId ?? null,
+          canEdit: t.permissions.canEdit,
+        },
       }
     },
   )
 }
+
+/** T-4 작업 고치기 (version 이 다르면 P101). 새 version 을 돌려준다 */
+export const updateTask = (taskKey: string, version: number, patch: TaskPatch) =>
+  api<TaskDetailDto>(`/tasks/${encodeURIComponent(taskKey)}`, { method: 'PATCH', body: { version, ...patch } }).then((t) => ({
+    version: t.version,
+    task: toTask(t),
+  }))
+
+/** T-8 체크리스트 항목 더하기 (맨 끝) */
+export const addChecklistItem = (taskKey: string, content: string) =>
+  api<ChecklistItemDto>(`/tasks/${encodeURIComponent(taskKey)}/checklist-items`, { method: 'POST', body: { content } }).then((c) => ({
+    itemId: c.itemId,
+    text: c.content,
+    done: c.done,
+  }))
+
+/** T-9 항목 글 고치기 */
+export const renameChecklistItem = (taskKey: string, itemId: number, content: string) =>
+  api<unknown>(`/tasks/${encodeURIComponent(taskKey)}/checklist-items/${itemId}`, { method: 'PATCH', body: { content } })
+
+/** T-10 항목 지우기 */
+export const deleteChecklistItem = (taskKey: string, itemId: number) =>
+  api<unknown>(`/tasks/${encodeURIComponent(taskKey)}/checklist-items/${itemId}`, { method: 'DELETE' })
 
 /** T-9 체크 */
 export const setChecklistDone = (taskKey: string, itemId: number, done: boolean) =>

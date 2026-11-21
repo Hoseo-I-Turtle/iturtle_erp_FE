@@ -1,0 +1,60 @@
+/* 마일스톤 고치기 창 (ERP-12) — 만들기 창과 같은 칸 모양 */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.label {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--brand-500);
+}
+.textarea:focus {
+  border-color: var(--brand-300);
+  box-shadow: 0 0 0 3px rgba(128, 170, 211, 0.25);
+}
+.error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--status-negative-bg);
+  font-size: var(--fs-caption);
+  color: var(--status-negative);
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.textarea {
+  padding: 10px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--brand-500);
+  font: inherit;
+  resize: vertical;
+}
+.grow {
+  flex: 1;
+}

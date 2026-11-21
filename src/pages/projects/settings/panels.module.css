@@ -126,6 +126,16 @@
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
+.statusOptions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+@media (max-width: 720px) {
+  .statusOptions {
+    grid-template-columns: 1fr 1fr;
+  }
+}
 .option {
   display: flex;
   align-items: flex-start;

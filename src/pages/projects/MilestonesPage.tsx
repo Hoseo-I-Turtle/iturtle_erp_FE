@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { CalendarRange, Clock, FlaskConical, Plus } from 'lucide-react'
+import { CalendarRange, Clock, FlaskConical, Pencil, Plus } from 'lucide-react'
 import { Button, Card, Chip, Empty, Loadable, Progress } from '../../components/ui'
 import { useProjectHeader } from '../../api/projects'
 import {
@@ -13,6 +13,7 @@ import {
 } from '../../api/milestones'
 import { findProject } from '../../mocks/projects'
 import { MilestoneCreateModal } from './MilestoneCreateModal'
+import { MilestoneEditModal } from './MilestoneEditModal'
 import s from './MilestonesPage.module.css'
 
 /** 프로젝트 › 마일스톤 탭: 목록 + 만들기 (머리의 '마일스톤 만들기' 버튼은 openMilestoneCreate 로 창을 연다) */
@@ -36,7 +37,13 @@ export function MilestonesPage() {
   return (
     <>
       <Loadable resource={list} label="마일스톤">
-        {(d) => <MilestoneListView d={d} projectKey={project.projectKey} />}
+        {(d) => (
+          <MilestoneListView
+            d={d}
+            projectKey={project.projectKey}
+            onSaved={(m) => list.setData((x) => ({ ...x, rows: x.rows.map((r) => (r.id === m.id ? m : r)) }))}
+          />
+        )}
       </Loadable>
       {creating && <MilestoneCreateModal projectKey={project.projectKey} projectName={project.name} onClose={() => setCreating(false)} />}
     </>
@@ -48,7 +55,8 @@ const todayKst = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/
 const dot = (d: string | null) => (d ? d.replace(/-/g, '.') : '')
 const daysLeft = (due: string) => Math.round((Date.parse(due) - Date.parse(todayKst())) / DAY)
 
-function MilestoneListView({ d, projectKey }: { d: MilestoneList; projectKey: string }) {
+function MilestoneListView({ d, projectKey, onSaved }: { d: MilestoneList; projectKey: string; onSaved: (m: MilestoneRow) => void }) {
+  const [editing, setEditing] = useState<MilestoneRow | null>(null)
   const open = d.rows.filter((m) => !m.closed)
   const closed = d.rows.filter((m) => m.closed)
   return (
@@ -76,15 +84,24 @@ function MilestoneListView({ d, projectKey }: { d: MilestoneList; projectKey: st
       )}
       <ul className={s.list}>
         {[...open, ...closed].map((m) => (
-          <MilestoneItem key={m.id} m={m} projectKey={projectKey} />
+          <MilestoneItem key={m.id} m={m} projectKey={projectKey} onEdit={d.canManage ? () => setEditing(m) : undefined} />
         ))}
       </ul>
+      {editing && (
+        <MilestoneEditModal
+          projectKey={projectKey}
+          milestone={editing}
+          others={open.filter((o) => o.id !== editing.id)}
+          onClose={() => setEditing(null)}
+          onSaved={onSaved}
+        />
+      )}
       {!d.canManage && <p className={s.note}>마일스톤은 프로젝트 관리자가 만들고 고쳐요.</p>}
     </Card>
   )
 }
 
-function MilestoneItem({ m, projectKey }: { m: MilestoneRow; projectKey: string }) {
+function MilestoneItem({ m, projectKey, onEdit }: { m: MilestoneRow; projectKey: string; onEdit?: () => void }) {
   const ratio = m.total ? m.done / m.total : 0
   const left = m.dueOn ? daysLeft(m.dueOn) : null
   const risky = !m.closed && left !== null && left >= 0 && left <= 14 && ratio < 0.5
@@ -103,6 +120,7 @@ function MilestoneItem({ m, projectKey }: { m: MilestoneRow; projectKey: string 
           {m.dueOn ? dot(m.dueOn) : '기한 없음'}
           {left !== null && !m.closed && left >= 0 && <em> · D-{left}</em>}
         </span>
+        {onEdit && <Button variant="icon" icon={Pencil} aria-label={`${m.name} 고치기`} onClick={onEdit} />}
       </div>
       {m.description && <p className={s.desc}>{m.description}</p>}
       <div className={s.progress}>

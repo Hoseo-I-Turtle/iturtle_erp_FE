@@ -16,6 +16,8 @@ import {
   type MinuteFormData,
 } from '../../api/minutes'
 import s from './MinuteWritePage.module.css'
+import { tagsFor, useMemberTagMap } from '../../api/memberTags'
+import { MemberTags } from './common'
 
 type Section = 'agenda' | 'discussion' | 'decisions'
 const SECTIONS: { value: Section; label: string }[] = [
@@ -39,6 +41,7 @@ export function MinuteWritePage() {
 }
 
 function WriteForm({ projectKey, data }: { projectKey: string; data: MinuteFormData }) {
+  const tagMap = useMemberTagMap(projectKey)
   const navigate = useNavigate()
   const [f, setF] = useState<MinuteForm>(data.form)
   const [section, setSection] = useState<Section>('discussion')
@@ -237,6 +240,7 @@ function WriteForm({ projectKey, data }: { projectKey: string; data: MinuteFormD
                 onClick={() => change({ attendees: f.attendees.map((x) => (x.memberId === a.memberId ? { ...x, attended: !x.attended } : x)) })}
               >
                 <Avatar name={a.name || memberName(a.memberId)} size={18} /> {a.name || memberName(a.memberId)}
+                <MemberTags tags={tagsFor(tagMap.data, a.memberId, a.name || memberName(a.memberId))} />
                 {!a.attended && <small>불참</small>}
               </button>
               <button

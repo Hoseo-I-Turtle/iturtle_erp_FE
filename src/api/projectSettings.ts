@@ -6,6 +6,7 @@ import { api, ApiError } from './client'
 import { useResource } from './useResource'
 import { findProject, projects as mockProjects } from '../mocks/projects'
 import { ME_ID, members as mockMembers } from '../mocks/members'
+import { mockTagsOf } from './memberTags'
 import { getProject, projectCategoryName, type ProjectDetailDto, type ProjectStatusLive } from './projects'
 
 const enc = encodeURIComponent
@@ -130,6 +131,8 @@ export type SettingsMember = {
   role: ProjectRoleCode
   joinedAt: string
   leftAt: string | null
+  /** 맡은 일 태그 (ERP-14) */
+  tags: string[]
 }
 export type SettingsLabel = { labelId: number; name: string; color: string; description: string | null; taskCount: number }
 export type ProjectSettings = {
@@ -171,6 +174,7 @@ export function useProjectSettings(key: string | undefined) {
           role: i < 2 ? 'MANAGER' : 'MEMBER',
           joinedAt: '2026-09-01',
           leftAt: null,
+          tags: mockTagsOf(m.name),
         })),
         ...mockMembers.slice(5, 6).map((m): SettingsMember => ({
           memberId: m.memberId,
@@ -179,6 +183,7 @@ export function useProjectSettings(key: string | undefined) {
           role: 'FORMER',
           joinedAt: '2026-09-01',
           leftAt: '2026-10-31',
+          tags: mockTagsOf(m.name),
         })),
       ]
       return {
@@ -221,6 +226,7 @@ export function useProjectSettings(key: string | undefined) {
           role: m.role,
           joinedAt: m.joinedAt?.slice(0, 10) ?? '',
           leftAt: m.leftAt?.slice(0, 10) ?? null,
+          tags: m.tags ?? [],
         })),
         labels: labels.labels,
         taskTotal: d.taskCounts.total,

@@ -11,6 +11,8 @@ import {
   type SettingsMember,
 } from '../../../api/projectSettings'
 import { removeMemberWithHandover } from '../../../api/projectLinks'
+import { setMemberTags, setMockTags, useTagSuggestions } from '../../../api/memberTags'
+import { TagEditor } from '../common'
 import { MEMBER_TYPE_NAME, type MemberType } from '../../../mocks/members'
 import { RemoveMemberDialog } from './RemoveMemberDialog'
 import s from './panels.module.css'
@@ -20,7 +22,7 @@ type Props = { settings: ProjectSettings; onChange: (p: Partial<ProjectSettings>
 const ROLE_NAME = { MANAGER: '프로젝트 관리자', MEMBER: '참여자', FORMER: '이전 참여자' } as const
 const typeName = (t: string) => MEMBER_TYPE_NAME[t as MemberType] ?? t
 
-/** 설정 › 참여자 (P-6 더하기 · P-7 역할 · P-8 빼기). 관리자는 최소 1명 (P010) */
+/** 설정 › 참여자 (P-6 더하기 · P-7 역할 · P-8 빼기 · P-8a 맡은 일 태그). 관리자는 최소 1명 (P010) */
 export function MembersPanel({ settings, onChange, onReload }: Props) {
   const options = useCreateOptions()
   const [adding, setAdding] = useState(false)
@@ -33,6 +35,10 @@ export function MembersPanel({ settings, onChange, onReload }: Props) {
   const former = settings.members.filter((m) => m.role === 'FORMER')
   const readOnly = settings.status === 'ARCHIVED' || !settings.canManage
   const managers = active.filter((m) => m.role === 'MANAGER').length
+  const suggestions = useTagSuggestions(settings.projectKey)
+  const meId = options.data?.meId
+  // 맡은 일 태그는 권한과 상관없다: 본인은 자기 것을, 프로젝트 관리자는 누구 것이든 고친다
+  const canTag = (m: SettingsMember) => settings.status !== 'ARCHIVED' && (settings.canManage || m.memberId === meId)
 
   const activeIds = new Set(active.map((m) => m.memberId))
   const candidates = (options.data?.members ?? []).filter((m) => !activeIds.has(m.memberId) && (!q || m.name.includes(q))).slice(0, 10)
@@ -61,12 +67,22 @@ export function MembersPanel({ settings, onChange, onReload }: Props) {
         patchMember(m.memberId, { role: 'FORMER', leftAt: new Date().toISOString().slice(0, 10) })
       },
     )
+  const tag = (m: SettingsMember, tags: string[]) =>
+    run(
+      m.memberId,
+      // 실서버: 저장한 뒤 참여자 · 자동 완성을 새로 불러온다 (서버가 정리한 태그로)
+      () => setMemberTags(settings.projectKey, m.memberId, tags).then((r) => (suggestions.reload(), r)),
+      () => {
+        setMockTags(m.name, tags)
+        patchMember(m.memberId, { tags })
+      },
+    )
   const add = (memberId: number, name: string, memberType: string) =>
     run(memberId, () => addProjectMember(settings.projectKey, memberId, 'MEMBER'), () =>
       onChange({
         members: [
           ...settings.members.filter((m) => m.memberId !== memberId),
-          { memberId, name, memberType, role: 'MEMBER', joinedAt: new Date().toISOString().slice(0, 10), leftAt: null },
+          { memberId, name, memberType, role: 'MEMBER', joinedAt: new Date().toISOString().slice(0, 10), leftAt: null, tags: [] },
         ],
       }),
     )
@@ -76,7 +92,7 @@ export function MembersPanel({ settings, onChange, onReload }: Props) {
       <header className={s.headRow}>
         <div className={s.head}>
           <h2>참여자 {active.length}명</h2>
-          <p>역할을 바꾸거나 뺄 수 있어요. 프로젝트 관리자는 최소 1명 있어야 해요.</p>
+          <p>역할을 바꾸거나 뺄 수 있어요. 프로젝트 관리자는 최소 1명 있어야 해요. 맡은 일 태그는 권한과 상관없이 본인 · 관리자가 달아요.</p>
         </div>
         {!readOnly && (
           <Button icon={Plus} onClick={() => setAdding(!adding)}>
@@ -109,6 +125,7 @@ export function MembersPanel({ settings, onChange, onReload }: Props) {
             <th>이름</th>
             <th>구분</th>
             <th>역할</th>
+            <th>맡은 일</th>
             <th>참여일</th>
             <th aria-label="메뉴" />
           </tr>
@@ -139,6 +156,14 @@ export function MembersPanel({ settings, onChange, onReload }: Props) {
                       <option value="MEMBER">참여자</option>
                     </select>
                   )}
+                </td>
+                <td>
+                  <TagEditor
+                    tags={m.tags}
+                    suggestions={(suggestions.data ?? []).map((t) => t.tag)}
+                    disabled={!canTag(m) || busy === m.memberId}
+                    onSave={(tags) => tag(m, tags)}
+                  />
                 </td>
                 <td className={s.muted}>{m.joinedAt.replace(/-/g, '.')}</td>
                 <td className={s.right}>

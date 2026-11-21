@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, KeyRound, Lock, TriangleAlert, Users } from 'lucide-react'
+import { CheckCircle2, Check, KeyRound, Lock, PauseCircle, PlayCircle, Sprout, TriangleAlert, Users } from 'lucide-react'
 import { Button, Card } from '../../../components/ui'
 import { whenLive } from '../../../api/useResource'
 import {
@@ -15,11 +15,20 @@ import {
   type KeyCheck,
   type ProjectSettings,
 } from '../../../api/projectSettings'
+import type { ProjectStatusLive } from '../../../api/projects'
 import s from './panels.module.css'
 
 type Props = { settings: ProjectSettings; onChange: (p: Partial<ProjectSettings>) => void }
 
-/** 설정 › 일반: 이름 · 키 · 설명 · 종류 · 기간 · 공개 범위 (P-4, 키는 P-5b) */
+/** 프로젝트 관리자가 고를 수 있는 상태 (보관은 보관 · 삭제 메뉴에서) */
+const STATUS_OPTIONS: { value: Exclude<ProjectStatusLive, 'ARCHIVED'>; label: string; hint: string; icon: typeof Sprout }[] = [
+  { value: 'PREPARING', label: '준비', hint: '아직 시작 전이에요', icon: Sprout },
+  { value: 'ACTIVE', label: '진행', hint: '주간 보고에 이 프로젝트 칸이 생겨요', icon: PlayCircle },
+  { value: 'ON_HOLD', label: '보류', hint: '잠시 멈췄어요', icon: PauseCircle },
+  { value: 'DONE', label: '완료', hint: '끝났어요 (보관은 따로)', icon: CheckCircle2 },
+]
+
+/** 설정 › 일반: 이름 · 키 · 설명 · 종류 · 기간 · 공개 범위 · 상태 (P-4, 키는 P-5b) */
 export function GeneralPanel({ settings, onChange }: Props) {
   const options = useCreateOptions()
   const [f, setF] = useState(() => pick(settings))
@@ -30,6 +39,8 @@ export function GeneralPanel({ settings, onChange }: Props) {
   const dirty = JSON.stringify(f) !== JSON.stringify(base)
   const periodBad = !!f.startsOn && !!f.endsOn && f.endsOn < f.startsOn
   const readOnly = archived || !settings.canManage
+  // 진행 ↔ 다른 상태: 주간 보고 대상(진행 중 프로젝트만 칸이 생김)이 바뀐다
+  const reportChanges = f.status !== base.status && (f.status === 'ACTIVE' || base.status === 'ACTIVE')
 
   const save = () => {
     const patch: GeneralPatch = {}
@@ -39,6 +50,7 @@ export function GeneralPanel({ settings, onChange }: Props) {
     if (f.visibility !== base.visibility) patch.visibility = f.visibility
     if (f.startsOn !== base.startsOn) patch.startsOn = f.startsOn || null
     if (f.endsOn !== base.endsOn) patch.endsOn = f.endsOn || null
+    if (f.status !== base.status) patch.status = f.status
     setSaving(true)
     setMsg(null)
     whenLive(() => updateProject(settings.projectKey, patch))
@@ -55,7 +67,7 @@ export function GeneralPanel({ settings, onChange }: Props) {
       <Card className={s.card}>
         <header className={s.head}>
           <h2>일반</h2>
-          <p>프로젝트 이름 · 설명 · 기간 · 공개 범위{archived && ' — 보관된 프로젝트는 고칠 수 없어요 (보관 · 삭제에서 풀기)'}</p>
+          <p>프로젝트 이름 · 설명 · 기간 · 공개 범위 · 상태{archived && ' — 보관된 프로젝트는 고칠 수 없어요 (보관 · 삭제에서 풀기)'}</p>
         </header>
 
         <label className={s.field}>
@@ -118,6 +130,38 @@ export function GeneralPanel({ settings, onChange }: Props) {
           </div>
         </div>
 
+        {!archived && (
+          <div className={s.field}>
+            <span className={s.label}>상태</span>
+            <div className={s.statusOptions}>
+              {STATUS_OPTIONS.map(({ value, label, hint, icon: Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  disabled={readOnly}
+                  className={f.status === value ? `${s.option} ${s.optionOn}` : s.option}
+                  onClick={() => setF({ ...f, status: value })}
+                >
+                  <Icon size={18} />
+                  <span>
+                    <strong>{label}</strong>
+                    <small>{hint}</small>
+                  </span>
+                </button>
+              ))}
+            </div>
+            {reportChanges && (
+              <p className={s.warn}>
+                <TriangleAlert size={14} />
+                {f.status === 'ACTIVE'
+                  ? '진행으로 바꾸면 참여자의 주간 보고에 이 프로젝트 칸이 생겨요.'
+                  : '진행이 아니게 되면 이번 주부터 주간 보고에 이 프로젝트 칸이 생기지 않아요 (이미 쓴 보고는 그대로).'}
+              </p>
+            )}
+            {!settings.canManage && <span className={s.hint}>상태는 프로젝트 관리자가 바꿔요</span>}
+          </div>
+        )}
+
         <div className={s.actions}>
           {msg && <span className={msg.ok ? s.okText : s.failText}>{msg.text}</span>}
           {!msg && dirty && <span className={s.muted}>저장하지 않은 변경이 있어요</span>}
@@ -142,6 +186,7 @@ const pick = (p: ProjectSettings) => ({
   startsOn: p.startsOn,
   endsOn: p.endsOn,
   visibility: p.visibility,
+  status: p.status,
 })
 
 /** 키 바꾸기 (P-5b). Vault · Jenkins 를 켠 프로젝트는 서버가 막는다 (P151) — 미리 알려 준다 */
