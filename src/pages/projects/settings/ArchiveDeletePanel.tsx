@@ -14,7 +14,6 @@ export function ArchiveDeletePanel({ settings, onChange }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const archived = settings.status === 'ARCHIVED'
-  const lab = settings.projectKey === 'LAB'
 
   const toggleArchive = () => {
     const status = archived ? 'ACTIVE' : 'ARCHIVED'
@@ -44,7 +43,7 @@ export function ArchiveDeletePanel({ settings, onChange }: Props) {
                 : '보관하면 읽기만 할 수 있어요. 작업 · 스레드 · 회의록은 그대로 남고, 목록에서는 "보관됨"에서 보여요. 언제든 되돌릴 수 있어요.'}
             </small>
           </span>
-          <Button variant="secondary" icon={archived ? ArchiveRestore : Archive} onClick={toggleArchive} disabled={busy || lab || !settings.canManage}>
+          <Button variant="secondary" icon={archived ? ArchiveRestore : Archive} onClick={toggleArchive} disabled={busy || !settings.canManage}>
             {archived ? '보관 풀기' : '보관하기'}
           </Button>
         </div>
@@ -58,12 +57,11 @@ export function ArchiveDeletePanel({ settings, onChange }: Props) {
               <strong className={s.dangerText}>프로젝트 삭제</strong>
               <small>작업 · 스레드 · 회의록 · 자료가 모두 숨겨져요. 30일 동안은 관리자가 되돌릴 수 있고, 키는 다시 쓸 수 없어요.</small>
             </span>
-            <Button variant="secondary" className={s.dangerBtn} onClick={() => setConfirm(true)} disabled={lab}>
+            <Button variant="secondary" className={s.dangerBtn} onClick={() => setConfirm(true)}>
               삭제하기
             </Button>
           </div>
         )}
-        {lab && <p className={s.muted}>연구실 운영(LAB) 프로젝트는 보관하거나 지울 수 없어요.</p>}
         {error && <p className={s.failText}>{error}</p>}
       </Card>
 
