@@ -11,7 +11,7 @@ const STEPS = [
   { title: '신청', desc: '이 페이지에서 신청서를 내요' },
   { title: '관리자 승인', desc: '입실일 · 권한을 정해 계정을 만들어요' },
   { title: '직접 연락', desc: '승인한 사람이 로그인 ID 와 임시 비밀번호를 알려 드려요' },
-  { title: '첫 로그인', desc: '연구실 망(WARP)에서 로그인하고 비밀번호를 바꿔요' },
+  { title: '첫 로그인', desc: '연구실 망(Cloudflare)에서 로그인하고 비밀번호를 바꿔요' },
 ]
 
 /** 공개 사이트의 인턴 가입 신청 (로그인 없이) */
@@ -43,7 +43,7 @@ export function SignupPage() {
             name: f.name.trim(),
             studentNumber: f.studentNo || null,
             desiredLoginId: f.loginId,
-            email: f.email || null,
+            email: f.email.trim(),
             phone: f.phone,
             reason: f.reason,
             privacyAgreed: agree,
@@ -109,8 +109,9 @@ export function SignupPage() {
               </div>
               <div className={s.two}>
                 <label className={a.field}>
-                  이메일 (선택)
-                  <input className={s.input} type="email" value={f.email} onChange={set('email')} placeholder="example@hoseo.edu" />
+                  Cloudflare 가입 이메일
+                  <input className={s.input} type="email" value={f.email} onChange={set('email')} placeholder="example@hoseo.edu" required />
+                  <span className={a.hint}>Cloudflare 에 가입할 때 쓸 이메일이에요. 승인되면 이 이메일로 연구실 망에 접속할 수 있어요</span>
                 </label>
                 <label className={a.field}>
                   연락처

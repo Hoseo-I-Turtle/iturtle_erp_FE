@@ -1,0 +1,37 @@
+/* 관리 › Cloudflare (ERP-37) */
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-default);
+  font-size: var(--fs-caption);
+}
+.email {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.link {
+  color: var(--brand-400);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.link:hover {
+  text-decoration: underline;
+}

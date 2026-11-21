@@ -61,7 +61,8 @@ function ProfileView({ data }: { data: ProfileData }) {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const dirty = JSON.stringify(form) !== JSON.stringify(saved)
-  const emailOk = !form.email || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)
+  // Cloudflare 가입 이메일 (ERP-35): 있던 것은 비울 수 없다 (M044)
+  const emailOk = form.email ? /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email) : !saved.email
   const phoneOk = !form.phone || /^[0-9-]{9,20}$/.test(form.phone)
 
   const pickPhoto = async (file?: File) => {

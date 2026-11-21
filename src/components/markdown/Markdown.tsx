@@ -3,7 +3,7 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { Code, Download, Eye, Share2, TriangleAlert } from 'lucide-react'
 import { MENTION_RE, usePeople } from '../../api/people'
-import { FENCE, THREAD_LINK, threadKey } from './threadLinks'
+import { FENCE, keyOfMatch, THREAD_LINK } from './threadLinks'
 import s from './Markdown.module.css'
 
 const escapeHtml = (v: string) => v.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
@@ -69,7 +69,7 @@ function withEmbeds(md: string, ctx: Ctx): Block[] {
   let fence = false
   for (const line of md.split('\n')) {
     if (FENCE.test(line)) fence = !fence
-    const keys = fence ? [] : [...line.matchAll(THREAD_LINK)].map((m) => threadKey(m[1], Number(m[2]))).filter((k) => embeds.has(k))
+    const keys = fence ? [] : [...line.matchAll(THREAD_LINK)].map(keyOfMatch).filter((k) => embeds.has(k))
     if (keys.length === 0) {
       buf.push(line)
       continue

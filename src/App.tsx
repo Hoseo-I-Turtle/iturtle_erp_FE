@@ -9,6 +9,7 @@ import { RoleRequestsPage } from './pages/admin/RoleRequestsPage'
 import { AuditPage } from './pages/admin/AuditPage'
 import { CodesPage } from './pages/admin/CodesPage'
 import { GithubPage } from './pages/admin/GithubPage'
+import { CloudflarePage } from './pages/admin/CloudflarePage'
 import { HomePage } from './pages/home/HomePage'
 import { NoticeDetailPage } from './pages/notices/NoticeDetailPage'
 import { NoticeListPage } from './pages/notices/NoticeListPage'
@@ -116,6 +117,7 @@ const router = createBrowserRouter([
           { path: 'audit', element: <AuditPage /> },
           { path: 'codes', element: <CodesPage /> },
           { path: 'github', element: <GithubPage /> },
+          { path: 'cloudflare', element: <CloudflarePage /> },
         ],
       },
       { path: '/profile', element: <ProfilePage /> },

@@ -1,5 +1,5 @@
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { Eye, GitBranch, Lock, Plus, Settings, Shield, User, Users, type LucideIcon } from 'lucide-react'
+import { Cloud, Eye, GitBranch, Lock, Plus, Settings, Shield, User, Users, type LucideIcon } from 'lucide-react'
 import { Button } from '../components/ui'
 import { useMe } from '../api/members'
 import { PageHeader } from './PageHeader'
@@ -15,6 +15,7 @@ const TABS: { to: string; label: string; icon: LucideIcon; action?: string }[] =
   { to: 'audit', label: '감사 로그', icon: Eye },
   { to: 'codes', label: '공통코드', icon: Settings, action: '코드 그룹 추가' },
   { to: 'github', label: 'GitHub', icon: GitBranch },
+  { to: 'cloudflare', label: 'Cloudflare', icon: Cloud },
 ]
 
 /**

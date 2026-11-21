@@ -55,6 +55,7 @@ export const ADMIN_TAB_AUTHORITIES: Record<string, string[]> = {
   audit: ['audit-read'],
   codes: ['code-manage'],
   github: ['github-manage'],
+  cloudflare: ['member-manage'],
 }
 /** 내 역할(1-1 roles)로 볼 수 있는 관리 탭인지. 프로젝트 관리자의 권한 신청 검토는 역할로 알 수 없어 따로 본다 */
 export const canSeeAdminTab = (tab: string, myRoles: readonly string[]) =>
@@ -168,6 +169,7 @@ type MemberListItem = Omit<MemberRef, 'status'> & {
   status: MemberStatus
   studentNumber: string
   loginId: string
+  email?: string | null
   joinedOn: string
   leftOn: string | null
   enabled?: boolean
@@ -202,7 +204,7 @@ const accountState = (x: { enabled?: boolean; locked?: boolean }): AdminMember['
   x.enabled === false ? 'DISABLED' : x.locked ? 'LOCKED' : 'ACTIVE'
 
 /** 목업 AdminMember + 역할 수 (목록 응답에는 역할 코드 없이 숫자만 온다) + 휴학 */
-export type AdminRow = AdminMember & { roleCount: number; onLeave?: boolean }
+export type AdminRow = AdminMember & { roleCount: number; onLeave?: boolean; /** Cloudflare 가입 이메일이 없음 (ERP-35) */ noEmail?: boolean }
 
 const toAdminRow = (x: MemberListItem): AdminRow => ({
   memberId: x.memberId,
@@ -214,6 +216,7 @@ const toAdminRow = (x: MemberListItem): AdminRow => ({
   // 졸업생 탭 = 백엔드 group=ALUMNI (GRADUATED · LEFT). 휴학(ON_LEAVE)은 재실 탭에 두고 따로 표시한다
   graduated: x.status === 'GRADUATED' || x.status === 'LEFT',
   onLeave: x.status === 'ON_LEAVE',
+  noEmail: !x.email,
   presets: (x.appliedPresets ?? []).map((p) => p.name),
   roles: [],
   roleCount: x.roleCount ?? 0,

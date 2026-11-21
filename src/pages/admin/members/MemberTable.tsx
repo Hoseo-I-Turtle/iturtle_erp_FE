@@ -61,6 +61,11 @@ export function MemberTable({ list, counts, filter, onFilter, q, onQuery, select
             <span>
               <strong>
                 {m.name}
+                {'noEmail' in m && m.noEmail && (
+                  <span className={s.conflictMark} title="Cloudflare 가입 이메일이 없어 Cloudflare 접속 허용 목록에 넣지 못해요">
+                    이메일 없음
+                  </span>
+                )}
                 {conflictIds.includes(m.memberId) && (
                   <span className={s.conflictMark} title="같이 가질 수 없는 역할을 둘 다 가지고 있어요">
                     겹치는 권한

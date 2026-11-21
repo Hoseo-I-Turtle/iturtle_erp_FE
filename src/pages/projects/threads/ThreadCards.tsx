@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, ChevronDown, EyeOff, FileText, MessagesSquare, Paperclip, Pencil } from 'lucide-react'
 import { Button } from '../../../components/ui'
 import type { ThreadDocumentCard, ThreadMentionCard } from '../../../mocks/threads'
+import { plainExcerpt } from '../../../components/markdown/threadLinks'
 import s from './cards.module.css'
 
 const VISIBILITY_NAME = { LAB: '공용', PROJECT_MEMBERS: '참여자만', PRIVATE: '나만' } as const
@@ -72,7 +73,7 @@ export function ThreadQuote({ m }: { m: ThreadMentionCard }) {
       </button>
       {open && (
         <div className={s.quoteBody}>
-          {m.excerpt ? <p className={s.excerpt}>{m.excerpt}</p> : <p className={s.cardMeta}>본문 미리 보기가 없어요.</p>}
+          {m.excerpt ? <p className={s.excerpt}>{plainExcerpt(m.excerpt)}</p> : <p className={s.cardMeta}>본문 미리 보기가 없어요.</p>}
           <Link to={`/projects/${m.projectKey}/threads/${m.threadId}`} className={s.quoteLink}>
             스레드로 가기 <ArrowRight size={14} />
           </Link>
@@ -97,7 +98,7 @@ export function MentionCards({ mentions }: { mentions: ThreadMentionCard[] }) {
               <span className={s.cardTitle}>
                 <MessagesSquare size={16} /> {m.title}
               </span>
-              {m.excerpt && <p className={s.excerpt}>{m.excerpt}</p>}
+              {m.excerpt && <p className={s.excerpt}>{plainExcerpt(m.excerpt)}</p>}
               <span className={s.cardMeta}>{[m.projectKey, m.author, m.createdAt].filter(Boolean).join(' · ')}</span>
             </Link>
           ) : (
