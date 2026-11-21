@@ -1,17 +1,18 @@
 import { List } from 'lucide-react'
 import { Avatar, Card, Select } from '../../../components/ui'
-import type { AccessOverride, AccessState, ServiceAccessView } from '../../../api/projects'
+import type { AccessOverride, AccessState, CustomRole, ServiceAccessView } from '../../../api/projects'
 import { JENKINS, opts, VAULT } from './levels'
 import s from '../ProjectSettingsPage.module.css'
 
 type Props = {
   members: ServiceAccessView['members']
+  customRoles: CustomRole[]
   state: AccessState
   onChange: (name: string, o: AccessOverride) => void
 }
 
 /** 구성원별 개별 수준 (기본값과 다르면 강조) */
-export function MemberOverridesCard({ members, state, onChange }: Props) {
+export function MemberOverridesCard({ members, customRoles, state, onChange }: Props) {
   return (
     <Card>
       <h2 className={s.h}>
@@ -26,7 +27,9 @@ export function MemberOverridesCard({ members, state, onChange }: Props) {
         </div>
         {members.map((m) => {
           const o: AccessOverride = state.members[m.name] ?? { vault: 'DEFAULT', jenkins: 'DEFAULT' }
-          const def = state.roles[m.role]
+          // 프로젝트 역할이 있으면 그 역할의 수준이 기본값 (ERP-27)
+          const custom0 = m.role === 'MEMBER' ? customRoles.find((r) => r.roleId === m.customRoleId) : undefined
+          const def = custom0 ? { vault: custom0.vault, jenkins: custom0.jenkins } : state.roles[m.role]
           const custom = o.vault !== 'DEFAULT' || o.jenkins !== 'DEFAULT'
           const set = (patch: Partial<AccessOverride>) => onChange(m.name, { ...o, ...patch })
           return (
@@ -35,7 +38,7 @@ export function MemberOverridesCard({ members, state, onChange }: Props) {
                 <Avatar name={m.name} size={24} /> {m.name}
               </span>
               <span className={s.muted}>
-                {m.role === 'MANAGER' ? '프로젝트 관리자' : '참여자'}
+                {m.role === 'MANAGER' ? '프로젝트 관리자' : (custom0?.name ?? '참여자')}
                 {m.note && ` · ${m.note}`}
               </span>
               <Select

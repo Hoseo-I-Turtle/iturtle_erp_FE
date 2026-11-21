@@ -129,6 +129,29 @@
   font-size: var(--fs-caption);
   color: var(--text-secondary);
 }
+/* 프로젝트 역할 (ERP-27) */
+.roleTools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 132px;
+}
+.roleInput {
+  width: 100%;
+  max-width: 220px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font: inherit;
+}
+.roleInput:focus {
+  outline: 2px solid var(--brand-400);
+  outline-offset: -1px;
+}
 
 .table {
   display: flex;
