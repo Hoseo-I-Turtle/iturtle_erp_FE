@@ -510,7 +510,10 @@ const BUILD_RESULT: Record<string, string> = { SUCCESS: '성공', FAILURE: '실�
 export type HomeService = {
   code: ServiceCode
   name: string
+  /** 연결의 표시 이름 (ERP-31). Penpot 프로젝트 연결이면 파일 수를 붙인다 */
   target: string
+  /** 대상 경로 (저장소 · 작업 · Vault 경로) — 마우스를 올렸을 때만 보인다 */
+  ref?: string
   status: { ok: boolean | null; text: string }
   myPerm: string | null
   url?: string
@@ -561,13 +564,10 @@ function linkToService(l: LinkDto & { service: ServiceCode }, st: LinkStatusDto 
   return {
     code: l.service,
     name: SERVICE_NAME[l.service],
-    // Penpot 파일 하나만 연결했으면(file:) 파일 수 대신 이름만, 프로젝트 연결이면 이름 · 파일 수
+    // 표시 이름을 보인다 (ERP-31). Penpot 프로젝트 연결이면 이름 · 파일 수 (파일 하나만 연결했으면 이름만)
     target:
-      l.service === 'PENPOT' && l.externalRef?.startsWith('file:')
-        ? l.displayName
-        : l.service === 'PENPOT' && st?.penpot
-          ? `${l.displayName} · 파일 ${st.penpot.fileCount}개`
-          : (l.externalRef ?? l.displayName),
+      l.service === 'PENPOT' && !l.externalRef?.startsWith('file:') && st?.penpot ? `${l.displayName} · 파일 ${st.penpot.fileCount}개` : l.displayName,
+    ref: l.service === 'PENPOT' ? undefined : (l.externalRef ?? undefined),
     status,
     myPerm: !leveled ? null : l.myAccess.granted ? `내 권한 · ${LEVEL_NAME[l.myAccess.level ?? ''] ?? l.myAccess.level ?? '있음'}` : '내 권한 · 없음',
     url: l.url,
