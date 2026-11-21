@@ -138,6 +138,25 @@ type ThreadItem = {
   replyCount: number
   lastActivityAt: string
   attachments: FileRef[]
+  /** 연결한 자료실 자료 (ERP-18) */
+  documents?: {
+    documentId: number
+    available: boolean
+    title: string | null
+    categoryName: string | null
+    visibility: 'LAB' | 'PROJECT_MEMBERS' | 'PRIVATE' | null
+    author: MemberRef | null
+  }[]
+  /** 본문에 링크한 다른 스레드 (ERP-20) */
+  mentions?: {
+    projectKey: string
+    threadId: number
+    available: boolean
+    title: string | null
+    excerpt: string | null
+    author: MemberRef | null
+    createdAt: string | null
+  }[]
   convertedTask: TaskRef | null
   permissions: { canEdit: boolean; canDelete: boolean; canPin: boolean }
 }
@@ -179,6 +198,9 @@ const toThreadPost = (t: ThreadItem): ThreadPostView => ({
     url: fileUrl(f.publicId),
   })),
   replies: [],
+  documents: (t.documents ?? []).map((d) => ({ ...d, author: d.author?.name ?? null })),
+  mentions: (t.mentions ?? []).map((m) => ({ ...m, author: m.author?.name ?? null, createdAt: m.createdAt ? ago(m.createdAt) : null })),
+  canEdit: t.permissions.canEdit,
 })
 
 /** 스레드 화면: 고정 글 + 최근 답글 순 글 목록 */
@@ -221,14 +243,87 @@ const toReply = (c: Comment): ThreadReply => ({
   body: c.deleted || c.body === null ? '_삭제된 댓글입니다_' : c.body,
 })
 
-/** H-2 글쓰기 */
-export async function createThread(projectKey: string, title: string, body: string) {
+/** H-2 글쓰기. documentIds: 연결할 자료실 자료 (공용 · 이 프로젝트 자료, 10개 — P139 · P140) */
+export async function createThread(projectKey: string, title: string, body: string, documentIds: number[] = []) {
   const t = await api<ThreadItem>(`/projects/${projectKey}/threads`, {
     method: 'POST',
-    body: { title: title || null, body, attachmentFileIds: [] },
+    body: { title: title || null, body, attachmentFileIds: [], documentIds },
   })
   return toThreadPost(t)
 }
+
+/** H-4 연결한 자료 바꾸기 (통째로, 빈 목록이면 모두 뺌) */
+export async function updateThreadDocuments(projectKey: string, threadId: number, documentIds: number[]) {
+  const t = await api<ThreadItem>(`/projects/${projectKey}/threads/${threadId}`, { method: 'PATCH', body: { documentIds } })
+  return toThreadPost(t)
+}
+
+/** 스레드에 걸 수 있는 자료 후보: 이 프로젝트 자료(공용 · 참여자만) + 공용 자료. "나만 보기" 는 뺀다 */
+export type LinkableDocument = { documentId: number; title: string; categoryName: string; visibility: 'LAB' | 'PROJECT_MEMBERS'; author: string; inProject: boolean }
+type DocumentPickDto = {
+  documentId: number
+  title: string
+  categoryCode: string
+  categoryName: string | null
+  visibility: 'LAB' | 'PROJECT_MEMBERS' | 'PRIVATE'
+  author: MemberRef | null
+}
+const MOCK_LINKABLE: LinkableDocument[] = [
+  { documentId: 1, title: '11/17 주간 회의 자료', categoryName: '발표자료', visibility: 'PROJECT_MEMBERS', author: '박지훈', inProject: true },
+  { documentId: 2, title: 'SSO 로그인 흐름도', categoryName: '개발 문서', visibility: 'LAB', author: '김민서', inProject: true },
+  { documentId: 5, title: '연구실 발표 템플릿', categoryName: '양식', visibility: 'LAB', author: '박제민', inProject: false },
+]
+export function useLinkableDocuments(projectKey: string, keyword: string) {
+  const q = keyword.trim()
+  return useResource<LinkableDocument[]>(
+    ['linkable-documents', projectKey, q.length >= 2 ? q : ''],
+    () => MOCK_LINKABLE.filter((d) => q.length < 2 || d.title.includes(q)),
+    async () => {
+      const keywordQuery = q.length >= 2 ? q : undefined
+      const [inProject, lab] = await Promise.all([
+        api<{ pinned: DocumentPickDto[]; page: PageResponse<DocumentPickDto> }>('/documents', { query: { projectKey, keyword: keywordQuery, size: 50 } }),
+        api<{ pinned: DocumentPickDto[]; page: PageResponse<DocumentPickDto> }>('/documents', { query: { keyword: keywordQuery, size: 50 } }),
+      ])
+      const seen = new Set<number>()
+      const out: LinkableDocument[] = []
+      const push = (d: DocumentPickDto, own: boolean) => {
+        if (seen.has(d.documentId) || d.visibility === 'PRIVATE' || (!own && d.visibility !== 'LAB')) return
+        seen.add(d.documentId)
+        out.push({ documentId: d.documentId, title: d.title, categoryName: d.categoryName ?? d.categoryCode, visibility: d.visibility, author: d.author?.name ?? '알 수 없음', inProject: own })
+      }
+      ;[...inProject.pinned, ...inProject.page.content].forEach((d) => push(d, true))
+      ;[...lab.pinned, ...lab.page.content].forEach((d) => push(d, false))
+      return out
+    },
+  )
+}
+
+/** 언급할 스레드 고르기 (ERP-21): 2자 미만이면 이 프로젝트 최근 글(H-1), 2자 이상이면 검색(H-1b, 여러 프로젝트) */
+export type MentionCandidate = { projectKey: string; threadId: number; title: string; author: string; ago: string }
+export function useMentionCandidates(projectKey: string, keyword: string, enabled: boolean) {
+  const q = keyword.trim()
+  const titleOf = (t: { title: string | null; body: string }) => t.title ?? (t.body.split('\n').find((l) => l.trim()) ?? '스레드 글').slice(0, 60)
+  return useResource<MentionCandidate[]>(
+    ['mention-candidates', projectKey, q.length >= 2 ? q : '', enabled],
+    () =>
+      threadPosts
+        .filter((p) => q.length < 2 || (p.title ?? p.body).includes(q))
+        .slice(0, 10)
+        .map((p) => ({ projectKey, threadId: p.postId, title: titleOf(p), author: p.author, ago: p.ago })),
+    async () => {
+      if (!enabled) return []
+      if (q.length < 2) {
+        const list = await api<ThreadListResponse>(`/projects/${projectKey}/threads`, { query: { size: 10 } })
+        return [...list.pinned, ...list.page.content].slice(0, 10).map((t) => ({ projectKey, threadId: t.threadId, title: titleOf(t), author: t.author?.name ?? '', ago: ago(t.lastActivityAt) }))
+      }
+      const page = await api<PageResponse<ThreadItem & { project?: { projectKey: string } }>>('/projects/threads', { query: { keyword: q, size: 10 } })
+      return page.content.map((t) => ({ projectKey: t.project?.projectKey ?? projectKey, threadId: t.threadId, title: titleOf(t), author: t.author?.name ?? '', ago: ago(t.createdAt) }))
+    },
+  )
+}
+
+/** 본문에 넣을 스레드 링크 (서버가 이 주소를 미리보기 카드로 바꾼다) */
+export const threadLink = (c: { projectKey: string; threadId: number; title: string }) => `[${c.title.replace(/[[\]]/g, '')}](/projects/${c.projectKey}/threads/${c.threadId})`
 
 /** H-4 상단 고정 · 해제. 제목 없는 글을 고정할 때는 title 을 함께 보낸다 */
 export async function pinThread(projectKey: string, threadId: number, pinned: boolean, title?: string) {

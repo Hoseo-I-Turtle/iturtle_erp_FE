@@ -8,6 +8,7 @@ import {
   pinThread,
   replyToThread,
   savePinnedOrder,
+  updateThreadDocuments,
   useThreadBoard,
   useThreadReplies,
   type ThreadBoard,
@@ -17,6 +18,7 @@ import { PinnedPostsCard } from './threads/PinnedPostsCard'
 import { PostDetail } from './threads/PostDetail'
 import { PostList } from './threads/PostList'
 import { ThreadComposer } from './threads/ThreadComposer'
+import { DocumentPicker } from './threads/DocumentPicker'
 import s from './ThreadPage.module.css'
 import { useProjectHeader } from '../../api/projects'
 
@@ -41,12 +43,23 @@ function ThreadView({ board, d, projectKey, projectName }: ViewProps) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const composing = pathname.endsWith('/threads/new')
+  // /threads/{id} (언급 카드 · 링크로 들어옴) 이면 그 글을 고른다
+  const { threadId } = useParams()
+  const linkedId = threadId && /^\d+$/.test(threadId) ? Number(threadId) : undefined
   const base = `/projects/${projectKey}/threads`
   const ME = d.meName
 
   const { posts } = d
   const setPosts = (f: (ps: ThreadPostView[]) => ThreadPostView[]) => board.setData((x) => ({ ...x, posts: f(x.posts) }))
-  const [selectedId, setSelectedId] = useState(posts[0]?.postId ?? 0)
+  const [selectedId, setSelectedId] = useState(linkedId ?? posts[0]?.postId ?? 0)
+  // 다른 글 링크로 옮겨 오면 그 글을 고른다 (렌더 중 파생 — 이전 주소와 비교)
+  const [seenLinkedId, setSeenLinkedId] = useState(linkedId)
+  if (linkedId !== seenLinkedId) {
+    setSeenLinkedId(linkedId)
+    if (linkedId !== undefined) setSelectedId(linkedId)
+  }
+  const [editingDocs, setEditingDocs] = useState<ThreadPostView | null>(null)
+  const [savingDocs, setSavingDocs] = useState(false)
   const [pinnedOnly, setPinnedOnly] = useState(false)
   const [dragId, setDragId] = useState<number | null>(null)
   const [reply, setReply] = useState('')
@@ -152,16 +165,47 @@ function ThreadView({ board, d, projectKey, projectName }: ViewProps) {
         onReplyChange={setReply}
         onSendReply={sendReply}
         onTogglePin={togglePin}
+        onEditDocuments={setEditingDocs}
       />
+
+      {editingDocs && (
+        <DocumentPicker
+          projectKey={projectKey}
+          value={(editingDocs.documents ?? []).map((x) => ({ documentId: x.documentId, title: x.title ?? '볼 수 없는 자료' }))}
+          saving={savingDocs}
+          onClose={() => setEditingDocs(null)}
+          onSave={async (picked) => {
+            const post = editingDocs
+            setSavingDocs(true)
+            setError(null)
+            try {
+              const saved = await whenLive(() => updateThreadDocuments(projectKey, post.postId, picked.map((x) => x.documentId)))
+              update(post.postId, (x) =>
+                saved
+                  ? { ...saved, replies: x.replies }
+                  : {
+                      ...x,
+                      documents: picked.map((d) => x.documents?.find((o) => o.documentId === d.documentId) ?? { documentId: d.documentId, available: true, title: d.title, categoryName: null, visibility: null, author: null }),
+                    },
+              )
+              setEditingDocs(null)
+            } catch (e) {
+              fail(e)
+            } finally {
+              setSavingDocs(false)
+            }
+          }}
+        />
+      )}
 
       {composing && (
         <ThreadComposer
           projectName={projectName}
           projectKey={projectKey}
           onClose={() => navigate(base)}
-          onSubmit={async (title, body) => {
+          onSubmit={async (title, body, documentIds) => {
             // 실서버는 만든 글을 받아 넣고, 목업은 그 자리에서 만든다
-            const saved = await whenLive(() => createThread(projectKey, title, body))
+            const saved = await whenLive(() => createThread(projectKey, title, body, documentIds))
             const post: ThreadPostView = saved ?? {
               postId: Math.max(0, ...posts.map((p) => p.postId)) + 1,
               title: title || null,
@@ -173,6 +217,7 @@ function ThreadView({ board, d, projectKey, projectName }: ViewProps) {
               replyCount: 0,
               attachments: [],
               replies: [],
+              canEdit: true,
             }
             board.setData((x) => ({ ...x, posts: [post, ...x.posts], total: saved ? x.total + 1 : x.total }))
             setSelectedId(post.postId)
