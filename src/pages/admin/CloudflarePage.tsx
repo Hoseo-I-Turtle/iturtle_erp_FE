@@ -126,7 +126,7 @@ function CloudflareView({ data, res }: { data: CloudflareAccess; res: Resource<C
                   <Avatar name={m.name} size={22} /> {m.name}
                   <small className={a.muted}>@{m.loginId}</small>
                 </span>
-                <Link to="/admin/members" className={s.link}>
+                <Link to={`/admin/members?member=${m.memberId}`} className={s.link}>
                   이메일 넣기 →
                 </Link>
               </div>
