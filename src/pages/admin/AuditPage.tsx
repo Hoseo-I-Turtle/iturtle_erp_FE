@@ -24,6 +24,7 @@ const CAT_TONE: Record<AuditCategoryView, string> = {
   구성원: s.cBlue,
   가입: s.cBlue,
   외부: s.cGray,
+  회계: s.cOrange,
 }
 
 /** CSV 한 칸: 쉼표 · 따옴표 · 줄바꿈이 있으면 따옴표로 감싼다 */

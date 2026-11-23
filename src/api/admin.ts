@@ -674,7 +674,7 @@ export type AuditFilter = {
   page: number
 }
 /** 목업 분류 + 백엔드에만 있는 분류 (SIGNUP · EXTERNAL) */
-export type AuditCategoryView = AuditCategory | '가입' | '외부'
+export type AuditCategoryView = AuditCategory | '가입' | '외부' | '회계'
 export type AuditRow = Omit<AuditLog, 'category'> & { category: AuditCategoryView; loginId: string | null }
 export type AuditData = { logs: AuditRow[]; totalPages: number }
 
@@ -688,6 +688,7 @@ const CAT_CODE: Record<AuditCategoryView, string> = {
   프로젝트: 'PROJECT',
   콘텐츠: 'CONTENT',
   외부: 'EXTERNAL',
+  회계: 'LEDGER',
   로그인: 'LOGIN',
 }
 /** 실서버 거르기의 분류 선택지 */
@@ -767,6 +768,13 @@ const ACTION_LABEL: Record<string, string> = {
   GITHUB_ORG_REMOVED: 'GitHub 조직에서 뺌',
   CLOUDFLARE_ACCESS_ADDED: 'Cloudflare 정책에 넣음',
   CLOUDFLARE_ACCESS_REMOVED: 'Cloudflare 정책에서 뺌',
+  LEDGER_BOOK_CREATED: '장부 만듦',
+  LEDGER_BOOK_UPDATED: '장부 고침',
+  LEDGER_HOLDER_CHANGED: '계좌 주인 넘김',
+  LEDGER_ENTRY_CREATED: '거래 적음',
+  LEDGER_ENTRY_UPDATED: '거래 고침',
+  LEDGER_ENTRY_DELETED: '거래 지움',
+  LEDGER_REIMBURSED: '먼저 낸 돈 돌려줌',
   SSH_GRANTED: 'SSH 허용',
   SSH_REVOKED: 'SSH 허용 뺌',
   LOGIN_SUCCEEDED: '로그인',
@@ -1176,7 +1184,8 @@ const MOCK_PREFS: NotiPref[] = [
   { key: 'assign', label: '작업 배정 · @멘션', locked: false, enabled: true },
   { key: 'watch', label: '구독한 작업 변경', locked: false, enabled: true },
   { key: 'poll', label: '모임 날짜 · 투표 마감', locked: false, enabled: true },
-  { key: 'noticeComment', label: '공지 댓글', locked: false, enabled: false },
+  { key: 'noticeComment', label: '댓글 (공지 · 보고 · 정책)', locked: false, enabled: false },
+  { key: 'ledger', label: '회계 장부', locked: false, enabled: true },
 ]
 const toForm = (m: MeDto): ProfileForm => ({ email: m.email ?? '', phone: m.phone ?? '', phonePublic: m.phonePublic, intro: m.intro ?? '' })
 const toPrefs = (n: NotiSettingsDto): NotiPref[] => n.groups.map((g) => ({ key: g.group, label: g.label, locked: g.mandatory, enabled: g.enabled }))

@@ -1181,11 +1181,14 @@ export type NotiItem = Omit<Notification, 'day'> & { day: string }
 function notiType(t: string): NotiType {
   if (t === 'MENTIONED') return 'MENTION'
   if (t === 'TASK_ASSIGNED' || t === 'MINUTE_ACTION_ASSIGNED' || t === 'PROJECT_MEMBER_ADDED') return 'ASSIGN'
-  if (t === 'TASK_WATCH' || t === 'TASK_DUE' || t === 'THREAD_REPLY') return 'TASK'
+  // 정책 댓글은 프로젝트 묶음 (작업 · 스레드와 같이 거른다)
+  if (t === 'TASK_WATCH' || t === 'TASK_DUE' || t === 'THREAD_REPLY' || t === 'POLICY_COMMENT') return 'TASK'
   if (t === 'NOTICE_MUST_READ' || t === 'NOTICE_COMMENT') return 'NOTICE'
   if (t === 'POLL_OPENED' || t === 'POLL_CLOSING') return 'VOTE'
   if (t.startsWith('MEETING_POLL_') || t.startsWith('EVENT_')) return 'CALENDAR'
   if (t.startsWith('REPORT_')) return 'REPORT'
+  // 회계 장부: 먼저 낸 돈 돌려 달라는 요청 · 돌려받음 · 계좌 주인 넘겨받음
+  if (t.startsWith('LEDGER_')) return 'LEDGER'
   return 'ACCESS'
 }
 
@@ -1206,6 +1209,8 @@ const NOTI_FALLBACK: Record<string, string> = {
   TASK: '/projects',
   THREAD: '/projects',
   MINUTE: '/projects',
+  POLICY: '/projects',
+  LEDGER: '/ledger',
   REPORT: '/reports',
   ACCESS_REQUEST: '/admin/role-requests',
   SIGNUP_APPLICATION: '/admin/signups',
