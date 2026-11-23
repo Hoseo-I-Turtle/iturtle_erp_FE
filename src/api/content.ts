@@ -867,6 +867,9 @@ export function useGithubActivity(weekStartOn: string, memberId: number | null |
 export type ReportView = {
   reportId: number
   author: string
+  /** 작성자 · 주 — GitHub 활동(WR-6)을 부를 때 (ERP-39) */
+  memberId: number | null
+  weekStartOn: string
   status: 'DRAFT' | 'SUBMITTED' | 'CONFIRMED'
   late: boolean
   note: string
@@ -883,6 +886,8 @@ export type ReportView = {
 const toReportView = (r: ReportDetail): ReportView => ({
   reportId: r.reportId ?? 0,
   author: r.member.name ?? '알 수 없음',
+  memberId: r.member.memberId ?? null,
+  weekStartOn: r.weekStartOn,
   status: r.status,
   late: r.late,
   note: r.commonNote ?? '',
@@ -904,6 +909,8 @@ export function useReportView(reportId: number | null) {
       return {
         reportId: reportId ?? 0,
         author: own ? '김민서' : '박지훈',
+        memberId: own ? 2 : 3,
+        weekStartOn: reportWeeks()[reportWeeks().length - 1].weekStartOn,
         status: 'SUBMITTED',
         late: false,
         note: own ? myReport.note : '',
