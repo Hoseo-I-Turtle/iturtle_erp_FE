@@ -37,7 +37,7 @@ export const projectDetail = {
   ],
   upcoming: [
     { title: 'DEFME-44 OIDC 로그아웃 테스트', when: '11/18', color: 'var(--status-warning-text)' },
-    { title: '중간 점검 회의', when: '11/26 14:00', color: 'var(--brand-400)' },
+    { title: '중간 점검 회의', when: '11/26 14:00', color: 'var(--accent-2)' },
     { title: '마일스톤 v1.2 배포', when: '12/1', color: 'var(--status-negative)' },
   ],
 }

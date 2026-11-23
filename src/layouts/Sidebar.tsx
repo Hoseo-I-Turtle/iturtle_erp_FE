@@ -1,4 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
+import { ThemeDecor } from '../components/theme/ThemeDecor'
+import { ThemeObjects } from '../components/theme/ThemeObjects'
 import { Database, LogOut, Server, Settings } from 'lucide-react'
 import { clearDataMode, MODE_SWITCHABLE, type DataMode } from '../lib/dataMode'
 import { Avatar, BrandLogo } from '../components/ui'
@@ -22,6 +24,8 @@ export function Sidebar({ mode }: { mode: DataMode }) {
 
   return (
     <aside className={s.sidebar}>
+      <ThemeDecor area="sidebar" />
+      <ThemeObjects slot="sidebar" />
       <NavLink to="/" className={`${s.logo} ${s.brand}`} aria-label="iturtle 홈">
         <BrandLogo height={48} gap={19} />
       </NavLink>
@@ -69,7 +73,7 @@ export function Sidebar({ mode }: { mode: DataMode }) {
           <div className={s.userName}>{me?.name ?? ''}</div>
           <div className={s.userMeta}>{me ? `${MEMBER_TYPE_NAME[me.memberType]} · ${STATUS_NAME[me.status]}` : ''}</div>
         </div>
-        <NavLink to="/profile" aria-label="내 프로필 설정" title="내 프로필" className={s.userSettings}>
+        <NavLink to="/settings" aria-label="설정" title="설정" className={s.userSettings}>
           <Settings size={18} strokeWidth={2} />
         </NavLink>
         <button type="button" aria-label="로그아웃" title="로그아웃" className={s.userSettings} onClick={signOut}>

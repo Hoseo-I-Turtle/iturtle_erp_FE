@@ -20,11 +20,11 @@
 }
 .reqOpen {
   background: var(--surface-tint);
-  border-color: var(--brand-400);
+  border-color: var(--accent-2);
 }
 .row {
   font-size: var(--fs-caption);
-  color: var(--brand-500);
+  color: var(--text-body);
   min-height: 60px;
 }
 .who {
@@ -67,7 +67,7 @@
   border: 1px solid var(--border-default);
   border-radius: 10px;
   font-size: var(--fs-caption);
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .until input {
   border: 0;

@@ -163,7 +163,7 @@
   padding: 1px 7px;
   border-radius: var(--radius-full);
   background: var(--status-negative);
-  color: #fff;
+  color: var(--text-on-dark);
   font-size: 10px;
   font-weight: 600;
   white-space: nowrap;
@@ -320,15 +320,15 @@
 }
 .stDoing {
   background: var(--brand-400);
-  color: #fff;
+  color: var(--text-on-dark);
 }
 .stReview {
-  background: #f5c77e;
-  color: #6b4200;
+  background: var(--status-review);
+  color: var(--status-review-text);
 }
 .stDone {
   background: #bfe9d2;
-  color: #1e7d4f;
+  color: var(--status-positive-text);
 }
 .late {
   box-shadow: inset 0 0 0 2px var(--status-negative);
@@ -340,14 +340,14 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: #fff;
+  background: var(--surface-card);
   color: var(--brand-500);
   font-size: 9px;
   font-weight: 600;
 }
 .stTodo .avatar {
   background: var(--brand-400);
-  color: #fff;
+  color: var(--text-on-dark);
 }
 .barText {
   overflow: hidden;
@@ -422,7 +422,7 @@
   padding: 12px 14px;
   border-radius: var(--radius-md);
   background: var(--text-primary);
-  color: #fff;
+  color: var(--text-on-dark);
   box-shadow: 0 8px 24px rgba(0, 15, 34, 0.25);
   white-space: normal;
   pointer-events: none;
@@ -467,7 +467,7 @@
   background: var(--brand-500);
 }
 .msClosed {
-  background: #e3f6ec;
+  background: var(--status-positive-bg);
 }
 .msClosed i {
   background: var(--status-positive);
@@ -499,7 +499,7 @@
   transform: translateX(calc(-100% - 12px));
 }
 .msDueDone {
-  color: #1e7d4f;
+  color: var(--status-positive-text);
 }
 
 /* ---------- 담당자별 ---------- */
@@ -522,7 +522,7 @@
   place-items: center;
   border-radius: 50%;
   background: var(--brand-400);
-  color: #fff;
+  color: var(--text-on-dark);
   font-size: 12px;
   font-weight: 600;
 }
@@ -620,7 +620,7 @@
   color: var(--brand-500);
 }
 .stack .stackOn {
-  color: #fff;
+  color: var(--text-on-dark);
 }
 .stackDraft {
   background: var(--surface-card);
@@ -684,7 +684,7 @@
   padding: 8px 14px;
   border-radius: var(--radius-md);
   background: var(--brand-500);
-  color: #fff;
+  color: var(--text-on-dark);
   font-size: var(--fs-caption);
   font-weight: 500;
   text-decoration: none;
@@ -717,7 +717,7 @@
   box-shadow: inset 0 0 0 2px var(--status-negative);
 }
 .lg .lgOver {
-  background: #fbd5d7;
+  background: var(--status-negative-bg);
 }
 .lgDiamond {
   width: 9px;
@@ -877,7 +877,7 @@
   padding: 6px 10px;
   border-radius: 8px;
   background: var(--brand-500);
-  color: #fff;
+  color: var(--text-on-dark);
   font-size: 12px;
   font-weight: 500;
 }
@@ -969,7 +969,7 @@
   outline: 0;
 }
 .calCell:hover {
-  background: #f8fbfe;
+  background: var(--surface-sunken);
 }
 .calCell:focus-visible {
   box-shadow: inset 0 0 0 2px var(--brand-300);
@@ -1017,7 +1017,7 @@
   padding: 0 4px;
   border-radius: var(--radius-full);
   background: var(--status-negative);
-  color: #fff;
+  color: var(--text-on-dark);
 }
 .calItems {
   display: flex;
@@ -1062,7 +1062,7 @@
 .calMs {
   overflow: hidden;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-on-dark);
   background: var(--brand-500);
 }
 .calMs span {
@@ -1070,8 +1070,8 @@
   text-overflow: ellipsis;
 }
 .calMsDone {
-  color: #1e7d4f;
-  background: #e3f6ec;
+  color: var(--status-positive-text);
+  background: var(--status-positive-bg);
 }
 .calTask span {
   font-weight: 500;
@@ -1136,8 +1136,8 @@
 }
 .calEventDeadline {
   border-left-color: #f5b451;
-  background: #fff1dc;
-  color: #b26a00;
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
 }
 .calEventLeave {
   border-left-color: var(--brand-200);
@@ -1170,7 +1170,7 @@
 }
 .lg .lgDeadline {
   border-left-color: #f5b451;
-  background: #fff1dc;
+  background: var(--status-warning-bg);
 }
 .lg .lgLeave {
   border-left-color: var(--brand-200);
@@ -1191,7 +1191,7 @@
   padding: 2px 8px;
   border-radius: 6px;
   background: var(--brand-500);
-  color: #fff;
+  color: var(--text-on-dark);
   font-size: 11px;
   font-weight: 500;
 }

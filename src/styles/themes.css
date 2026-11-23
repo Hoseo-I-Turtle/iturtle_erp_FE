@@ -1,0 +1,206 @@
+/*
+ * 테마 — tokens.css 의 기본값 중 바꿀 것만 다시 적는다.
+ * <html data-theme="이름"> 으로 켠다 (lib/theme.ts). 기본 테마는 data-theme 이 없다.
+ *
+ * 한 테마는 세 층으로 나뉜다. 서로 섞지 않는다.
+ *   1) 틀의 색 (이 파일)        : 바탕 · 카드 · 사이드바 · 강조색 · 글자. 늘 켜져 있다.
+ *   2) 장식 오브젝트            : 고래 · 산호 · 전구 · 눈송이 같은 그림. components/theme/ThemeDecor.tsx
+ *                                  <html data-decor="on"> 일 때만. 카드 테두리 무늬도 여기에 속한다 (아래 [data-decor='on'] 묶음).
+ *   3) 마우스 효과              : 방울 · 눈 · 빛. components/theme/MouseEffects.tsx, <html data-effects="on"> 일 때만.
+ *
+ * 바다 · 크리스마스의 색은 theme-refs/ 의 참고 이미지에서 뽑았다 (theme-refs/<테마>/colors.md).
+ */
+
+/* ================= 바다 ================= */
+[data-theme='ocean'] {
+  --accent-deep: #053763;
+  --accent: #04335e; /* 헤더 버튼 */
+  --accent-2: #185886;
+  --accent-3: #4486cc;
+  --accent-line: #54a3d3;
+  --accent-soft: #a8e1fa; /* 칩 */
+
+  --surface-page: #90d1f5;
+  --page-bg: linear-gradient(180deg, #bbeffd 0%, #8fd0f4 38%, #6fbbe6 100%);
+  --surface-card: #e9f6fe;
+  --surface-soft: #dcf0fd;
+  --surface-sunken: #e2f3fe;
+  --surface-tint: #c5e8fb;
+  --surface-unread: #d3edfc;
+  --surface-disabled: #dbe9f2;
+  --surface-overlay: rgba(5, 55, 99, 0.5);
+
+  --border-default: #b7dcf3;
+  --border-soft: #cfe8f8;
+  --focus-ring: rgba(84, 163, 211, 0.3);
+
+  --text-primary: #04284a;
+  --text-body: #0b3d68;
+  --text-secondary: #2c63a0;
+  --text-muted: #4a86b8;
+  --text-faint: #7fb4da;
+  --text-disabled: #8fb0c8;
+  --text-on-dark-muted: #a8e1fa;
+  --page-title: #04284a;
+  --page-subtitle: #0b3d68;
+
+  --status-positive: #53c397;
+  --status-positive-text: #1c7f5d;
+  --status-positive-bg: #cdeee0;
+  --status-negative: #e8504c;
+  --status-negative-bg: #f6dcdf;
+  --status-negative-bg-soft: #fbecee;
+  --status-negative-border: #eeb3b6;
+  --status-warning-text: #a8640a;
+  --status-warning-bg: #f8e5c9;
+
+  --sidebar-from: #1f6286;
+  --sidebar-to: #053763;
+  --sidebar-text: #cfeefc;
+  --sidebar-text-strong: #ffffff;
+  --sidebar-hover: rgba(146, 223, 252, 0.14);
+  --sidebar-active: #92dffc; /* 밝은 물빛 알약 */
+  --sidebar-active-text: #053763;
+  --sidebar-card: #104c7c;
+  --sidebar-badge: #b0ebfc;
+  --sidebar-badge-text: #053763;
+
+  --hero-from: #1c82bf;
+  --hero-to: #053968;
+
+  --shadow-card: 0 6px 20px rgba(5, 55, 99, 0.16);
+  --shadow-floating: 0 14px 36px rgba(5, 55, 99, 0.28);
+}
+
+/* ================= 크리스마스 ================= */
+[data-theme='christmas'] {
+  --accent-deep: #053522;
+  --accent: #0a5a3a; /* 헤더 버튼 · 주 버튼 (초록) */
+  --accent-2: #0f7a4d;
+  --accent-3: #2f7d57;
+  --accent-line: #d9a441; /* 금색 */
+  --accent-soft: #c7dcfa; /* 칩 */
+
+  --surface-page: #750d11;
+  --page-bg: linear-gradient(180deg, #6c0a0d 0%, #7e0e11 100%); /* 빨강 바탕 (theme-refs/christmas/christmas-home-v3.png) */
+  --surface-card: #fdefe0; /* 크림색 */
+  --surface-soft: #fbe4d2;
+  --surface-sunken: #fcead9;
+  --surface-tint: #f7d6c0;
+  --surface-unread: #fadfcd;
+  --surface-disabled: #efe2db;
+  --surface-overlay: rgba(2, 20, 13, 0.62);
+
+  --border-default: #efcdb6;
+  --border-soft: #f6dfce;
+  --focus-ring: rgba(217, 164, 65, 0.35);
+
+  --text-primary: #1f120d;
+  --text-body: #3d241a;
+  --text-secondary: #7a4532;
+  --text-muted: #9b6f5e;
+  --text-faint: #c4a394;
+  --text-disabled: #b9a59c;
+  --text-on-dark-muted: #cfe3d2;
+  --page-title: #ffffff; /* 빨강 바탕 위 */
+  --page-subtitle: #f6d9d2;
+
+  --status-positive: #208849;
+  --status-positive-text: #1b6f3c;
+  --status-positive-bg: #d7ebd9;
+  --status-negative: #c5262c;
+  --status-negative-bg: #f9cdc6;
+  --status-negative-bg-soft: #fde1dc;
+  --status-negative-border: #f09c94;
+  --status-warning-text: #96590a;
+  --status-warning-bg: #f9d8a6;
+  --status-review: #fde1b2;
+
+  --sidebar-from: #022c1f;
+  --sidebar-to: #022d1f;
+  --sidebar-text: #d7e6da;
+  --sidebar-text-strong: #ffffff;
+  --sidebar-hover: rgba(255, 255, 255, 0.08);
+  --sidebar-active: #fce9d3;
+  --sidebar-active-text: #3a1512;
+  --sidebar-card: #0b3a29;
+  --sidebar-badge: #d33235;
+  --sidebar-badge-text: #ffffff;
+
+  --hero-from: #0a3a2a;
+  --hero-to: #022c1d;
+
+  --shadow-card: 0 6px 20px rgba(0, 12, 8, 0.35);
+  --shadow-floating: 0 14px 36px rgba(0, 12, 8, 0.5);
+}
+/* 장식을 켰을 때만: 카드 테두리가 지팡이 사탕 무늬 */
+[data-theme='christmas'][data-decor='on'] {
+  --card-frame-width: 5px;
+  --card-frame: repeating-linear-gradient(-45deg, #e3262e 0 9px, #fff6ec 9px 18px);
+}
+
+/* ================= 다크 ================= */
+[data-theme='dark'] {
+  --accent-deep: #0a1524;
+  --accent: #3b6ea8;
+  --accent-2: #5b8fc9;
+  --accent-3: #4a6f9c;
+  --accent-line: #4f79aa;
+  --accent-soft: #1f3a5c;
+
+  --surface-page: #0b1522;
+  --surface-card: #132235;
+  --surface-soft: #18293f;
+  --surface-sunken: #162538;
+  --surface-tint: #1d3552;
+  --surface-unread: #1a2f49;
+  --surface-disabled: #1a2636;
+  --surface-overlay: rgba(0, 0, 0, 0.6);
+
+  --border-default: #263b55;
+  --border-soft: #1c2d43;
+  --focus-ring: rgba(91, 143, 201, 0.35);
+
+  --text-primary: #eef4fb;
+  --text-body: #d3e1f1;
+  --text-secondary: #a9c3df;
+  --text-muted: #7f9bb9;
+  --text-faint: #5b7797;
+  --text-disabled: #55677d;
+  --text-on-dark-muted: #9db7d4;
+
+  --status-positive: #3ecf87;
+  --status-positive-text: #6fdca4;
+  --status-positive-bg: #153527;
+  --status-negative: #ff6b70;
+  --status-negative-bg: #3a1c20;
+  --status-negative-bg-soft: #2a1a1f;
+  --status-negative-border: #6b2f35;
+  --status-warning-text: #f0b45a;
+  --status-warning-bg: #3a2b14;
+  --status-review: #b98a3a;
+  --status-review-text: #1a1206;
+  --highlight: #6b5410;
+
+  --sidebar-from: #070e18;
+  --sidebar-to: #0f1c2d;
+  --sidebar-text: #7f9bb9;
+  --sidebar-active: #29507f;
+  --sidebar-card: #162538;
+  --sidebar-badge: #3b6ea8;
+
+  --shadow-card: 0 0 0 1px #1c2d43;
+  --shadow-floating: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px #263b55;
+
+  color-scheme: dark;
+}
+
+/* 바다 · 오브젝트를 켰을 때: 카드 위쪽 테두리가 수면의 빛을 받아 빛난다 (위 테두리 선 + 카드 뒤로 번지는 빛).
+   마우스가 위로 갈수록(--ray-bright) 밝아진다 */
+[data-theme='ocean'][data-decor='on'] {
+  --shadow-card:
+    0 6px 20px rgba(5, 55, 99, 0.16),
+    inset 0 2px 0 rgba(255, 255, 255, calc(0.2 + var(--ray-bright, 0.45) * 0.8)),
+    0 -3px 6px -1px rgba(255, 255, 255, calc(0.1 + var(--ray-bright, 0.45) * 0.8)),
+    0 -10px 26px -6px rgba(200, 240, 255, calc(var(--ray-bright, 0.45) * 0.9));
+}

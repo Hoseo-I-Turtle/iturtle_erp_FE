@@ -180,7 +180,7 @@
   color: var(--brand-500);
 }
 .todoAll {
-  color: #1e7d4f;
+  color: var(--status-positive-text);
 }
 .bar {
   height: 4px;

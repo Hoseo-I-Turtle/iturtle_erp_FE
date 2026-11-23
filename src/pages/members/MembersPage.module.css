@@ -14,7 +14,7 @@
 .typeChip {
   padding: 4px 10px;
   border-radius: var(--radius-full);
-  background: #f4f8fc;
+  background: var(--surface-soft);
   font-size: var(--fs-caption);
   font-weight: 500;
   color: var(--text-secondary);
@@ -24,7 +24,7 @@
 }
 .typeChipOn,
 .typeChipOn:hover {
-  background: var(--brand-500);
+  background: var(--accent);
   color: var(--text-on-dark);
 }
 
@@ -66,7 +66,7 @@
 .cardOn,
 .cardOn:hover {
   background: var(--surface-tint);
-  border-color: var(--brand-400);
+  border-color: var(--accent-2);
 }
 .cardTop {
   display: flex;
@@ -91,7 +91,7 @@
 }
 .cardIntro {
   font-size: var(--fs-caption);
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .cardMeta {
   font-size: var(--fs-caption);
@@ -113,8 +113,8 @@
   gap: 6px;
 }
 .chipActive {
-  background: #e3f7ec;
-  color: #1e8a52;
+  background: var(--status-positive-bg);
+  color: var(--status-positive-text);
 }
 .profileIntro {
   color: var(--text-secondary);
@@ -144,7 +144,7 @@
 .kvRow dd {
   margin: 0;
   font-weight: 500;
-  color: var(--brand-500);
+  color: var(--text-body);
   overflow-wrap: anywhere;
 }
 .hidden {

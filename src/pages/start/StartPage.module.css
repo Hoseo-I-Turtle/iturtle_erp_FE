@@ -52,7 +52,7 @@
   transition: border-color 0.15s, background-color 0.15s;
 }
 .option:hover {
-  border-color: var(--brand-200);
+  border-color: var(--accent-line);
 }
 .option strong {
   font-size: var(--fs-body);
@@ -61,7 +61,7 @@
 }
 .on,
 .on:hover {
-  border-color: var(--brand-400);
+  border-color: var(--accent-2);
   background: var(--surface-tint);
 }
 .optIcon {
@@ -73,13 +73,13 @@
   margin-bottom: 4px;
   border-radius: var(--radius-md);
   background: var(--surface-card);
-  color: var(--brand-400);
+  color: var(--text-secondary);
 }
 .check {
   position: absolute;
   top: 16px;
   right: 16px;
-  color: var(--brand-400);
+  color: var(--text-secondary);
 }
 .server {
   display: flex;
@@ -107,7 +107,7 @@
   outline: none;
 }
 .server input:focus {
-  border-color: var(--brand-300);
+  border-color: var(--accent-3);
 }
 .server p {
   flex-basis: 100%;
@@ -117,7 +117,7 @@
   font-size: var(--fs-caption);
 }
 .ok {
-  color: #1e8a52;
+  color: var(--status-positive-text);
 }
 .fail {
   color: var(--status-negative);

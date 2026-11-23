@@ -31,7 +31,7 @@
   gap: 4px;
 }
 .body {
-  color: var(--brand-500);
+  color: var(--text-body);
   line-height: 1.6;
 }
 .attachment {
@@ -43,7 +43,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   font-size: var(--fs-caption);
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .attachment:hover {
   background: var(--surface-sunken);
@@ -62,7 +62,7 @@
   gap: 10px;
   padding: 20px;
   border-radius: 18px;
-  background: #f4f8fc;
+  background: var(--surface-soft);
   border: 1px solid var(--border-default);
 }
 .voteHead {
@@ -94,13 +94,13 @@
   transition: border-color 0.15s;
 }
 .option:not(:disabled):hover {
-  border-color: var(--brand-300);
+  border-color: var(--accent-3);
 }
 .option:disabled {
   cursor: default;
 }
 .optionMine {
-  border-color: var(--brand-400);
+  border-color: var(--accent-2);
 }
 .optionTop {
   display: flex;
@@ -115,13 +115,13 @@
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  border: 1px solid var(--brand-200);
+  border: 1px solid var(--accent-line);
   background: var(--surface-card);
   color: var(--text-on-dark);
 }
 .boxOn {
-  background: var(--brand-400);
-  border-color: var(--brand-400);
+  background: var(--accent-2);
+  border-color: var(--accent-2);
 }
 .optionLabel {
   font-weight: 500;
@@ -130,7 +130,7 @@
 .optionCount {
   font-size: var(--fs-caption);
   font-weight: 500;
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .optionVoters {
   font-size: var(--fs-caption);
@@ -174,7 +174,7 @@
   color: var(--text-muted);
 }
 .comment p {
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 
 /* ---------- 사이드 ---------- */
@@ -185,7 +185,7 @@
   align-self: flex-start;
   padding: 4px 10px;
   border-radius: var(--radius-full);
-  background: #f4f8fc;
+  background: var(--surface-soft);
   color: var(--text-muted);
   font-size: var(--fs-caption);
   font-weight: 500;
@@ -197,7 +197,7 @@
   font-weight: 500;
 }
 .readYes {
-  color: #1e8a52;
+  color: var(--status-positive-text);
 }
 .readNo {
   color: var(--status-negative);
@@ -236,7 +236,7 @@
   padding: 6px 0;
 }
 .others a:hover .otherTitle {
-  color: var(--brand-400);
+  color: var(--text-secondary);
 }
 .otherTitle {
   font-weight: 500;

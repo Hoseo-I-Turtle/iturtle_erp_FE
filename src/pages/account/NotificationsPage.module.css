@@ -32,7 +32,7 @@
   background: var(--surface-tint);
 }
 .unread:hover {
-  background: var(--brand-100);
+  background: var(--accent-soft);
 }
 .icon {
   width: 38px;
@@ -76,7 +76,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--brand-400);
+  background: var(--accent-2);
   flex: none;
 }
 .sideTitle {

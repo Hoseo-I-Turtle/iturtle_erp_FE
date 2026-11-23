@@ -141,9 +141,9 @@ export const myProjects: ProjectSummary[] = [
 ]
 
 export const weekEvents: WeekEvent[] = [
-  { id: 'e1', title: '연구실 주간 회의', meta: '오늘 14:00 · 세미나실', scope: '공용', color: 'var(--brand-400)' },
+  { id: 'e1', title: '연구실 주간 회의', meta: '오늘 14:00 · 세미나실', scope: '공용', color: 'var(--accent-2)' },
   { id: 'e2', title: '코드 리뷰 세미나', meta: '11/19(수) 10:00 · 세미나실', scope: '공용', color: 'var(--status-positive)' },
-  { id: 'e3', title: '치과 예약', meta: '11/19(수) 15:00 · 바쁨으로 공유', scope: '개인', color: 'var(--brand-200)' },
+  { id: 'e3', title: '치과 예약', meta: '11/19(수) 15:00 · 바쁨으로 공유', scope: '개인', color: 'var(--accent-line)' },
   { id: 'e4', title: 'KCC 초록 마감', meta: '11/21(금) · 하루 종일', scope: '공용', color: 'var(--status-negative)' },
 ]
 

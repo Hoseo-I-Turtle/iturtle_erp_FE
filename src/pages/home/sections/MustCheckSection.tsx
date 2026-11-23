@@ -3,6 +3,7 @@ import { Calendar, ClipboardList, Megaphone, SquareCheck, TriangleAlert, type Lu
 import { Chip, Loadable, SectionHead } from '../../../components/ui'
 import type { Resource } from '../../../api/useResource'
 import type { MustCheck, MustCheckKind } from '../../../mocks/home'
+import { ThemeObjects } from '../../../components/theme/ThemeObjects'
 import s from '../HomePage.module.css'
 
 const KIND_ICON: Record<MustCheckKind, LucideIcon> = {
@@ -16,6 +17,7 @@ const KIND_ICON: Record<MustCheckKind, LucideIcon> = {
 export function MustCheckSection({ mustCheck }: { mustCheck: Resource<MustCheck[]> }) {
   return (
     <section className={s.mustCheck}>
+      <ThemeObjects slot="hero" />
       <SectionHead
         icon={TriangleAlert}
         title="꼭 확인할 것"

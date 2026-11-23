@@ -121,7 +121,7 @@
 }
 
 .income {
-  color: #1e8a52;
+  color: var(--status-positive-text);
 }
 .expense {
   color: var(--status-negative);

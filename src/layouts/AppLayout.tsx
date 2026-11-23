@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate, Outlet, useSearchParams } from 'react-router-dom'
 import { Info, Lock, X } from 'lucide-react'
 import { Sidebar } from './Sidebar'
+import { ThemeDecor } from '../components/theme/ThemeDecor'
+import { ThemeObjects } from '../components/theme/ThemeObjects'
+import { MouseEffects } from '../components/theme/MouseEffects'
 import { getDataMode, MODE_SWITCHABLE } from '../lib/dataMode'
 import { fetchSsoAppName } from '../api/members'
 import { UploadModalHost } from '../pages/library/upload/UploadModalHost'
@@ -50,8 +53,12 @@ export function AppLayout() {
 
   return (
     <div className={s.app}>
+      <ThemeDecor area="page" />
+      <ThemeObjects slot="page" />
+      <MouseEffects />
       <Sidebar mode={mode} />
       <main className={s.main}>
+        <ThemeObjects slot="header" />
         {denied && (
           <DeniedBanner
             clientId={denied}

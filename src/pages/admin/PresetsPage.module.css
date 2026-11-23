@@ -15,7 +15,7 @@
 .presetOn,
 .presetOn:hover {
   background: var(--surface-tint);
-  border-color: var(--brand-400);
+  border-color: var(--accent-2);
 }
 .presetTop {
   display: flex;
@@ -64,14 +64,14 @@
 .roleBox {
   padding: 12px;
   border-radius: var(--radius-md);
-  background: #f4f8fc;
+  background: var(--surface-soft);
   border: 1.5px solid transparent;
 }
 .roleOn {
   background: var(--surface-tint);
 }
 .roleNew {
-  border-color: var(--brand-400);
+  border-color: var(--accent-2);
 }
 .roleText {
   display: flex;

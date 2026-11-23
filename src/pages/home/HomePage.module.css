@@ -84,13 +84,13 @@
   padding: 8px 14px;
   border-radius: var(--radius-sm);
   background: var(--surface-card);
-  color: var(--brand-500);
+  color: var(--text-body);
   font-size: var(--fs-caption);
   font-weight: 500;
   transition: background-color 0.15s;
 }
 .mustAction:hover {
-  background: var(--brand-100);
+  background: var(--accent-soft);
 }
 
 /* ---------- 내 작업 ---------- */
@@ -157,7 +157,7 @@
 }
 .projectMs strong {
   font-weight: 500;
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .projectBottom {
   display: flex;
@@ -192,7 +192,7 @@
   padding: 6px 0;
 }
 .notice:hover .rowTitle {
-  color: var(--brand-400);
+  color: var(--text-secondary);
 }
 .noticePin {
   margin-top: 4px;
@@ -217,7 +217,7 @@
   transition: background-color 0.15s;
 }
 .service:hover {
-  background: var(--brand-100);
+  background: var(--accent-soft);
 }
 .serviceName {
   font-weight: 500;
@@ -245,4 +245,53 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   }
+}
+
+/* ---------- 테마 오브젝트 ---------- */
+/* 오브젝트가 놓이는 카드: 가장자리 밖으로 나오는 그림(테이프 · 눈)이 보이게 */
+.mustCheck,
+.tasksCard,
+.decorHost {
+  position: relative;
+}
+/* 카드 안 물결(z-index: -1)이 카드 바탕 위에 머물게 */
+.mustCheck,
+.tasksCard {
+  isolation: isolate;
+}
+.objectToggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.objectToggles > span {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--page-subtitle);
+}
+.objectToggles button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  background: var(--surface-card);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-body);
+}
+.objectToggles button:hover {
+  border-color: var(--accent-line);
+}
+.objectToggles .objectOn {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-dark);
+}
+.objectToggles em {
+  font-style: normal;
+  font-size: 11px;
+  opacity: 0.7;
 }

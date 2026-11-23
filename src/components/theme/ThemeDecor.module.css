@@ -1,0 +1,80 @@
+/* 장식 층: 눌리지 않고, 본문(.main, z-index 1) 뒤에 깔린다 */
+.page {
+  position: fixed;
+  inset: 0 0 0 var(--sidebar-width);
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.sidebar {
+  position: absolute;
+  inset: 0;
+  z-index: -1; /* 사이드바 바탕 위 · 메뉴 아래 (.sidebar 가 isolation: isolate) */
+  pointer-events: none;
+  overflow: hidden;
+}
+.fill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.corner {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 220px;
+  height: 160px;
+  opacity: 0.8;
+}
+.sideBottom {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 220px;
+  overflow: visible;
+  opacity: 0.85;
+}
+/* 바다: 고래 바로 위 한 점에서 부채꼴로 퍼지는 빛. --ray-turn(돌아간 각도) · --ray-bright(밝기 0~1)는 마우스가 바꾼다 */
+.rays {
+  --ray-turn: 0deg;
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 520px;
+}
+/* 수면: 빛이 들어오는 자리의 은은한 밝은 번짐 */
+.surface {
+  position: absolute;
+  left: calc(20.4% + 105px);
+  top: -160px;
+  width: 720px;
+  height: 320px;
+  margin-left: -360px;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
+  opacity: calc(0.1 + var(--ray-bright, 0.45) * 0.9);
+  transition: opacity 0.3s ease-out;
+}
+/* 빛줄기: 위는 좁고 아래로 갈수록 넓어지며, 길이의 절반쯤에서 이미 투명해진다 */
+.beam {
+  position: absolute;
+  left: calc(20.4% + 105px); /* 고래 그림의 가운데 */
+  top: -70px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, var(--beam-alpha)) 0%, rgba(255, 255, 255, calc(var(--beam-alpha) * 0.35)) 30%, rgba(255, 255, 255, 0) 62%);
+  clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%);
+  filter: blur(8px);
+  transform-origin: 50% 0;
+  transform: rotate(calc(var(--beam-angle) * -1 + var(--ray-turn)));
+  /* 마우스가 아래면 굵은 몇 줄만 아주 희미하게, 위면 모두 또렷하게 */
+  opacity: clamp(0, calc((var(--ray-bright, 0.45) - var(--beam-at)) * 2.4 + 0.04), 1);
+  transition:
+    transform 0.5s ease-out,
+    opacity 0.3s ease-out;
+}
+
+@media (max-width: 900px) {
+  .page {
+    left: 0;
+  }
+}

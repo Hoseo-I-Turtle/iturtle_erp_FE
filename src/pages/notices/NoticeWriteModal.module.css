@@ -114,7 +114,7 @@
   padding: 16px;
   border: 1px solid var(--border-default);
   border-radius: 16px;
-  background: #f7fafd;
+  background: var(--surface-sunken);
 }
 .pollHead {
   display: flex;

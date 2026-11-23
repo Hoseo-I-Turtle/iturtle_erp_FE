@@ -11,15 +11,15 @@
   color: var(--text-secondary);
 }
 .role:not(:disabled):hover {
-  border-color: var(--brand-300);
+  border-color: var(--accent-3);
 }
 .role:disabled {
   cursor: default;
 }
 .roleOn {
   border-color: transparent;
-  background: var(--brand-100);
-  color: var(--brand-500);
+  background: var(--accent-soft);
+  color: var(--text-body);
   font-weight: 500;
 }
 .roles {
@@ -34,7 +34,7 @@
 }
 .groupLabel b {
   font-weight: 600;
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 
 .layout {
@@ -88,13 +88,13 @@
 .chipBtn {
   padding: 4px 10px;
   border-radius: var(--radius-full);
-  background: #f4f8fc;
+  background: var(--surface-soft);
   font-size: var(--fs-caption);
   font-weight: 500;
   color: var(--text-secondary);
 }
 .chipBtnOn {
-  background: var(--brand-500);
+  background: var(--accent);
   color: var(--text-on-dark);
 }
 .toolbar {
@@ -142,8 +142,8 @@
   white-space: nowrap;
 }
 .ok {
-  background: #e3f7ec;
-  color: #1e8a52;
+  background: var(--status-positive-bg);
+  color: var(--status-positive-text);
 }
 .warn {
   background: var(--status-warning-bg);
@@ -154,7 +154,7 @@
   color: var(--status-negative);
 }
 .off {
-  background: #eef2f6;
+  background: var(--surface-disabled);
   color: var(--text-disabled);
 }
 .info {
@@ -180,7 +180,7 @@
 .pickOn,
 .pickOn:hover {
   background: var(--surface-tint);
-  border-color: var(--brand-400);
+  border-color: var(--accent-2);
 }
 .pickText {
   flex: 1;
@@ -212,7 +212,7 @@
 .kv dd {
   margin: 0;
   font-weight: 500;
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .field {
   display: flex;
@@ -230,7 +230,7 @@
   outline: none;
 }
 .input:focus {
-  border-color: var(--brand-300);
+  border-color: var(--accent-3);
 }
 .actions {
   display: flex;

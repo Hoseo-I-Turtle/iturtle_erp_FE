@@ -23,7 +23,7 @@
   gap: 6px;
   padding: 10px 14px;
   border-radius: var(--radius-lg);
-  background: #f4f8fc;
+  background: var(--surface-soft);
 }
 .step {
   display: inline-flex;
@@ -45,8 +45,8 @@
   color: var(--text-muted);
 }
 .past {
-  background: #e3f7ec;
-  color: #1e8a52;
+  background: var(--status-positive-bg);
+  color: var(--status-positive-text);
 }
 .now {
   background: var(--status-warning-bg);
@@ -77,7 +77,7 @@
   padding: 16px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .checkHead {
   display: flex;
@@ -92,7 +92,7 @@
   color: var(--text-secondary);
 }
 .allDone {
-  color: #1e8a52 !important;
+  color: var(--status-positive-text) !important;
 }
 .checkDone {
   color: var(--text-secondary);
@@ -106,7 +106,7 @@
   border: 1px solid var(--border-default);
   border-radius: 10px;
   font-size: var(--fs-caption);
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .att strong {
   font-weight: 500;
@@ -144,7 +144,7 @@
   align-items: center;
   gap: 10px;
   font-size: var(--fs-caption);
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .activity span {
   flex: 1;
@@ -185,7 +185,7 @@
 }
 .props dd {
   margin: 0;
-  color: var(--brand-500);
+  color: var(--text-body);
   font-weight: 500;
 }
 .labels {
@@ -208,16 +208,16 @@
   color: var(--text-secondary);
 }
 .stIN_PROGRESS {
-  background: var(--brand-100);
-  color: var(--brand-500);
+  background: var(--accent-soft);
+  color: var(--text-body);
 }
 .stREVIEW {
   background: var(--status-warning-bg);
   color: var(--status-warning-text);
 }
 .stDONE {
-  background: #e3f7ec;
-  color: #1e8a52;
+  background: var(--status-positive-bg);
+  color: var(--status-positive-text);
 }
 .subHead {
   display: flex;

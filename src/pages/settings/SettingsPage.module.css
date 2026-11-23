@@ -1,0 +1,241 @@
+/* 화면 폭을 다 쓴다: 넓으면 묶음이 두 줄로, 좁으면 한 줄로 */
+.groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+  gap: var(--gap);
+  align-items: start;
+}
+.group {
+  gap: 4px;
+  padding: 18px 14px 10px;
+}
+.group h2,
+.themeCard h2 {
+  padding: 0 10px 6px;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.item,
+.auto {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 10px;
+  border-radius: var(--radius-lg);
+  text-align: left;
+  color: var(--text-muted);
+  transition: background-color 0.15s;
+}
+.item:hover,
+.auto:hover {
+  background: var(--surface-soft);
+}
+.item > i,
+.auto > i {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--surface-tint);
+  color: var(--text-body);
+}
+.item > span,
+.auto > span {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.item strong,
+.auto strong {
+  font-size: var(--fs-body);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.item small,
+.auto small {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.item em {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  background: var(--surface-soft);
+  font-style: normal;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* ---------- 테마 고르기 ---------- */
+.themeCard {
+  gap: 14px;
+}
+.themeCard h2 {
+  padding: 0;
+  font-size: var(--fs-h3);
+  color: var(--text-primary);
+}
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.back:hover {
+  color: var(--text-body);
+}
+.themes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+.theme {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  background: var(--surface-card);
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.theme:hover {
+  border-color: var(--accent-line);
+}
+.themeOn,
+.themeOn:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.themeText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 4px 4px;
+}
+.themeText strong {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.themeText small {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+/* 미리보기는 테마 고유 색을 그대로 보여 줘야 해서 색을 값으로 받는다 */
+.preview {
+  display: flex;
+  height: 116px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(128, 128, 128, 0.18);
+}
+.pvSide {
+  width: 28%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 8px;
+}
+.pvSide i {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.35);
+}
+.pvSide i:first-child {
+  width: 60%;
+  margin-bottom: 6px;
+  background: rgba(255, 255, 255, 0.8);
+}
+.pvMain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+.pvCard {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px;
+  border-radius: 8px;
+}
+.pvCard b {
+  height: 5px;
+  border-radius: 3px;
+}
+.pvCard u {
+  width: 34%;
+  height: 10px;
+  margin-top: auto;
+  border-radius: 5px;
+}
+.auto {
+  border: 1px solid var(--border-default);
+}
+.autoOn {
+  border-color: var(--accent);
+  background: var(--surface-tint);
+}
+.auto b {
+  flex: none;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* 꾸미기 스위치 줄 */
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 4px;
+}
+.toggle > i {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--surface-tint);
+  color: var(--text-body);
+}
+.toggle > span {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.toggle strong {
+  font-size: var(--fs-body);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.toggle small {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+.none {
+  padding: 4px;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}

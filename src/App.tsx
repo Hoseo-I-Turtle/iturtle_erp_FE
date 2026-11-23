@@ -45,6 +45,7 @@ import { PasswordChangePage } from './pages/account/PasswordChangePage'
 import { AccountSetupPage } from './pages/account/AccountSetupPage'
 import { SignupPage } from './pages/account/SignupPage'
 import { ProfilePage } from './pages/account/ProfilePage'
+import { SettingsPage, ThemeSettingsPage } from './pages/settings/SettingsPage'
 import { NotificationsPage } from './pages/account/NotificationsPage'
 import { IS_PROD } from './lib/dataMode'
 import { applyLoginReturn } from './lib/loginReturn'
@@ -131,6 +132,8 @@ const router = createBrowserRouter([
         ],
       },
       { path: '/profile', element: <ProfilePage /> },
+      { path: '/settings', element: <SettingsPage /> },
+      { path: '/settings/theme', element: <ThemeSettingsPage /> },
       // 예전 주소
       { path: '/me', element: <Navigate to="/profile" replace /> },
       { path: '/notifications', element: <NotificationsPage /> },

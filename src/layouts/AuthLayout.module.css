@@ -9,7 +9,7 @@
   align-items: center;
   justify-content: center;
   gap: 16px;
-  background: linear-gradient(160deg, var(--brand-600) 0%, var(--brand-500) 50%, var(--brand-400) 100%);
+  background: linear-gradient(160deg, var(--accent-deep) 0%, var(--accent) 50%, var(--accent-2) 100%);
   color: var(--text-on-dark);
   font-size: 40px;
   font-weight: 600;

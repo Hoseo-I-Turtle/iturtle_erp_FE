@@ -56,7 +56,7 @@
 .date {
   font-size: var(--fs-caption);
   font-weight: 500;
-  color: var(--brand-500);
+  color: var(--text-body);
   text-align: center;
   line-height: 26px;
 }
@@ -71,7 +71,7 @@
   overflow: hidden;
 }
 .mineOff {
-  background: #f4f8fc;
+  background: var(--surface-soft);
   border: 1px solid var(--border-default);
   cursor: pointer;
 }
@@ -79,19 +79,19 @@
   background: var(--surface-tint);
 }
 .mineOn {
-  background: var(--brand-400);
+  background: var(--accent-2);
   cursor: pointer;
 }
 .busy {
-  background: #e7ecf1;
-  color: #7f8ea0;
+  background: var(--surface-disabled);
+  color: var(--text-disabled);
   cursor: not-allowed;
 }
 .heat {
   font-weight: 500;
 }
 .recommended {
-  box-shadow: inset 0 0 0 2px var(--brand-600);
+  box-shadow: inset 0 0 0 2px var(--accent-deep);
 }
 
 .legend {
@@ -112,16 +112,16 @@
   border-radius: 4px;
 }
 .swMine {
-  background: var(--brand-400);
+  background: var(--accent-2);
 }
 .swBusy {
-  background: #e7ecf1;
+  background: var(--surface-disabled);
 }
 .swHeat {
   background: rgba(63, 101, 147, 0.5);
 }
 .swRec {
-  border: 1.5px solid var(--brand-600);
+  border: 1.5px solid var(--accent-deep);
 }
 
 /* ---------- 추천 ---------- */
@@ -140,7 +140,7 @@
 }
 .recOn {
   background: var(--surface-tint);
-  border-color: var(--brand-400);
+  border-color: var(--accent-2);
 }
 .rank {
   width: 26px;
@@ -153,10 +153,10 @@
   background: var(--surface-card);
   font-size: var(--fs-caption);
   font-weight: 500;
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .recOn .rank {
-  background: var(--brand-500);
+  background: var(--accent);
   color: var(--text-on-dark);
 }
 .recText {
@@ -177,7 +177,7 @@
   background: var(--surface-card);
   font-size: var(--fs-caption);
   font-weight: 500;
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .confirmBtn {
   justify-content: center;
@@ -190,7 +190,7 @@
   padding: 10px 12px;
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--status-positive) 14%, transparent);
-  color: #1e8a52;
+  color: var(--status-positive-text);
   font-weight: 500;
 }
 .note {

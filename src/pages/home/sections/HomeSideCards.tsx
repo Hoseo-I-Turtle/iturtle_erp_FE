@@ -3,6 +3,7 @@ import { Calendar, GitBranch, Image, LayoutGrid, Lock, Megaphone, Pin, Play, typ
 import { Card, Chip, Empty, Loadable, SectionHead } from '../../../components/ui'
 import type { Resource } from '../../../api/useResource'
 import type { NoticeSummary, Service, WeekEvent } from '../../../mocks/home'
+import { ThemeObjects } from '../../../components/theme/ThemeObjects'
 import s from '../HomePage.module.css'
 
 const SERVICE_ICON: Record<Service['icon'], LucideIcon> = {
@@ -44,7 +45,8 @@ export function WeekEventsCard({ weekEvents }: { weekEvents: Resource<WeekEvent[
 /** 최근 공지 */
 export function RecentNoticesCard({ recentNotices }: { recentNotices: Resource<NoticeSummary[]> }) {
   return (
-    <Card>
+    <Card className={s.decorHost}>
+      <ThemeObjects slot="notices" />
       <SectionHead icon={Megaphone} title="최근 공지" link={{ to: '/notices', label: '전체' }} />
       <Loadable resource={recentNotices} label="최근 공지">
         {(notices) =>
