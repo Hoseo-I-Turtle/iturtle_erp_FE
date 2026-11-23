@@ -17,7 +17,7 @@
 .drop:hover,
 .dropOn {
   border-color: var(--brand-400);
-  background: #cfe6f8;
+  background: var(--surface-tint);
 }
 .drop:focus-visible {
   outline: 2px solid var(--brand-400);
@@ -60,8 +60,8 @@
   background: var(--surface-sunken);
 }
 .fileBad {
-  border-color: #f3b4b6;
-  background: #fff5f5;
+  border-color: var(--status-negative-border);
+  background: var(--status-negative-bg-soft);
 }
 .fileBad .fileIcon {
   color: var(--status-negative);
@@ -121,7 +121,7 @@
 }
 .fileDone {
   font-size: 11px;
-  color: #1e7d4f;
+  color: var(--status-positive-text);
 }
 .fileError {
   font-size: 11px;
@@ -129,7 +129,7 @@
 }
 .doneMark {
   flex-shrink: 0;
-  color: #1e7d4f;
+  color: var(--status-positive-text);
 }
 .cancel {
   display: grid;

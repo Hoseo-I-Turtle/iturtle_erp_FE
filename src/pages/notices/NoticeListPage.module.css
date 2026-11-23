@@ -96,7 +96,7 @@
   outline-offset: 2px;
 }
 .rowPinned {
-  background: #ebf3fb;
+  background: var(--surface-soft);
 }
 .rowIcon {
   flex: none;
@@ -148,8 +148,8 @@
   gap: 4px;
   padding: 3px 10px;
   border-radius: var(--radius-full);
-  background: #e3f6ec;
-  color: #1e7d4f;
+  background: var(--status-positive-bg);
+  color: var(--status-positive-text);
   font-weight: 500;
 }
 
@@ -274,7 +274,7 @@ button.leftItem:hover:not(:disabled) {
   flex: none;
   padding: 3px 10px;
   border-radius: var(--radius-full);
-  background: #e9eef4;
+  background: var(--surface-soft);
   font-size: var(--fs-caption);
   color: var(--text-muted);
 }

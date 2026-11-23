@@ -132,7 +132,7 @@
 .pillOn,
 .pillOn:hover:not(:disabled) {
   background: var(--brand-500);
-  color: #fff;
+  color: var(--text-on-dark);
 }
 .pill:disabled {
   opacity: 0.45;
@@ -263,7 +263,7 @@
   border: 0;
   border-radius: var(--radius-md);
   background: var(--status-negative);
-  color: #fff;
+  color: var(--text-on-dark);
   font: inherit;
   font-weight: 500;
   cursor: pointer;

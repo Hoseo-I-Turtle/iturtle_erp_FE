@@ -84,7 +84,7 @@
   border-bottom: 0;
 }
 .md :global(tbody tr:nth-child(even) td) {
-  background: #fafcfe;
+  background: var(--surface-sunken);
 }
 .md :global(td code) {
   white-space: nowrap;

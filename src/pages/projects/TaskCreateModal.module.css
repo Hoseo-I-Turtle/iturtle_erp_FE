@@ -115,7 +115,7 @@
   color: var(--brand-500);
 }
 .labelChip:hover {
-  background: #a9d9f7;
+  background: var(--accent-soft);
 }
 .addChip {
   background: var(--surface-sunken);

@@ -110,7 +110,7 @@
 }
 .okText {
   font-size: var(--fs-caption);
-  color: #1e7d4f;
+  color: var(--status-positive-text);
 }
 .warn {
   display: flex;
@@ -400,7 +400,7 @@
   color: var(--text-secondary);
 }
 .danger {
-  border: 1px solid #f3b4b6;
+  border: 1px solid var(--status-negative-border);
   background: var(--status-negative-bg);
 }
 .dangerIcon,
@@ -408,7 +408,7 @@
   color: var(--status-negative);
 }
 .dangerBtn {
-  border-color: #f3b4b6 !important;
+  border-color: var(--status-negative-border) !important;
   color: var(--status-negative) !important;
 }
 .deleteBtn {

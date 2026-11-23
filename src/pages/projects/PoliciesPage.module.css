@@ -2,8 +2,8 @@
 .main,
 .detail {
   /* 지킬 것 · 금지 · 예시 색 (다른 화면과 같은 초록 · 빨강) */
-  --ok-text: #1e8a52;
-  --ok-bg: #e3f7ec;
+  --ok-text: var(--status-positive-text);
+  --ok-bg: var(--status-positive-bg);
   --no-text: var(--status-negative);
   --no-bg: var(--status-negative-bg);
   --mono: var(--font-mono, ui-monospace, Consolas, monospace);
@@ -66,8 +66,8 @@
   --cat-bg: var(--surface-tint);
 }
 .catWorkflow {
-  --cat: #1e8a52;
-  --cat-bg: #e3f7ec;
+  --cat: var(--status-positive-text);
+  --cat-bg: var(--status-positive-bg);
 }
 .catAi {
   --cat: #5a4bb5;

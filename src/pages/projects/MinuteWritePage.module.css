@@ -31,7 +31,7 @@
   color: var(--text-muted);
 }
 .statusOk {
-  color: #1e7d4f;
+  color: var(--status-positive-text);
 }
 .linkBtn {
   padding: 0;
