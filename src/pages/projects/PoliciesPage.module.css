@@ -1,0 +1,234 @@
+/* 프로젝트 › 정책 (ERP-41) */
+.main {
+  padding: 22px 26px;
+  gap: 14px;
+}
+.top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.grow {
+  flex: 1;
+}
+.hint {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.hint a {
+  color: var(--brand-400);
+}
+.search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+}
+.search input {
+  border: none;
+  outline: none;
+  width: 200px;
+  font-size: var(--fs-caption);
+  background: transparent;
+  color: var(--text-primary);
+}
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 4px;
+  border-top: 1px solid var(--border-default);
+  color: inherit;
+  text-decoration: none;
+}
+.row:hover {
+  background: var(--surface-sunken);
+}
+.key {
+  flex-shrink: 0;
+  min-width: 72px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.rowBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.rowBody small {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.meta {
+  display: flex;
+  gap: 10px;
+  font-size: var(--fs-overline);
+  color: var(--text-muted);
+}
+.chips {
+  display: inline-flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: var(--fs-caption);
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.head h1 {
+  margin: 0;
+  font-size: var(--fs-title, 20px);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field > span,
+.input > span {
+  font-size: var(--fs-overline);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.field textarea,
+.input input {
+  padding: 10px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  line-height: 1.6;
+  color: var(--text-primary);
+  outline: none;
+  resize: vertical;
+}
+.field textarea:focus,
+.input input:focus {
+  border-color: var(--brand-300);
+}
+.readonly {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  white-space: pre-wrap;
+}
+.plain {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+}
+.input {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 220px;
+}
+.inputRow {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0;
+  font-size: var(--fs-caption);
+}
+.facts dt {
+  color: var(--text-muted);
+}
+.facts dd {
+  margin: 0;
+}
+.facts a {
+  color: var(--brand-400);
+}
+.who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.who small {
+  color: var(--text-muted);
+}
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-default);
+}
+.block h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--fs-body);
+}
+.evidence,
+.versions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fs-caption);
+}
+.evidence li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.evidence code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  overflow-wrap: anywhere;
+}
+.evidence small,
+.versions small {
+  color: var(--text-muted);
+}
+.versions li p {
+  margin: 2px 0 0;
+  color: var(--text-secondary);
+}
+.versions small {
+  margin-left: 8px;
+}
+.error {
+  margin: 0;
+  color: var(--danger-500, #d14343);
+  font-size: var(--fs-caption);
+}

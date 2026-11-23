@@ -14,6 +14,7 @@ import {
   SquareCheck,
   Upload,
   type LucideIcon,
+  Scale,
 } from 'lucide-react'
 import { Button } from '../components/ui'
 import { useMe } from '../api/members'
@@ -47,6 +48,7 @@ export function NewMenu() {
         { key: 'M', icon: FileText, label: '회의록', desc: '할 일을 작업으로 이어요', run: () => navigate(`${base}/minutes/new`) },
         { key: 'S', icon: FlaskConical, label: '마일스톤', desc: '작업을 묶어 기한을 봐요', run: () => navigate(`${base}/milestones?new=1`) },
         { key: 'T', icon: MessageSquare, label: '스레드 글', desc: '프로젝트 토론', run: () => navigate(`${base}/threads/new`) },
+        { key: 'R', icon: Scale, label: '정책', desc: '정한 규칙과 이유 남기기', run: () => navigate(`${base}/policies/new`) },
       ]
     : []
   const lab: Item[] = [

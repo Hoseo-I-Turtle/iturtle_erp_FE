@@ -26,6 +26,7 @@ import { ThreadPage } from './pages/projects/ThreadPage'
 import { TaskDetailPage } from './pages/projects/TaskDetailPage'
 import { MinutesPage } from './pages/projects/MinutesPage'
 import { MinuteListPage } from './pages/projects/MinuteListPage'
+import { PoliciesPage } from './pages/projects/PoliciesPage'
 import { MinuteWritePage } from './pages/projects/MinuteWritePage'
 import { ProjectSettingsPage } from './pages/projects/ProjectSettingsPage'
 import { WeeklyReportPage } from './pages/reports/WeeklyReportPage'
@@ -95,6 +96,10 @@ const router = createBrowserRouter([
           { path: 'minutes/new', element: <MinuteWritePage /> },
           { path: 'minutes/:minuteId', element: <MinutesPage /> },
           { path: 'minutes/:minuteId/edit', element: <MinuteWritePage /> },
+          { path: 'policies', element: <PoliciesPage /> },
+          { path: 'policies/new', element: <PoliciesPage /> },
+          { path: 'policies/:policyKey', element: <PoliciesPage /> },
+          { path: 'policies/:policyKey/edit', element: <PoliciesPage /> },
           { path: 'files', element: <ProjectFilesPage /> },
           { path: 'reports', element: <ProjectReportsPage /> },
           { path: 'settings', element: <ProjectSettingsPage /> },

@@ -13,6 +13,7 @@ import {
   Plus,
   Settings,
   type LucideIcon,
+  Scale,
 } from 'lucide-react'
 import { Button } from '../components/ui'
 import { PageHeader } from './PageHeader'
@@ -33,6 +34,7 @@ const TABS: { to: string; label: string; icon: LucideIcon; action?: string; acti
   { to: 'milestones', label: '마일스톤', icon: FlaskConical, action: '마일스톤 만들기' },
   { to: 'threads', label: '스레드', icon: MessageSquare, action: '글 쓰기', actionTo: 'threads/new', subtitle: '글과 답글로 이야기하고, 고정 글은 게시판처럼 모아 봐요' },
   { to: 'minutes', label: '회의록', icon: ClipboardList, action: '회의록 쓰기', actionTo: 'minutes/new', subtitle: '회의록 · 회의에서 나온 할 일은 작업으로 이어져요' },
+  { to: 'policies', label: '정책', icon: Scale, action: '정책 남기기', actionTo: 'policies/new', subtitle: '정책 · 정한 규칙과 그 이유 — 사람이 바뀌어도 같은 규칙을 따라요' },
   { to: 'files', label: '자료', icon: Folder, action: '자료 올리기' },
   { to: 'reports', label: '주간 보고', icon: ClipboardCheck, subtitle: '주간 보고 · 참여자가 이 프로젝트 칸에 쓴 내용' },
   { to: 'settings', label: '설정', icon: Settings, subtitle: '설정 · 프로젝트 관리자만 바꿀 수 있어요' },
