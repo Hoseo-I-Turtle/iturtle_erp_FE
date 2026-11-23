@@ -7,6 +7,7 @@ import {
   Megaphone,
   Shield,
   Users,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react'
 import { ADMIN_TAB_AUTHORITIES, canSeeAdminTab } from '../api/admin'
@@ -34,6 +35,7 @@ export const NAV: NavSection[] = [
     items: [
       { to: '/library', label: '자료실', icon: Folder },
       { to: '/members', label: '구성원', icon: Users },
+      { to: '/ledger', label: '회계', icon: Wallet },
     ],
   },
   {

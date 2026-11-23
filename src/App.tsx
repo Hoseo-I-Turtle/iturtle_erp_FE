@@ -30,6 +30,7 @@ import { PoliciesPage } from './pages/projects/PoliciesPage'
 import { MinuteWritePage } from './pages/projects/MinuteWritePage'
 import { ProjectSettingsPage } from './pages/projects/ProjectSettingsPage'
 import { WeeklyReportPage } from './pages/reports/WeeklyReportPage'
+import { LedgerPage } from './pages/ledger/LedgerPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { TaskListPage } from './pages/projects/TaskListPage'
 import { SchedulePage } from './pages/projects/SchedulePage'
@@ -106,6 +107,7 @@ const router = createBrowserRouter([
         ],
       },
       { path: '/reports', element: <WeeklyReportPage /> },
+      { path: '/ledger', element: <LedgerPage /> },
 
       { path: '/library', element: <LibraryPage /> },
       { path: '/library/:id', element: <DocumentDetailPage /> },
