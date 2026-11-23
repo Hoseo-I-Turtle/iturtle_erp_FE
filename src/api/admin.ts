@@ -765,6 +765,10 @@ const ACTION_LABEL: Record<string, string> = {
   GITHUB_ORG_SYNCED: 'GitHub 조직 동기화',
   GITHUB_ORG_INVITED: 'GitHub 조직 초대',
   GITHUB_ORG_REMOVED: 'GitHub 조직에서 뺌',
+  CLOUDFLARE_ACCESS_ADDED: 'Cloudflare 정책에 넣음',
+  CLOUDFLARE_ACCESS_REMOVED: 'Cloudflare 정책에서 뺌',
+  SSH_GRANTED: 'SSH 허용',
+  SSH_REVOKED: 'SSH 허용 뺌',
   LOGIN_SUCCEEDED: '로그인',
   LOGIN_FAILED: '로그인',
 }
