@@ -3,7 +3,7 @@
   gap: 14px;
 }
 .desc {
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .chips {
   display: flex;
@@ -75,7 +75,7 @@
 }
 .actText {
   flex: 1;
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .actAgo {
   font-size: var(--fs-caption);
@@ -94,7 +94,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .svcText {
   flex: 1;
@@ -138,8 +138,8 @@
   color: var(--text-secondary);
 }
 .svcOk {
-  background: #e3f7ec;
-  color: #1e8a52;
+  background: var(--status-positive-bg);
+  color: var(--status-positive-text);
 }
 .svcPerm {
   padding: 4px 10px;
@@ -159,7 +159,7 @@
   align-items: center;
   gap: 6px;
   font-size: var(--fs-caption);
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .perms li > span:first-child {
   flex: 1;

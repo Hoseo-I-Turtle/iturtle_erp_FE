@@ -352,7 +352,7 @@ function VoteBox({ noticeId, vote: initial, meName }: { noticeId: number; vote: 
               <span className={s.optionCount}>{o.count === null ? '결과 비공개' : `${o.count}명 · ${pct}%`}</span>
             </span>
             {o.count !== null && (
-              <Progress value={pct} height={6} color={o.count === maxVotes ? 'var(--brand-400)' : 'var(--brand-200)'} />
+              <Progress value={pct} height={6} color={o.count === maxVotes ? 'var(--accent-2)' : 'var(--accent-line)'} />
             )}
             {vote.named && shown.length > 0 && (
               <span className={s.optionVoters}>

@@ -224,7 +224,7 @@ function ProfileView({ data }: { data: ProfileData }) {
                 <span>{p.jenkins}</span>
               </div>
             ))}
-            <Link to="/admin/role-requests" className={s.more}>
+            <Link to="/access-requests" className={s.more}>
               필요한 권한이 없나요? 권한 신청 <ChevronRight size={14} />
             </Link>
           </Card>

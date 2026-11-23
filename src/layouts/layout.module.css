@@ -14,7 +14,8 @@
   flex-direction: column;
   padding: 28px 20px;
   background: var(--grad-sidebar);
-  color: var(--text-on-dark-muted);
+  isolation: isolate; /* 안의 장식(z-index: -1)이 바탕 위 · 메뉴 아래에 깔리게 */
+  color: var(--sidebar-text);
   overflow-y: auto;
 }
 
@@ -58,24 +59,24 @@
   padding: 0 14px;
   border-radius: var(--radius-lg);
   font-weight: 500;
-  color: var(--text-on-dark-muted);
+  color: var(--sidebar-text);
   transition: background-color 0.15s, color 0.15s;
 }
 .navItem:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-on-dark);
+  background: var(--sidebar-hover);
+  color: var(--sidebar-text-strong);
 }
 .navItem.active {
-  background: var(--brand-400);
-  color: var(--text-on-dark);
+  background: var(--sidebar-active);
+  color: var(--sidebar-active-text);
 }
 .navBadge {
   margin-left: auto;
   min-width: 29px;
   padding: 4px 10px;
   border-radius: var(--radius-full);
-  background: var(--brand-300);
-  color: var(--text-on-dark);
+  background: var(--sidebar-badge);
+  color: var(--sidebar-badge-text);
   font-size: var(--fs-caption);
   line-height: 18px;
   text-align: center;
@@ -88,26 +89,26 @@
   gap: 12px;
   padding: 14px;
   border-radius: 18px;
-  background: var(--brand-500);
+  background: var(--sidebar-card);
 }
 .userText {
   flex: 1;
   min-width: 0;
 }
 .userName {
-  color: var(--text-on-dark);
+  color: var(--sidebar-text-strong);
   font-weight: 500;
 }
 .userMeta {
   font-size: var(--fs-caption);
-  color: var(--text-on-dark-muted);
+  color: var(--sidebar-text);
 }
 .userSettings {
   display: flex;
-  color: var(--text-on-dark-muted);
+  color: var(--sidebar-text);
 }
 .userSettings:hover {
-  color: var(--text-on-dark);
+  color: var(--sidebar-text-strong);
 }
 
 .modeBadge {
@@ -117,16 +118,16 @@
   gap: 8px;
   padding: 8px 12px;
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--sidebar-hover);
   font-size: var(--fs-caption);
-  color: var(--text-on-dark-muted);
+  color: var(--sidebar-text);
 }
 .modeBadge span {
   margin-left: auto;
   text-decoration: underline;
 }
 .modeBadge:hover {
-  color: var(--text-on-dark);
+  color: var(--sidebar-text-strong);
 }
 .modeBadge + .user {
   margin-top: 8px;
@@ -144,6 +145,8 @@
 
 /* ---------- Main ---------- */
 .main {
+  position: relative;
+  z-index: 1; /* 화면 장식 층 위 */
   flex: 1;
   min-width: 0;
   padding: var(--page-padding);
@@ -171,14 +174,14 @@
   border-radius: 10px;
   font-size: var(--fs-caption);
   font-weight: 500;
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .projectTab:hover {
   background: var(--surface-sunken);
 }
 .projectTabOn,
 .projectTabOn:hover {
-  background: var(--brand-500);
+  background: var(--accent);
   color: var(--text-on-dark);
 }
 
@@ -200,9 +203,10 @@
   font-size: var(--fs-h1);
   font-weight: 600;
   line-height: 40px;
+  color: var(--page-title);
 }
 .headerTitle p {
-  color: var(--text-secondary);
+  color: var(--page-subtitle);
 }
 
 .search {
@@ -230,7 +234,7 @@
   color: var(--text-muted);
 }
 .search:focus-within {
-  outline: 2px solid var(--brand-200);
+  outline: 2px solid var(--accent-line);
 }
 
 /* ---------- 헤더 알림 ---------- */
@@ -282,7 +286,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--brand-500);
+  background: var(--accent);
   flex: none;
 }
 .bellItem span {
@@ -305,4 +309,10 @@
 }
 .bellAll:hover {
   text-decoration: underline;
+}
+
+/* 본문 내용은 맨 위 장식(전구 줄 등) 위에 놓인다 */
+.main > :not([data-theme-objects]) {
+  position: relative;
+  z-index: 1;
 }

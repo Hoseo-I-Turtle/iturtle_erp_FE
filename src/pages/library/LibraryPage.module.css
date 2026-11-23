@@ -60,7 +60,7 @@
   flex: none;
 }
 .docTitle a:hover {
-  color: var(--brand-400);
+  color: var(--text-secondary);
 }
 .ver {
   padding: 2px 8px;
@@ -88,7 +88,7 @@
   color: var(--text-muted);
 }
 .hash:hover {
-  color: var(--brand-400);
+  color: var(--text-secondary);
   text-decoration: underline;
 }
 .proj {
@@ -103,7 +103,7 @@
 }
 .who strong {
   font-weight: 500;
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .who span {
   color: var(--text-muted);
@@ -118,7 +118,7 @@
 }
 .dl {
   display: flex;
-  color: var(--brand-500);
+  color: var(--text-body);
   padding: 4px;
   border-radius: 8px;
 }
@@ -134,7 +134,7 @@
 .tag {
   padding: 4px 10px;
   border-radius: var(--radius-full);
-  background: #f4f8fc;
+  background: var(--surface-soft);
   font-size: var(--fs-caption);
   font-weight: 500;
   color: var(--text-secondary);
@@ -143,9 +143,20 @@
   background: var(--surface-tint);
 }
 .tagOn {
-  background: var(--brand-400);
+  background: var(--accent-2);
   color: var(--text-on-dark);
 }
 .tagOn:hover {
-  background: var(--brand-500);
+  background: var(--accent);
+}
+
+.deletedLink {
+  align-self: flex-start;
+  padding: 0 4px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  text-decoration: underline;
+}
+.deletedLink:hover {
+  color: var(--text-body);
 }

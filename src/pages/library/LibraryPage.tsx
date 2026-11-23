@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { CircleHelp, Download, FileText, ListFilter, Lock, MessageCircle, Pin, Plus } from 'lucide-react'
 import { Button, Card, Chip, Columns, Empty, FilterSelect, ListItem, Loadable, Note, PillTabs, SectionHead } from '../../components/ui'
 import { PageHeader } from '../../layouts/PageHeader'
 import { CATEGORY_NAME, type DocumentCategory, type DocumentSummary } from '../../mocks/documents'
 import { useLibrary, type LibraryData, type LibrarySort } from '../../api/content'
+import { DocumentUploadModal } from './DocumentUploadModal'
 import s from './LibraryPage.module.css'
 
 type Tab = 'ALL' | DocumentCategory
@@ -22,7 +23,7 @@ const EXT_COLOR: Record<string, string> = {
   pdf: 'var(--status-negative)',
   pptx: 'var(--status-warning-text)',
   docx: 'var(--text-secondary)',
-  md: 'var(--brand-500)',
+  md: 'var(--accent)',
   zip: 'var(--text-muted)',
 }
 const EXT_LABEL: Record<string, string> = { pptx: 'PPT', docx: 'DOC' }
@@ -34,6 +35,8 @@ export function LibraryPage() {
   const [author, setAuthor] = useState('')
   const [fileType, setFileType] = useState('')
   const [sort, setSort] = useState<LibrarySort>('최신순')
+  const [uploading, setUploading] = useState(false)
+  const navigate = useNavigate()
 
   // 거르기 · 정렬은 서버가 하고(실서버), 화면도 같은 조건으로 한 번 더 거른다(목업 · 고정 자료)
   const lib = useLibrary({ category: tab, tag, project, author, fileType, sort })
@@ -77,7 +80,11 @@ export function LibraryPage() {
       <PageHeader
         title="자료실"
         subtitle="논문 · 발표자료 · 문서 · 질문을 카테고리로"
-        action={<Button icon={Plus}>자료 올리기</Button>}
+        action={
+          <Button icon={Plus} onClick={() => setUploading(true)}>
+            자료 올리기
+          </Button>
+        }
       />
       <Columns
         sideWidth={320}
@@ -155,9 +162,22 @@ export function LibraryPage() {
               </div>
             </Card>
             <Note icon={Lock}>"참여자만" 자료는 그 프로젝트 참여자에게만 보여요.</Note>
+            {/* 지운 자료는 content-manage 만 볼 수 있다 (없으면 서버가 403) */}
+            <Link to="/library/deleted" className={s.deletedLink}>
+              지운 자료 보기 (30일 안에 되살리기)
+            </Link>
           </>
         }
       />
+      {uploading && (
+        <DocumentUploadModal
+          onClose={() => setUploading(false)}
+          onCreated={(id) => {
+            setUploading(false)
+            navigate(`/library/${id}`)
+          }}
+        />
+      )}
     </>
   )
 }

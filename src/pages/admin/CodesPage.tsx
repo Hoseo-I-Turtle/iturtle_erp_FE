@@ -13,6 +13,7 @@ import {
   type CodeGroupView,
   type CodeRowView,
 } from '../../api/admin'
+import { CodeGroupForm, CodeRowForm } from './CodeAddForms'
 import a from './admin.module.css'
 import s from './CodesPage.module.css'
 
@@ -32,6 +33,8 @@ function CodesView({ groups }: { groups: CodeGroupView[] }) {
   const [copied, setCopied] = useState(false)
   const [cacheMsg, setCacheMsg] = useState('')
   const [err, setErr] = useState('')
+  const [addingGroup, setAddingGroup] = useState(false)
+  const [addingRow, setAddingRow] = useState(false)
 
   const g = groups.find((x) => x.code === group)
   const table = useCodeTable(g)
@@ -84,6 +87,20 @@ function CodesView({ groups }: { groups: CodeGroupView[] }) {
     <div className={s.layout}>
       <Card className={s.groups}>
         <div className={a.muted}>그룹</div>
+        {addingGroup ? (
+          <CodeGroupForm
+            existing={groups.map((x) => x.code)}
+            onClose={() => setAddingGroup(false)}
+            onCreated={(code) => {
+              setAddingGroup(false)
+              setGroup(code)
+            }}
+          />
+        ) : (
+          <Button variant="tint" icon={Plus} onClick={() => setAddingGroup(true)}>
+            그룹 추가
+          </Button>
+        )}
         {groups.map((c) => (
           <button key={c.code} type="button" className={c.code === group ? `${s.group} ${s.groupOn}` : s.group} onClick={() => setGroup(c.code)}>
             <strong>
@@ -111,8 +128,7 @@ function CodesView({ groups }: { groups: CodeGroupView[] }) {
                 </h2>
                 {table.data?.desc && <small>{table.data.desc}</small>}
               </div>
-              {/* 명세 확인 필요: 행 추가 화면 · 기존 POST 본문이 아직 없어 버튼만 둔다 */}
-              <Button variant="tint" icon={Plus}>
+              <Button variant="tint" icon={Plus} onClick={() => setAddingRow(true)}>
                 행 추가
               </Button>
             </div>
@@ -132,7 +148,7 @@ function CodesView({ groups }: { groups: CodeGroupView[] }) {
                       ))}
                       <span />
                     </div>
-                    {t.rows.length === 0 && <Empty>이 그룹에는 상세 코드가 없어요.</Empty>}
+                    {t.rows.length === 0 && !addingRow && <Empty>이 그룹에는 상세 코드가 없어요.</Empty>}
                     {t.rows.map((r) => (
                       <div
                         key={r.code}
@@ -160,10 +176,14 @@ function CodesView({ groups }: { groups: CodeGroupView[] }) {
                         )}
                       </div>
                     ))}
+                    {addingRow && <CodeRowForm group={group} columns={t.columns} existing={t.rows.map((r) => r.code)} onClose={() => setAddingRow(false)} />}
                   </>
                 )
               }
             </Loadable>
+            {addingRow && !table.data && (
+              <CodeRowForm group={group} columns={['ref1', 'ref2', 'ref4', '사용']} existing={[]} onClose={() => setAddingRow(false)} />
+            )}
           </>
         )}
 

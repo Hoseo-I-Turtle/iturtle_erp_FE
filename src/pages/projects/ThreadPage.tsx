@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
+  Check,
   ChevronDown,
   ChevronRight,
   Ellipsis,
@@ -8,6 +9,7 @@ import {
   GripVertical,
   Image,
   Info,
+  Link2,
   MessageCircle,
   Paperclip,
   Pencil,
@@ -16,8 +18,9 @@ import {
   Download,
   Share2,
   TriangleAlert,
+  X,
 } from 'lucide-react'
-import { Avatar, Button, Card, Chip, Empty, Loadable, Modal, Note } from '../../components/ui'
+import { Avatar, Button, Card, Chip, ConfirmDialog, Empty, Loadable, Modal, Note } from '../../components/ui'
 import { Markdown } from '../../components/markdown/Markdown'
 import { MarkdownEditor } from '../../components/markdown/MarkdownEditor'
 import { findProject } from '../../mocks/projects'
@@ -25,6 +28,8 @@ import { whenLive, type Resource } from '../../api/useResource'
 import {
   createThread,
   errorText,
+  deleteThread,
+  editThread,
   pinThread,
   replyToThread,
   savePinnedOrder,
@@ -62,6 +67,47 @@ function ThreadView({ board, d, projectKey, projectName }: ViewProps) {
 
   const { posts } = d
   const setPosts = (f: (ps: ThreadPostView[]) => ThreadPostView[]) => board.setData((x) => ({ ...x, posts: f(x.posts) }))
+
+  // 글 고치기 · 지우기 (H-4, H-6)
+  const [editing, setEditing] = useState<{ title: string; body: string } | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [removing, setRemoving] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [editError, setEditError] = useState('')
+  const saveEdit = async (p: ThreadPostView) => {
+    if (!editing) return
+    setSaving(true)
+    setEditError('')
+    try {
+      const saved = await whenLive(() => editThread(projectKey, p.postId, editing.title.trim(), editing.body))
+      const today = new Date()
+      setPosts((ps) =>
+        ps.map((x) =>
+          x.postId === p.postId
+            ? (saved ?? { ...x, title: editing.title.trim() || null, body: editing.body, editedBy: ME, editedAt: `${today.getMonth() + 1}/${today.getDate()}` })
+            : x,
+        ),
+      )
+      setEditing(null)
+    } catch (e) {
+      setEditError(errorText(e, '글을 고치지 못했어요.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+  const removePost = async (p: ThreadPostView) => {
+    setSaving(true)
+    setEditError('')
+    try {
+      await whenLive(() => deleteThread(projectKey, p.postId))
+      board.setData((x) => ({ ...x, posts: x.posts.filter((y) => y.postId !== p.postId), total: Math.max(0, x.total - 1) }))
+    } catch (e) {
+      setEditError(errorText(e, '글을 지우지 못했어요.'))
+    } finally {
+      setSaving(false)
+      setRemoving(false)
+    }
+  }
   const [selectedId, setSelectedId] = useState(posts[0]?.postId ?? 0)
   const [pinnedOnly, setPinnedOnly] = useState(false)
   const [dragId, setDragId] = useState<number | null>(null)
@@ -251,11 +297,45 @@ function ThreadView({ board, d, projectKey, projectName }: ViewProps) {
               >
                 {selected.pinnedOrder !== null ? '고정 해제' : '고정'}
               </Button>
-              <Button variant="secondary" className={s.small} icon={Pencil}>
-                고치기
-              </Button>
-              <Button variant="icon" icon={Ellipsis} aria-label="더 보기" />
+              {selected.author === ME && !editing && (
+                <Button variant="secondary" className={s.small} icon={Pencil} onClick={() => setEditing({ title: selected.title ?? '', body: selected.body })}>
+                  고치기
+                </Button>
+              )}
+              <span className={s.moreWrap}>
+                <Button variant="icon" icon={Ellipsis} aria-label="더 보기" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)} />
+                {menuOpen && (
+                  <span className={s.moreMenu} role="menu">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        void navigator.clipboard?.writeText(`${window.location.origin}${base}?post=${selected.postId}`)
+                        setMenuOpen(false)
+                      }}
+                    >
+                      <Link2 size={16} />
+                      링크 복사
+                    </button>
+                    {selected.author === ME && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={s.moreDanger}
+                        onClick={() => {
+                          setMenuOpen(false)
+                          setRemoving(true)
+                        }}
+                      >
+                        <X size={16} />
+                        지우기
+                      </button>
+                    )}
+                  </span>
+                )}
+              </span>
             </div>
+            {editError && <p className={s.editError}>{editError}</p>}
             {selected.title && <h2 className={s.detailTitle}>{selected.title}</h2>}
             <div className={s.detailMeta}>
               <Avatar name={selected.author} size={26} />
@@ -267,7 +347,38 @@ function ThreadView({ board, d, projectKey, projectName }: ViewProps) {
               </span>
             </div>
             <hr className={s.hr} />
-            <Markdown source={selected.body} projectKey={projectKey} />
+            {editing ? (
+              <div className={s.editBox}>
+                <input
+                  className={s.editTitle}
+                  value={editing.title}
+                  maxLength={200}
+                  placeholder="제목 (선택)"
+                  onChange={(e) => setEditing({ ...editing, title: e.target.value })}
+                  aria-label="제목"
+                />
+                <MarkdownEditor value={editing.body} onChange={(v) => setEditing({ ...editing, body: v })} projectKey={projectKey} minHeight={220} />
+                <div className={s.editFoot}>
+                  <small>고치면 글 아래에 "수정" 표시가 붙어요. 새로 멘션한 사람에게만 알림이 가요</small>
+                  <Button variant="secondary" onClick={() => setEditing(null)}>
+                    취소
+                  </Button>
+                  <Button icon={Check} disabled={saving || !editing.body.trim()} onClick={() => saveEdit(selected)}>
+                    저장
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Markdown source={selected.body} projectKey={projectKey} />
+            )}
+            {removing && (
+              <ConfirmDialog title="이 글을 지울까요?" confirmLabel="지우기" icon={X} danger busy={saving} onClose={() => setRemoving(false)} onConfirm={() => removePost(selected)}>
+                <p>
+                  답글 {selected.replyCount}개와 첨부 파일 {selected.attachments.length}개도 함께 안 보이게 돼요. 지운 글은 되살릴 수 없어요.
+                  {selected.pinnedOrder !== null && ' 고정된 글이라 지우면 상단 고정도 풀려요.'}
+                </p>
+              </ConfirmDialog>
+            )}
 
             {selected.attachments.length > 0 && (
               <div className={s.files}>

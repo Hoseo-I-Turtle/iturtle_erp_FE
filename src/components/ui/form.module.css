@@ -1,0 +1,277 @@
+/* ---------- Field ---------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+.label {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--text-body);
+}
+.label em {
+  font-style: normal;
+  color: var(--status-negative);
+}
+.label small {
+  font-size: var(--fs-overline);
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.help {
+  font-size: var(--fs-overline);
+  color: var(--text-muted);
+}
+.error {
+  font-size: var(--fs-overline);
+  color: var(--status-negative);
+}
+
+/* ---------- TextInput ---------- */
+.input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--text-muted);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.input:focus-within,
+.textarea:focus {
+  border-color: var(--accent-line);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.input input::placeholder,
+.textarea::placeholder {
+  color: var(--text-muted);
+}
+.input svg {
+  flex: none;
+}
+.trailing {
+  flex: none;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.invalid,
+.invalid:focus-within {
+  border-color: var(--status-negative);
+}
+
+/* ---------- TextArea ---------- */
+.textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  resize: vertical;
+  outline: 0;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+/* ---------- ToggleChip ---------- */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-body);
+  white-space: nowrap;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.toggle:hover {
+  border-color: var(--accent-line);
+}
+.toggleOn,
+.toggleOn:hover {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-dark);
+}
+.toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- OptionCard ---------- */
+.option {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
+  color: var(--text-body);
+  text-align: left;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.option:hover {
+  border-color: var(--accent-line);
+}
+.optionOn,
+.optionOn:hover {
+  border-color: var(--accent-2);
+  box-shadow: inset 0 0 0 0.5px var(--accent-2);
+  background: var(--surface-tint);
+}
+.option:disabled {
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+.option svg {
+  flex: none;
+  margin-top: 1px;
+}
+.optionText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.optionText strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.option:disabled .optionText strong {
+  color: var(--text-muted);
+}
+.optionText small {
+  font-size: var(--fs-overline);
+  color: var(--text-secondary);
+}
+
+/* ---------- Row · Actions ---------- */
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.actionsNote {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.actionsButtons {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.formError {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--status-negative-bg);
+  font-size: var(--fs-caption);
+  color: var(--status-negative);
+}
+
+/* ---------- SearchBox ---------- */
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--text-muted);
+}
+.searchBox:focus-within {
+  border-color: var(--accent-line);
+}
+.searchBox input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+/* ---------- SmallButton ---------- */
+.small {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-body);
+  white-space: nowrap;
+}
+.small:hover:not(:disabled) {
+  background: var(--surface-sunken);
+}
+.small:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.small-primary,
+.small-primary:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-dark);
+}
+.small-danger {
+  color: var(--status-negative);
+}
+
+@media (max-width: 720px) {
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

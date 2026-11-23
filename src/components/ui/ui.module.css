@@ -1,6 +1,11 @@
 /* ---------- Card ---------- */
 .card {
-  background: var(--surface-card);
+  /* 테두리 장식: 폭이 0 이면 보이지 않는다 (테마가 장식을 켰을 때만 폭 · 무늬를 준다) */
+  border: var(--card-frame-width) solid transparent;
+  background:
+    var(--card-sheen),
+    linear-gradient(var(--surface-card), var(--surface-card)) padding-box,
+    var(--card-frame) border-box;
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-card);
   padding: 20px 22px;
@@ -35,11 +40,14 @@
   color: var(--text-secondary);
 }
 .sectionLink:hover {
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .onDark .sectionTitle,
 .onDark > svg {
   color: var(--text-on-dark);
+}
+.onDark .sectionLink {
+  color: var(--text-on-dark-muted);
 }
 
 /* ---------- Chip ---------- */
@@ -56,8 +64,8 @@
   flex: none;
 }
 .chip-brand {
-  background: var(--brand-100);
-  color: var(--brand-500);
+  background: var(--accent-soft);
+  color: var(--text-body);
 }
 .chip-tint {
   background: var(--surface-tint);
@@ -76,8 +84,20 @@
   color: var(--text-on-dark);
 }
 .chip-muted {
-  background: var(--brand-300);
+  background: var(--accent-3);
   color: var(--text-on-dark);
+}
+.chip-positive {
+  background: var(--status-positive-bg);
+  color: var(--status-positive-text);
+}
+.chip-gray {
+  background: var(--surface-disabled);
+  color: var(--text-disabled);
+}
+.chip-plain {
+  background: var(--surface-card);
+  color: var(--text-body);
 }
 
 /* ---------- Avatar ---------- */
@@ -109,28 +129,28 @@
   transition: background-color 0.15s, box-shadow 0.15s;
 }
 .button-primary {
-  background: var(--brand-500);
+  background: var(--accent);
   color: var(--text-on-dark);
   padding: 10px 18px;
   font-size: var(--fs-body);
 }
 .button-primary:hover {
-  background: var(--brand-400);
+  background: var(--accent-2);
 }
 .button-light {
   background: var(--surface-card);
-  color: var(--brand-500);
+  color: var(--text-body);
   padding: 8px 14px;
   border-radius: var(--radius-sm);
   font-size: var(--fs-caption);
 }
 .button-light:hover {
-  background: var(--brand-100);
+  background: var(--accent-soft);
 }
 
 .button-secondary {
   background: var(--surface-card);
-  color: var(--brand-500);
+  color: var(--text-body);
   padding: 10px 18px;
   font-size: var(--fs-body);
   box-shadow: inset 0 0 0 1px var(--border-default);
@@ -140,17 +160,43 @@
 }
 .button-tint {
   background: var(--surface-tint);
-  color: var(--brand-500);
+  color: var(--text-body);
   padding: 10px 18px;
   font-size: var(--fs-body);
 }
 .button-tint:hover {
-  background: var(--brand-100);
+  background: var(--accent-soft);
+}
+.button-danger {
+  background: var(--status-negative);
+  color: var(--text-on-dark);
+  padding: 10px 18px;
+  font-size: var(--fs-body);
+}
+.button-danger:hover {
+  filter: brightness(0.93);
+}
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.confirmFoot {
+  margin-left: auto;
+  display: flex;
+  gap: 10px;
+}
+.confirmBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-body);
 }
 .button-icon {
   padding: 7px;
   background: var(--surface-card);
-  color: var(--brand-500);
+  color: var(--text-body);
   box-shadow: inset 0 0 0 1px var(--border-default);
 }
 .button-icon:hover {
@@ -162,7 +208,7 @@
 }
 .button-ghost:hover {
   background: var(--surface-tint);
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 
 /* ---------- Columns (본문 + 오른쪽 360px) ---------- */
@@ -233,7 +279,7 @@
   transition: background-color 0.15s;
 }
 .checkbox input:focus-visible + .checkboxBox {
-  outline: 2px solid var(--brand-300);
+  outline: 2px solid var(--accent-3);
   outline-offset: 2px;
 }
 
@@ -243,7 +289,7 @@
   gap: 4px;
   padding: 4px;
   border-radius: var(--radius-md);
-  background: #f4f8fc;
+  background: var(--surface-soft);
 }
 .segment {
   padding: 6px 14px;
@@ -253,7 +299,7 @@
   color: var(--text-secondary);
 }
 .segment:hover {
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .segmentOn {
   background: var(--surface-card);
@@ -268,7 +314,7 @@
   gap: 6px;
   padding: 4px;
   border-radius: var(--radius-lg);
-  background: #f4f8fc;
+  background: var(--surface-soft);
   align-self: flex-start;
 }
 .pillTab {
@@ -279,7 +325,7 @@
   border-radius: 10px;
   font-size: var(--fs-caption);
   font-weight: 500;
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .pillTab:hover {
   background: var(--surface-tint);
@@ -290,11 +336,11 @@
 }
 .pillTabOn,
 .pillTabOn:hover {
-  background: var(--brand-500);
+  background: var(--accent);
   color: var(--text-on-dark);
 }
 .pillTabOn .pillCount {
-  color: var(--brand-100);
+  color: var(--text-on-dark-muted);
 }
 
 /* ---------- FilterSelect ---------- */
@@ -308,7 +354,7 @@
   border-radius: 10px;
   font-size: var(--fs-caption);
   font-weight: 500;
-  color: var(--brand-500);
+  color: var(--text-body);
   cursor: pointer;
 }
 .filter:hover {
@@ -316,7 +362,7 @@
 }
 .filterOn {
   background: var(--surface-tint);
-  border-color: var(--brand-200);
+  border-color: var(--accent-line);
 }
 .filter select {
   position: absolute;
@@ -353,7 +399,7 @@
   background: transparent;
 }
 .liPlain.liLink:hover .liTitle {
-  color: var(--brand-400);
+  color: var(--text-secondary);
 }
 .li > svg {
   flex: none;
@@ -389,7 +435,7 @@
   border-radius: 16px;
   background: var(--surface-tint);
   font-size: var(--fs-caption);
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .note > svg {
   flex: none;
@@ -405,7 +451,7 @@
   height: 20px;
   flex: none;
   border-radius: 10px;
-  background: var(--brand-200);
+  background: var(--accent-line);
   padding: 2px;
   transition: background-color 0.15s;
 }
@@ -418,7 +464,7 @@
   transition: transform 0.15s;
 }
 .switchOn {
-  background: var(--brand-400);
+  background: var(--accent-2);
 }
 .switchOn span {
   transform: translateX(16px);
@@ -439,17 +485,31 @@
   border-radius: 8px;
   background: var(--surface-card);
   font-size: var(--fs-caption);
-  color: var(--brand-500);
+  color: var(--text-body);
   cursor: pointer;
 }
 .select select:focus {
-  outline: 2px solid var(--brand-200);
+  outline: 2px solid var(--accent-line);
 }
 .select svg {
   position: absolute;
   right: 10px;
   pointer-events: none;
-  color: var(--brand-500);
+  color: var(--text-body);
+}
+.selectBlock {
+  display: flex;
+  width: 100%;
+}
+.selectBlock select {
+  height: 44px;
+  padding: 0 36px 0 14px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.selectBlock svg {
+  right: 14px;
 }
 
 /* ---------- Modal ---------- */
@@ -461,7 +521,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(0, 15, 34, 0.45);
+  background: var(--surface-overlay);
 }
 .modal {
   width: 100%;
@@ -488,7 +548,7 @@
   display: flex;
   padding: 4px;
   border-radius: 8px;
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .modalClose:hover {
   background: var(--surface-sunken);
@@ -525,7 +585,7 @@
   align-items: center;
   gap: 4px;
   font-size: var(--fs-caption);
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .skeleton {
   display: flex;
@@ -568,7 +628,7 @@
 }
 .kv dd {
   margin: 0;
-  color: var(--brand-500);
+  color: var(--text-body);
   font-weight: 500;
 }
 
@@ -583,7 +643,7 @@
   background: var(--surface-card);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  color: var(--brand-500);
+  color: var(--text-body);
   flex: none;
 }
 .iconButton:hover {
@@ -609,5 +669,5 @@
 .progressBar {
   height: 100%;
   border-radius: 4px;
-  background: var(--brand-400);
+  background: var(--accent-2);
 }

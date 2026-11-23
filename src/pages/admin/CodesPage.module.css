@@ -36,8 +36,8 @@
 .new {
   padding: 0 6px;
   border-radius: var(--radius-full);
-  background: #e3f7ec;
-  color: #1e8a52;
+  background: var(--status-positive-bg);
+  color: var(--status-positive-text);
   font-size: 11px;
 }
 .detail {
@@ -75,12 +75,12 @@
   background: var(--surface-sunken);
   border: 1px solid transparent;
   font-size: var(--fs-caption);
-  color: var(--brand-500);
+  color: var(--text-body);
   cursor: pointer;
 }
 .rowOn {
   background: var(--surface-tint);
-  border-color: var(--brand-400);
+  border-color: var(--accent-2);
 }
 .row strong {
   font-weight: 500;
@@ -109,10 +109,10 @@
   border-radius: 8px;
   border: 1px solid var(--border-default);
   background: var(--surface-card);
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .lock:hover {
-  border-color: var(--brand-300);
+  border-color: var(--accent-3);
 }
 .secret {
   display: flex;

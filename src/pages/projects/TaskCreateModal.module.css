@@ -1,0 +1,142 @@
+.labels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.labels > span {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-body);
+}
+.labels em {
+  font-style: normal;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: var(--surface-soft);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.label:hover {
+  background: var(--surface-tint);
+}
+.label i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.labelOn,
+.labelOn:hover {
+  background: var(--accent-soft);
+  color: var(--text-body);
+}
+
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+}
+.checkHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-primary);
+}
+.checkHead strong {
+  font-size: 15px;
+  font-weight: 500;
+}
+.checkHead span {
+  margin-left: auto;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-body);
+}
+.item i {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 1px solid var(--accent-2);
+  border-radius: 5px;
+  background: var(--surface-card);
+}
+.item span {
+  flex: 1;
+  min-width: 0;
+}
+.item button {
+  display: inline-flex;
+  color: var(--text-muted);
+}
+.item button:hover {
+  color: var(--status-negative);
+}
+.addItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.addItem input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  outline: 0;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.addItem input:focus {
+  border-color: var(--accent-line);
+}
+.addItem button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: var(--surface-soft);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.addItem button:disabled {
+  opacity: 0.5;
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.footText {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.footText strong {
+  font-weight: 500;
+  color: var(--text-body);
+}

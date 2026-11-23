@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Calendar, ChevronLeft, ChevronRight, ClipboardList, LayoutGrid, Plus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Calendar, ChevronLeft, ChevronRight, ClipboardList, LayoutGrid, Plus, Users } from 'lucide-react'
 import { Button, Card, Checkbox, Columns, Loadable, Segmented, SectionHead } from '../../components/ui'
 import { PageHeader } from '../../layouts/PageHeader'
 import { addDays, formatLongDay, formatShortDay, monthWeeks, parseYmd, WEEKDAYS, ymd } from '../../lib/date'
@@ -7,6 +8,7 @@ import { KIND_META, LAYER_META, type CalEvent, type EventLayer } from '../../moc
 import { ApiError } from '../../api/client'
 import { whenLive } from '../../api/useResource'
 import { saveCalendarSettings, useCalendarEvents, useCalendarSettings, type CalendarSettings } from '../../api/communication'
+import { EventCreateModal } from './EventCreateModal'
 import s from './CalendarPage.module.css'
 
 type View = 'month' | 'week' | 'day' | 'list'
@@ -23,9 +25,9 @@ function chipStyle(e: CalEvent) {
     const c = KIND_META[e.kind].color
     return { background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c }
   }
-  if (e.layer === 'personal') return { background: 'rgba(128,170,211,0.35)', color: 'var(--brand-500)' }
-  if (e.layer === 'member') return { background: '#eef2f6', color: 'var(--text-disabled)' }
-  return { background: '#eef2f6', color: 'var(--text-muted)' }
+  if (e.layer === 'personal') return { background: 'rgba(128,170,211,0.35)', color: 'var(--accent)' }
+  if (e.layer === 'member') return { background: 'var(--surface-disabled)', color: 'var(--text-disabled)' }
+  return { background: 'var(--surface-disabled)', color: 'var(--text-muted)' }
 }
 function barColor(e: CalEvent) {
   return e.layer === 'public' ? KIND_META[e.kind].color : LAYER_META[e.layer].color
@@ -44,13 +46,25 @@ function eventMeta(e: CalEvent) {
 
 export function CalendarPage() {
   const settings = useCalendarSettings()
+  const navigate = useNavigate()
+  const [adding, setAdding] = useState(false)
   return (
     <>
       <PageHeader
         title="캘린더"
         subtitle="연구실 공용 일정과 내 일정"
-        action={<Button icon={Plus}>일정 추가</Button>}
+        action={
+          <span style={{ display: 'inline-flex', gap: 8 }}>
+            <Button variant="secondary" icon={Users} onClick={() => navigate('/calendar/polls/new')}>
+              모임 날짜 정하기
+            </Button>
+            <Button icon={Plus} onClick={() => setAdding(true)}>
+              일정 추가
+            </Button>
+          </span>
+        }
       />
+      {adding && <EventCreateModal onClose={() => setAdding(false)} onCreated={() => setAdding(false)} />}
       <Loadable resource={settings} label="캘린더 설정">
         {(st) => <CalendarView settings={st} />}
       </Loadable>

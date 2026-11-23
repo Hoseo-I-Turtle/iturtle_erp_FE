@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Check, Clock, FlaskConical, Lock, Plus } from 'lucide-react'
 import { AvatarStack, Button, Chip, Empty, Loadable, Progress } from '../../components/ui'
 import { PageHeader } from '../../layouts/PageHeader'
 import { MY_ROLE_NAME, PROJECT_CATEGORY_NAME, type ProjectCategory, type ProjectSummary } from '../../mocks/projects'
 import { useProjectList } from '../../api/projects'
 import { ServiceIcon, StatusChip } from './common'
+import { ProjectCreateModal } from './ProjectCreateModal'
 import s from './ProjectListPage.module.css'
 
 type Cat = 'ALL' | ProjectCategory
@@ -15,6 +16,8 @@ export function ProjectListPage() {
   const [mine, setMine] = useState(false)
   const [activeOnly, setActiveOnly] = useState(false)
   const [archived, setArchived] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const navigate = useNavigate()
 
   // 실서버는 조건을 서버가 거르고 탭 숫자(categoryCounts)도 서버가 센다. 목업은 화면이 거른다.
   const res = useProjectList({ category: cat, mine, activeOnly, archived })
@@ -35,8 +38,22 @@ export function ProjectListPage() {
       <PageHeader
         title="프로젝트"
         subtitle="연구실의 모든 일은 프로젝트로"
-        action={<Button icon={Plus}>프로젝트 만들기</Button>}
+        action={
+          <Button icon={Plus} onClick={() => setCreating(true)}>
+            프로젝트 만들기
+          </Button>
+        }
       />
+      {creating && (
+        <ProjectCreateModal
+          onClose={() => setCreating(false)}
+          onCreated={(projectKey, failed) => {
+            setCreating(false)
+            // 연동 서비스 연결이 실패했으면 설정 화면으로 보내 다시 하게 한다
+            navigate(failed.length ? `/projects/${projectKey}/settings` : `/projects/${projectKey}`)
+          }}
+        />
+      )}
 
       <div className={s.toolbar}>
         <div className={s.cats}>

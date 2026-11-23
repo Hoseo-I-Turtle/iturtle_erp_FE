@@ -32,11 +32,11 @@
   background: var(--surface-card);
   font-size: var(--fs-caption);
   font-weight: 500;
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .optOn {
   background: var(--surface-tint);
-  border-color: var(--brand-200);
+  border-color: var(--accent-line);
 }
 
 .columns {
@@ -53,11 +53,11 @@
   gap: 10px;
   padding: 12px;
   border-radius: 18px;
-  background: #e4eef7;
+  background: var(--border-soft);
   transition: box-shadow 0.15s;
 }
 .colOver {
-  box-shadow: inset 0 0 0 2px var(--brand-300);
+  box-shadow: inset 0 0 0 2px var(--accent-3);
 }
 .colHead {
   display: flex;
@@ -75,16 +75,16 @@
   color: var(--text-secondary);
 }
 .cIN_PROGRESS {
-  background: var(--brand-100);
-  color: var(--brand-500);
+  background: var(--accent-soft);
+  color: var(--text-body);
 }
 .cREVIEW {
   background: var(--status-warning-bg);
   color: var(--status-warning-text);
 }
 .cDONE {
-  background: #e3f7ec;
-  color: #1e8a52;
+  background: var(--status-positive-bg);
+  color: var(--status-positive-text);
 }
 .colCount {
   font-size: var(--fs-caption);
@@ -129,7 +129,7 @@
   transition: box-shadow 0.15s, opacity 0.15s;
 }
 .card:hover {
-  box-shadow: inset 0 0 0 2px var(--brand-400);
+  box-shadow: inset 0 0 0 2px var(--accent-2);
 }
 .dragging {
   opacity: 0.4;
@@ -157,7 +157,7 @@
 }
 .pLow,
 .pNormal {
-  background: #f4f8fc;
+  background: var(--surface-soft);
   color: var(--text-secondary);
 }
 .pHigh {
@@ -179,7 +179,7 @@
 .labels span {
   padding: 2px 8px;
   border-radius: var(--radius-full);
-  background: #f4f8fc;
+  background: var(--surface-soft);
   font-size: var(--fs-caption);
   font-weight: 500;
   color: var(--text-secondary);
@@ -195,7 +195,7 @@
   gap: 6px;
   padding: 4px 10px;
   border-radius: var(--radius-full);
-  background: #f4f8fc;
+  background: var(--surface-soft);
   font-size: var(--fs-caption);
   font-weight: 500;
   color: var(--text-secondary);
@@ -222,8 +222,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  border: 1px solid var(--brand-200);
-  color: var(--brand-200);
+  border: 1px solid var(--accent-line);
+  color: var(--text-faint);
 }
 .error {
   display: flex;

@@ -16,9 +16,11 @@ import {
   type ServiceAccessView,
   type VaultLevel,
 } from '../../api/projects'
+import { ArchiveTab, GeneralTab, LabelsTab } from './settings/BasicTabs'
+import { LinksTab, MembersTab, RequestsTab } from './settings/PeopleTabs'
 import s from './ProjectSettingsPage.module.css'
 
-const MENU = ['일반', '참여자', '라벨', '연동 서비스', '서비스 권한', '보관 · 삭제'] as const
+const MENU = ['일반', '참여자', '라벨', '연동 서비스', '서비스 권한', '권한 신청', '보관 · 삭제'] as const
 type Menu = (typeof MENU)[number]
 
 const VAULT: Record<VaultLevel, string> = { NONE: '없음', READ: '읽기', WRITE: '쓰기' }
@@ -49,11 +51,18 @@ export function ProjectSettingsPage() {
       </nav>
 
       <div className={s.content}>
-        {menu !== '서비스 권한' ? (
-          <Card>
-            <h2 className={s.h}>{menu}</h2>
-            <p className={s.muted}>이 설정 화면은 아직 디자인이 없어 준비 중이에요.</p>
-          </Card>
+        {menu === '일반' ? (
+          <GeneralTab projectKey={key ?? ''} />
+        ) : menu === '참여자' ? (
+          <MembersTab projectKey={key ?? ''} />
+        ) : menu === '라벨' ? (
+          <LabelsTab projectKey={key ?? ''} />
+        ) : menu === '연동 서비스' ? (
+          <LinksTab projectKey={key ?? ''} />
+        ) : menu === '권한 신청' ? (
+          <RequestsTab projectKey={key ?? ''} />
+        ) : menu === '보관 · 삭제' ? (
+          <ArchiveTab projectKey={key ?? ''} />
         ) : (
           <Loadable resource={access} label="서비스 권한">
             {(v) => <AccessPanel key={JSON.stringify(v.state)} projectKey={key ?? ''} view={v} onSaved={(nv) => access.setData(() => nv)} />}

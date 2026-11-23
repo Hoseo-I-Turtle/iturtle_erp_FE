@@ -47,7 +47,7 @@ export function kstInstant(day: string, minutes: number) {
   return new Date(Date.UTC(y, m - 1, d) + minutes * 60000 - KST_OFFSET).toISOString()
 }
 const todayKst = () => kstYmd(new Date().toISOString())
-const addDaysYmd = (day: string, n: number) => {
+export const addDaysYmd = (day: string, n: number) => {
   const [y, m, d] = day.split('-').map(Number)
   const t = new Date(Date.UTC(y, m - 1, d + n))
   return `${t.getUTCFullYear()}-${pad2(t.getUTCMonth() + 1)}-${pad2(t.getUTCDate())}`
@@ -55,17 +55,17 @@ const addDaysYmd = (day: string, n: number) => {
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000)
 
 /** '2026-11-20' → '11/20(목)' */
-const shortDay = (day: string) => formatShortDay(parseYmd(day))
+export const shortDay = (day: string) => formatShortDay(parseYmd(day))
 /** ISO → '11/20(목) 18:00' */
-const shortDayTime = (iso: string) => `${shortDay(kstYmd(iso))} ${kstHm(iso)}`
+export const shortDayTime = (iso: string) => `${shortDay(kstYmd(iso))} ${kstHm(iso)}`
 /** 마감까지 'D-3' · 'D-day' · '마감' */
-function dday(iso: string) {
+export function dday(iso: string) {
   if (Date.parse(iso) < Date.now()) return '마감'
   const n = daysBetween(todayKst(), kstYmd(iso))
   return n <= 0 ? 'D-day' : `D-${n}`
 }
 /** 1258291 → '1.2MB' */
-function formatBytes(n: number) {
+export function formatBytes(n: number) {
   if (n < 1024) return `${n}B`
   if (n < 1024 * 1024) return `${Math.round(n / 1024)}KB`
   return `${(n / 1024 / 1024).toFixed(1)}MB`
@@ -73,12 +73,12 @@ function formatBytes(n: number) {
 const fileUrl = (publicId: string) => `${getApiBase().replace(/\/$/, '')}/files/${publicId}/download`
 const roleName = (m: MemberRef) => (m.status === 'ACTIVE' ? MEMBER_TYPE_NAME[m.memberType] : '졸업')
 
-type Me = { memberId: number; name: string; roles: string[] }
-const fetchMe = () => api<Me>('/members/me')
+export type Me = { memberId: number; name: string; roles: string[] }
+export const fetchMe = () => api<Me>('/members/me')
 
 /* ================= 공지 · 투표 (N-1, N-2, N-6) ================= */
 
-type NoticeSummaryDto = {
+export type NoticeSummaryDto = {
   noticeId: number
   title: string
   mustRead: boolean
@@ -91,7 +91,7 @@ type NoticeSummaryDto = {
   attachmentCount: number
   poll: { closesAt: string; closed: boolean; audience: boolean; voted: boolean } | null
 }
-type NoticeListDto = { pinned: NoticeSummaryDto[]; page: PageResponse<NoticeSummaryDto> }
+export type NoticeListDto = { pinned: NoticeSummaryDto[]; page: PageResponse<NoticeSummaryDto> }
 
 type PollDto = {
   pollId: number
@@ -114,7 +114,7 @@ type PollDto = {
   options: { optionId: number; label: string; count?: number; ratio?: number; voters?: MemberRef[] }[]
 }
 type FileRef = { publicId: string; name: string; size: number; contentType: string }
-type NoticeDetailDto = {
+export type NoticeDetailDto = {
   noticeId: number
   title: string
   body: string
@@ -784,7 +784,7 @@ export function useHomeWeekEvents() {
         title: occTitle(o),
         meta: [when, o.location].filter(Boolean).join(' · '),
         scope: o.layer === 'SHARED' ? '공용' : '개인',
-        color: o.layer === 'SHARED' ? o.color ?? 'var(--brand-400)' : 'var(--brand-200)',
+        color: o.layer === 'SHARED' ? o.color ?? 'var(--accent-2)' : 'var(--accent-line)',
       }
     })
   })

@@ -223,6 +223,19 @@ export async function pinThread(projectKey: string, threadId: number, pinned: bo
   return toThreadPost(t)
 }
 
+/** H-4 글 고치기 (제목 · 본문). 고친 글을 돌려준다 */
+export async function editThread(projectKey: string, threadId: number, title: string, body: string) {
+  const t = await api<ThreadItem>(`/projects/${projectKey}/threads/${threadId}`, {
+    method: 'PATCH',
+    body: { title: title || null, body },
+  })
+  return toThreadPost(t)
+}
+
+/** H-6 글 지우기 (답글 · 첨부도 함께 숨김) */
+export const deleteThread = (projectKey: string, threadId: number) =>
+  api<null>(`/projects/${projectKey}/threads/${threadId}`, { method: 'DELETE' })
+
 /** H-5 고정 글 순서 한 번에 저장 */
 export async function savePinnedOrder(projectKey: string, threadIds: number[]) {
   const res = await api<{ pinned: ThreadItem[] }>(`/projects/${projectKey}/threads/pinned-order`, {
@@ -701,7 +714,7 @@ export async function refreshGithubActivity() {
  * 자료실 (40-document-file.md D-1, D-8)
  * ==================================================================== */
 
-type DocumentItem = {
+export type DocumentItem = {
   documentId: number
   categoryCode: string
   categoryName: string
@@ -717,7 +730,7 @@ type DocumentItem = {
   pinned: boolean
   createdAt: string
 }
-type DocumentListResponse = {
+export type DocumentListResponse = {
   pinned: DocumentItem[]
   categoryCounts: Record<string, number>
   page: PageResponse<DocumentItem>
@@ -765,7 +778,7 @@ const seenProjects = new Map<string, string>()
 const seenAuthors = new Map<string, number>()
 const seenTypes = new Set<string>()
 
-const toDocument = (d: DocumentItem): DocumentSummary => {
+export const toDocument = (d: DocumentItem): DocumentSummary => {
   seenAuthors.set(d.author.name, d.author.memberId)
   if (d.project) seenProjects.set(d.project.name, d.project.projectKey)
   d.fileTypes.forEach((t) => seenTypes.add(t))

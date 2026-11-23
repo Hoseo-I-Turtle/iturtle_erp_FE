@@ -259,7 +259,7 @@ function PollBody({ poll, reload }: { poll: PollView; reload: () => void }) {
                           className={`${s.cell} ${s.heat} ${highlighted.has(key) ? s.recommended : ''}`}
                           style={{
                             background: `rgba(63, 101, 147, ${alpha})`,
-                            color: alpha >= 0.6 ? 'var(--text-on-dark)' : 'var(--brand-500)',
+                            color: alpha >= 0.6 ? 'var(--text-on-dark)' : 'var(--accent)',
                           }}
                           title={people
                             .filter((p) => p.set.has(key))

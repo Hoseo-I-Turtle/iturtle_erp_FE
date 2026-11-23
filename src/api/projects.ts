@@ -25,7 +25,7 @@ import {
 } from '../mocks/tasks'
 
 /** 목업의 "나" (목업 화면들이 같은 이름을 쓴다) */
-const MOCK_ME = '김민서'
+export const MOCK_ME = '김민서'
 
 // ───────────────────────── 공통 변환 ─────────────────────────
 
@@ -46,7 +46,7 @@ const kstDateTime = (iso: string) => {
   return `${monthDay(s.slice(0, 10))} ${s.slice(11, 16)}`
 }
 
-const daysUntil = (d: string) => Math.round((Date.parse(d.slice(0, 10)) - Date.parse(todayKst())) / 86400000)
+export const daysUntil = (d: string) => Math.round((Date.parse(d.slice(0, 10)) - Date.parse(todayKst())) / 86400000)
 
 /** 서버 상태 → 화면 상태. 명세 확인 필요: ON_HOLD(보류) 는 화면 상태에 없어 '준비'로 보여 준다 */
 const toProjectStatus = (s: string): ProjectStatus => (s === 'ON_HOLD' ? 'PREPARING' : (s as ProjectStatus))
@@ -126,7 +126,7 @@ export function useProjectList(f: ProjectListFilter) {
 // ───────────────────────── P-3 프로젝트 상세 ─────────────────────────
 
 type ProjectMemberRefDto = { member: MemberRef; role: 'MANAGER' | 'MEMBER' | 'FORMER'; joinedAt: string; leftAt: string | null }
-type ProjectDetailDto = {
+export type ProjectDetailDto = {
   projectId: number
   projectKey: string
   name: string
@@ -143,10 +143,10 @@ type ProjectDetailDto = {
   permissions: { canManage: boolean; canWriteTasks: boolean; canComment: boolean; canArchive: boolean; canDelete: boolean }
 }
 
-const getProject = (key: string) => api<ProjectDetailDto>(`/projects/${encodeURIComponent(key)}`)
+export const getProject = (key: string) => api<ProjectDetailDto>(`/projects/${encodeURIComponent(key)}`)
 
 /** 이전 참여자를 뺀 참여자 (PM 먼저 — 서버 순서 그대로) */
-const toMembers = (d: ProjectDetailDto): (ProjectMember & { memberId: number })[] =>
+export const toMembers = (d: ProjectDetailDto): (ProjectMember & { memberId: number })[] =>
   d.members
     .filter((m) => m.role !== 'FORMER')
     .map((m) => ({
@@ -277,7 +277,7 @@ type ServiceAccessDto = {
   members: { member: MemberRef; projectRole: 'MANAGER' | 'MEMBER'; vault: Level; jenkins: Level }[]
   notice: string
 }
-type TaskCardDto = {
+export type TaskCardDto = {
   taskId: number
   taskKey: string
   projectKey: string
@@ -299,7 +299,7 @@ type TaskCardDto = {
   updatedAt: string
   version: number
 }
-type TaskListResponse = { page: PageResponse<TaskCardDto>; deletedTaskKeys?: string[]; serverTime: string }
+export type TaskListResponse = { page: PageResponse<TaskCardDto>; deletedTaskKeys?: string[]; serverTime: string }
 type OccurrenceDto = { eventId: number; title?: string; allDay: boolean; startsAt: string; startsOn?: string; color: string | null }
 
 const LEVEL_NAME: Record<string, string> = { NONE: '없음', READ: '읽기', WRITE: '쓰기', BUILD: '빌드' }
@@ -407,7 +407,7 @@ export function useProjectHome(key: string | undefined) {
           at: e.startsOn ?? e.startsAt,
           title: e.title ?? '일정',
           when: e.allDay ? monthDay(e.startsOn ?? e.startsAt) : kstDateTime(e.startsAt),
-          color: 'var(--brand-400)',
+          color: 'var(--accent-2)',
         })),
         ...dueMs.items.map((m) => ({ at: m.dueOn, title: `마일스톤 ${m.name}`, when: monthDay(m.dueOn), color: 'var(--status-negative)' })),
       ]
@@ -449,7 +449,7 @@ const TASK_TYPES: TaskType[] = ['TASK', 'BUG', 'RESEARCH']
 
 export type BoardTask = Task & { taskId?: number; version?: number }
 
-function toTask(x: TaskCardDto): BoardTask {
+export function toTask(x: TaskCardDto): BoardTask {
   const left = x.dueOn ? daysUntil(x.dueOn) : null
   const done = x.status === 'DONE' || x.status === 'CANCELLED'
   return {

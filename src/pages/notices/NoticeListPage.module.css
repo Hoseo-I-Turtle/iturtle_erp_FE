@@ -1,0 +1,183 @@
+.list {
+  gap: 12px;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.search {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 240px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+.search:focus-within {
+  border-color: var(--accent-line);
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--fs-caption);
+  color: var(--text-primary);
+}
+.sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.label {
+  padding-top: 6px;
+  font-size: var(--fs-overline);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+  transition: background-color 0.15s;
+}
+.notice:hover {
+  background: var(--surface-tint);
+}
+.notice > svg {
+  flex: none;
+  color: var(--text-secondary);
+}
+.unread {
+  background: var(--surface-unread);
+}
+.unread .text strong {
+  font-weight: 600;
+}
+.chips {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+.text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.text strong {
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.text small {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.clip {
+  color: var(--text-muted) !important;
+}
+.comments {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.pager {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding-top: 8px;
+}
+.pager button {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-body);
+}
+.pager button:hover:not(:disabled) {
+  background: var(--surface-tint);
+}
+.pager button:disabled {
+  color: var(--text-disabled);
+  cursor: default;
+}
+.pager .pageOn,
+.pager .pageOn:hover {
+  background: var(--accent);
+  color: var(--text-on-dark);
+}
+
+/* 옆 칸: 진행 중인 투표 */
+.poll {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.poll strong {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.poll:hover strong {
+  color: var(--text-secondary);
+}
+.pollProgress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pollProgress > div {
+  flex: 1;
+}
+.pollProgress b {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--text-body);
+  white-space: nowrap;
+}
+.pollMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+@media (max-width: 720px) {
+  .search {
+    margin-left: 0;
+    width: 100%;
+  }
+  .notice {
+    flex-wrap: wrap;
+  }
+  .text {
+    flex-basis: 100%;
+    order: 5;
+  }
+}

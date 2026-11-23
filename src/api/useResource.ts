@@ -1,5 +1,5 @@
 // 화면 데이터 훅: 목업 모드면 목업을 바로 주고, 실서버 모드면 API 를 불러 화면 모양으로 바꾼 값을 준다.
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { getDataMode } from '../lib/dataMode'
 import { ApiError } from './client'
 
@@ -12,6 +12,21 @@ export type Resource<T> = {
   setData: (f: (prev: T) => T) => void
 }
 
+/* 만들기 · 지우기 뒤에 화면의 모든 목록을 다시 불러오게 하는 신호 (목업이면 목업을 다시 계산한다) */
+let version = 0
+const listeners = new Set<() => void>()
+const subscribe = (l: () => void) => {
+  listeners.add(l)
+  return () => {
+    listeners.delete(l)
+  }
+}
+/** 저장한 뒤 부른다: useResource 를 쓰는 화면이 모두 새 데이터를 받는다 */
+export function invalidateAll() {
+  version++
+  listeners.forEach((l) => l())
+}
+
 type State<T> = { key: string; data: T | undefined; error: string | null }
 
 /**
@@ -22,7 +37,8 @@ type State<T> = { key: string; data: T | undefined; error: string | null }
 export function useResource<T>(key: unknown, mock: () => T, live: () => Promise<T>): Resource<T> {
   const isLive = getDataMode() === 'live'
   const [tick, setTick] = useState(0)
-  const reqKey = `${JSON.stringify(key)}#${tick}`
+  const ver = useSyncExternalStore(subscribe, () => version)
+  const reqKey = `${JSON.stringify(key)}#${tick}#${ver}`
 
   const [state, setState] = useState<State<T>>(() =>
     isLive ? { key: '', data: undefined, error: null } : { key: reqKey, data: mock(), error: null },

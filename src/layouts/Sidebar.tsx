@@ -2,6 +2,8 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { Database, Server, Settings } from 'lucide-react'
 import { clearDataMode, type DataMode } from '../lib/dataMode'
 import { Avatar, BrandLogo } from '../components/ui'
+import { ThemeDecor } from '../components/theme/ThemeDecor'
+import { ThemeObjects } from '../components/theme/ThemeObjects'
 import { NAV } from './nav'
 import s from './layout.module.css'
 
@@ -9,6 +11,8 @@ export function Sidebar({ mode }: { mode: DataMode }) {
   const navigate = useNavigate()
   return (
     <aside className={s.sidebar}>
+      <ThemeDecor area="sidebar" />
+      <ThemeObjects slot="sidebar" />
       <NavLink to="/" className={`${s.logo} ${s.brand}`} aria-label="iturtle 홈">
         <BrandLogo height={48} gap={19} />
       </NavLink>
@@ -47,16 +51,17 @@ export function Sidebar({ mode }: { mode: DataMode }) {
         <span>바꾸기</span>
       </button>
 
-      <div className={s.user}>
+      {/* 내 정보 칸 전체가 설정으로 가는 버튼이다 */}
+      <NavLink to="/settings" className={s.user} aria-label="설정 열기">
         <Avatar name="김민서" size={44} colorIndex={0} />
         <div className={s.userText}>
           <div className={s.userName}>김민서</div>
-          <div className={s.userMeta}>학생 · 재실</div>
+          <div className={s.userMeta}>학생 · 재실 · 설정</div>
         </div>
-        <NavLink to="/me" aria-label="내 프로필 설정" className={s.userSettings}>
+        <span className={s.userSettings}>
           <Settings size={18} strokeWidth={2} />
-        </NavLink>
-      </div>
+        </span>
+      </NavLink>
     </aside>
   )
 }

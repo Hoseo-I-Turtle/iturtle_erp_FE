@@ -52,7 +52,9 @@ type ViewProps = { list: MinuteList; projectKey: string; projectName: string }
 
 function MinutesView({ list, projectKey, projectName }: ViewProps) {
   const latest = list.latest!
-  const [currentId, setCurrentId] = useState(latest.id)
+  // 목록에서 고른 회의록(주소의 번호)부터 연다. 없으면 가장 최근 것
+  const { minuteId } = useParams()
+  const [currentId, setCurrentId] = useState(Number(minuteId) || latest.id)
   const detail = useMinute(currentId)
   return (
     <Loadable resource={detail} label="회의록">
@@ -281,8 +283,11 @@ function MinuteColumns({ detail, d, list, isLatest, onOpen, projectKey, projectN
                 leading={<Avatar name={h.who} size={26} />}
                 title={<small className={s.histWho}>{h.who}</small>}
                 meta={`${h.ago} · ${h.what}`}
-                // TODO: 이전 버전 보기 (MM-7 GET /meeting-minutes/{id}/revisions/{version}) — 보여 줄 화면이 아직 없다
-                trailing={<button type="button" className={s.view}>보기</button>}
+                trailing={
+                  <Link to={`/projects/${projectKey}/minutes/${m.minuteId}/revisions`} className={s.view}>
+                    보기
+                  </Link>
+                }
               />
             ))}
           </Card>

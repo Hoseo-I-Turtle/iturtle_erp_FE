@@ -17,7 +17,7 @@
   padding: 12px 12px;
   border-radius: var(--radius-md);
   text-align: left;
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .menuItem:hover {
   background: var(--surface-sunken);
@@ -61,7 +61,7 @@
   justify-content: center;
   border-radius: 10px;
   background: var(--surface-card);
-  color: var(--brand-500);
+  color: var(--text-body);
 }
 .svcText {
   flex: 1;
@@ -105,8 +105,8 @@
   white-space: nowrap;
 }
 .syncOk {
-  background: #e3f7ec;
-  color: #1e8a52;
+  background: var(--status-positive-bg);
+  color: var(--status-positive-text);
 }
 .syncFail {
   background: var(--status-negative-bg);

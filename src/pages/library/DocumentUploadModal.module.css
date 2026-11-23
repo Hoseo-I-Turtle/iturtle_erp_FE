@@ -1,0 +1,188 @@
+.drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 26px 20px;
+  border: 1px dashed var(--accent-line);
+  border-radius: 16px;
+  background: var(--surface-tint);
+  text-align: center;
+  transition: background-color 0.15s;
+}
+.drop:hover,
+.dropOver {
+  background: var(--accent-soft);
+}
+.drop i {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-card);
+  color: var(--text-body);
+}
+.drop strong {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.drop small {
+  font-size: var(--fs-overline);
+  color: var(--text-secondary);
+}
+
+.files {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+.fileFailed {
+  box-shadow: inset 0 0 0 1px var(--status-negative-border);
+  background: var(--status-negative-bg-soft);
+}
+.file > i {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+  color: var(--text-secondary);
+}
+.file > span {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.file strong {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file strong small {
+  font-size: var(--fs-overline);
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.file em {
+  font-style: normal;
+  font-size: var(--fs-overline);
+  font-weight: 500;
+}
+.done {
+  color: var(--status-positive-text);
+}
+.uploading {
+  color: var(--text-secondary);
+}
+.failed {
+  color: var(--status-negative);
+}
+.bar {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-card);
+  overflow: hidden;
+}
+.bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: 3px;
+  background: var(--accent-2);
+  animation: slide 1.1s ease-in-out infinite;
+}
+@keyframes slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+.ok {
+  flex: none;
+  color: var(--status-positive-text);
+}
+.file > button {
+  display: inline-flex;
+  color: var(--text-muted);
+}
+.file > button:hover {
+  color: var(--status-negative);
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.tag,
+.tagAdd {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--fs-overline);
+  font-weight: 500;
+}
+.tag {
+  background: var(--surface-tint);
+  color: var(--text-body);
+}
+.tag:hover {
+  color: var(--status-negative);
+}
+.tagAdd {
+  background: var(--surface-soft);
+  color: var(--text-secondary);
+}
+.tagAdd input {
+  width: 80px;
+  border: 0;
+  outline: 0;
+  background: none;
+  font: inherit;
+  color: var(--text-primary);
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.foot > span {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-overline);
+  color: var(--text-muted);
+}

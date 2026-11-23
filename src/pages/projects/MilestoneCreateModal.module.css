@@ -1,0 +1,119 @@
+.tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
+}
+.tasksHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+.tasksHead strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.tasksHead b {
+  font-size: var(--fs-overline);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.tasksHead small {
+  margin-left: auto;
+  font-size: var(--fs-overline);
+  color: var(--text-muted);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+  background: var(--surface-card);
+  font-size: var(--fs-overline);
+  font-weight: 500;
+  color: var(--text-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chip:hover {
+  color: var(--status-negative);
+}
+.add,
+.add:hover {
+  background: var(--surface-tint);
+  color: var(--text-secondary);
+}
+.pick {
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+}
+.pick em {
+  padding: 8px 10px;
+  font-style: normal;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.pick button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  text-align: left;
+  font-size: var(--fs-caption);
+  color: var(--text-primary);
+}
+.pick button:hover {
+  background: var(--surface-tint);
+}
+.pick b {
+  flex: none;
+  width: 72px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.pick span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pick small {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.foot > span {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-overline);
+  color: var(--text-muted);
+}

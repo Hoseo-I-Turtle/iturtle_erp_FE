@@ -38,7 +38,7 @@ export function SectionHead({ icon: Icon, title, extra, link, onDark }: SectionH
 }
 
 /* ---------- Chip ---------- */
-export type ChipTone = 'brand' | 'tint' | 'danger' | 'warning' | 'count' | 'muted'
+export type ChipTone = 'brand' | 'tint' | 'danger' | 'warning' | 'count' | 'muted' | 'positive' | 'gray' | 'plain'
 type ChipProps = { tone?: ChipTone; icon?: LucideIcon; children: ReactNode; className?: string }
 export function Chip({ tone = 'brand', icon: Icon, children, className }: ChipProps) {
   return (
@@ -50,7 +50,7 @@ export function Chip({ tone = 'brand', icon: Icon, children, className }: ChipPr
 }
 
 /* ---------- Avatar ---------- */
-const AVATAR_COLORS = ['var(--brand-300)', 'var(--brand-400)', 'var(--brand-200)', 'var(--brand-500)']
+const AVATAR_COLORS = ['var(--accent-3)', 'var(--accent-2)', 'var(--accent-line)', 'var(--accent)']
 export function Avatar({ name, size = 26, colorIndex }: { name: string; size?: number; colorIndex?: number }) {
   const idx = colorIndex ?? [...name].reduce((a, ch) => a + ch.charCodeAt(0), 0) % AVATAR_COLORS.length
   return (
@@ -76,7 +76,7 @@ export function AvatarStack({ names, size = 26 }: { names: string[]; size?: numb
 /* ---------- Button ---------- */
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   /** icon: 테두리 있는 정사각 아이콘 버튼, ghost: 배경 없는 아이콘 버튼 */
-  variant?: 'primary' | 'secondary' | 'tint' | 'light' | 'ghost' | 'icon'
+  variant?: 'primary' | 'secondary' | 'tint' | 'light' | 'ghost' | 'icon' | 'danger'
   icon?: LucideIcon
 }
 export function Button({ variant = 'primary', icon: Icon, className, children, ...rest }: ButtonProps) {
@@ -153,7 +153,7 @@ type CheckboxProps = {
   children?: ReactNode
   className?: string
 }
-export function Checkbox({ checked, onChange, color = 'var(--brand-400)', size = 18, children, className }: CheckboxProps) {
+export function Checkbox({ checked, onChange, color = 'var(--accent-2)', size = 18, children, className }: CheckboxProps) {
   return (
     <label className={cx(s.checkbox, className)}>
       <input type="checkbox" checked={checked} onChange={(e) => onChange?.(e.target.checked)} />
@@ -163,7 +163,7 @@ export function Checkbox({ checked, onChange, color = 'var(--brand-400)', size =
           width: size,
           height: size,
           background: checked ? color : 'var(--surface-card)',
-          borderColor: checked ? color : 'var(--brand-400)',
+          borderColor: checked ? color : 'var(--accent-2)',
         }}
       >
         {checked && <Check size={size - 6} strokeWidth={3} />}
@@ -320,10 +320,12 @@ type SelectProps<T extends string> = {
   onChange: (v: T) => void
   label?: string
   width?: number
+  /** 폼 안에서 쓰는 큰 모양 (가로를 채우고 높이 44px) */
+  block?: boolean
 }
-export function Select<T extends string>({ value, options, onChange, label, width }: SelectProps<T>) {
+export function Select<T extends string>({ value, options, onChange, label, width, block }: SelectProps<T>) {
   return (
-    <span className={s.select} style={{ width }}>
+    <span className={cx(s.select, block && s.selectBlock)} style={{ width }}>
       <select value={value} onChange={(e) => onChange(e.target.value as T)} aria-label={label}>
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -368,6 +370,39 @@ export function Modal({ title, badge, onClose, footer, width = 1120, children }:
   )
 }
 
+/* ---------- ConfirmDialog: 지우기 · 되살리기처럼 한 번 더 묻는 작은 창 ---------- */
+type ConfirmProps = {
+  title: ReactNode
+  children: ReactNode
+  confirmLabel: string
+  icon?: LucideIcon
+  danger?: boolean
+  busy?: boolean
+  onConfirm: () => void
+  onClose: () => void
+}
+export function ConfirmDialog({ title, children, confirmLabel, icon, danger, busy, onConfirm, onClose }: ConfirmProps) {
+  return (
+    <Modal
+      title={title}
+      width={460}
+      onClose={onClose}
+      footer={
+        <div className={s.confirmFoot}>
+          <Button variant="secondary" onClick={onClose}>
+            취소
+          </Button>
+          <Button variant={danger ? 'danger' : 'primary'} icon={icon} onClick={onConfirm} disabled={busy}>
+            {confirmLabel}
+          </Button>
+        </div>
+      }
+    >
+      <div className={s.confirmBody}>{children}</div>
+    </Modal>
+  )
+}
+
 /* ---------- Empty ---------- */
 export function Empty({ children }: { children: ReactNode }) {
   return <p className={s.empty}>{children}</p>
@@ -388,4 +423,5 @@ export function KeyValue({ items }: { items: [string, ReactNode][] }) {
 }
 
 export { Loadable } from './Loadable'
+export { Field, FormActions, FormError, FormRow, OptionCard, SearchBox, SmallButton, TextArea, TextInput, ToggleChip } from './form'
 export { BrandLogo } from './BrandLogo'

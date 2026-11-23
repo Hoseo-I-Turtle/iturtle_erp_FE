@@ -790,8 +790,8 @@ export async function downloadAuditCsv(f: AuditFilter) {
 // 명세 확인 필요: 기존 공통코드 API 의 경로 · 응답 모양이 명세에 없다.
 // 10-member 는 "경로는 모두 /api/v1 아래" 이고 같은 모듈의 9-1 이 /api/v1/backoffice/job-runs 라서 /api/v1 아래로 본다.
 // 서버 루트(/backoffice/…)라면 아래 값을 true 로 바꾼다.
-const CODES_AT_ROOT = false
-const CODES = '/backoffice/common-codes'
+export const CODES_AT_ROOT = false
+export const CODES = '/backoffice/common-codes'
 
 type CodeGroupDto = { codeId: string; codeName: string; description?: string | null }
 // 명세 확인 필요: 상세 코드 필드 이름(detailCode · detailName · ref1~4 · enabled)은 짐작
