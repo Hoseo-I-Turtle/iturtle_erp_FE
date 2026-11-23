@@ -2,8 +2,8 @@ import { GitBranch, GitCommitHorizontal, RefreshCw } from 'lucide-react'
 import type { GithubActivity } from '../../../api/content'
 import s from '../WeeklyReportPage.module.css'
 
-/** GitHub 활동: 저장소 · 브랜치별 커밋 · 줄 수 */
-export function GithubBox({ g, onRefresh }: { g: GithubActivity; onRefresh: () => void }) {
+/** GitHub 활동: 저장소 · 브랜치별 커밋 · 줄 수. onRefresh 가 없으면(읽기 전용, ERP-39) 새로 받기 단추를 숨긴다 */
+export function GithubBox({ g, onRefresh }: { g: GithubActivity; onRefresh?: () => void }) {
   return (
     <div className={s.github}>
       <div className={s.boxHead}>
@@ -11,9 +11,11 @@ export function GithubBox({ g, onRefresh }: { g: GithubActivity; onRefresh: () =
         <strong>GitHub 활동</strong>
         <span className={s.grow} />
         <small>마지막으로 받은 시각 · {g.fetchedAgo}</small>
-        <button type="button" className={s.copy} onClick={onRefresh}>
-          <RefreshCw size={16} /> 지금 새로 받기
-        </button>
+        {onRefresh && (
+          <button type="button" className={s.copy} onClick={onRefresh}>
+            <RefreshCw size={16} /> 지금 새로 받기
+          </button>
+        )}
       </div>
       <table className={s.table}>
         <thead>

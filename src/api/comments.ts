@@ -3,7 +3,7 @@ import { ago, type MemberRef, type PageResponse } from './types'
 import { useResource } from './useResource'
 
 /** 댓글을 달 수 있는 대상 (CM-1 targetType) */
-export type CommentTargetType = 'NOTICE' | 'DOCUMENT' | 'TASK' | 'PROJECT_THREAD' | 'WEEKLY_REPORT'
+export type CommentTargetType = 'NOTICE' | 'DOCUMENT' | 'TASK' | 'PROJECT_THREAD' | 'WEEKLY_REPORT' | 'PROJECT_POLICY'
 
 type CommentDto = {
   commentId: number

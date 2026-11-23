@@ -6,7 +6,7 @@ import { GRADUATE_TOTAL, ME_ID, members as mockMembers, type Member } from '../m
 import { useResource } from './useResource'
 
 /** MemberSummaryResponse (2-1). phone 은 공개했거나 contact-view · 본인일 때만, 아니면 빠지고 phoneHidden: true */
-type MemberListItem = {
+export type MemberListItem = {
   memberId: number
   name: string
   memberType: MemberTypeCode
@@ -22,7 +22,7 @@ type MemberListItem = {
   phoneHidden?: boolean
 }
 /** MemberListResponse (2-1). disabled · locked 는 member-manage 만 */
-type MembersResponse = {
+export type MembersResponse = {
   counts: { active: number; onLeave: number; alumni: number; disabled?: number; locked?: number }
   page: PageResponse<MemberListItem>
 }

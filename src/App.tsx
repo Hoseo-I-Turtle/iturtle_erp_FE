@@ -26,9 +26,12 @@ import { ThreadPage } from './pages/projects/ThreadPage'
 import { TaskDetailPage } from './pages/projects/TaskDetailPage'
 import { MinutesPage } from './pages/projects/MinutesPage'
 import { MinuteListPage } from './pages/projects/MinuteListPage'
+import { PoliciesPage } from './pages/projects/PoliciesPage'
 import { MinuteWritePage } from './pages/projects/MinuteWritePage'
 import { ProjectSettingsPage } from './pages/projects/ProjectSettingsPage'
 import { WeeklyReportPage } from './pages/reports/WeeklyReportPage'
+import { LedgerPage } from './pages/ledger/LedgerPage'
+import { SearchPage } from './pages/search/SearchPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { TaskListPage } from './pages/projects/TaskListPage'
 import { SchedulePage } from './pages/projects/SchedulePage'
@@ -95,16 +98,23 @@ const router = createBrowserRouter([
           { path: 'minutes/new', element: <MinuteWritePage /> },
           { path: 'minutes/:minuteId', element: <MinutesPage /> },
           { path: 'minutes/:minuteId/edit', element: <MinuteWritePage /> },
+          { path: 'policies', element: <PoliciesPage /> },
+          { path: 'policies/new', element: <PoliciesPage /> },
+          { path: 'policies/:policyKey', element: <PoliciesPage /> },
+          { path: 'policies/:policyKey/edit', element: <PoliciesPage /> },
           { path: 'files', element: <ProjectFilesPage /> },
           { path: 'reports', element: <ProjectReportsPage /> },
           { path: 'settings', element: <ProjectSettingsPage /> },
         ],
       },
       { path: '/reports', element: <WeeklyReportPage /> },
+      { path: '/ledger', element: <LedgerPage /> },
 
       { path: '/library', element: <LibraryPage /> },
       { path: '/library/:id', element: <DocumentDetailPage /> },
       { path: '/members', element: <MembersPage /> },
+      // 통합 검색 (CMN-2). 상단 검색창 Enter → /search?q=
+      { path: '/search', element: <SearchPage /> },
       {
         path: '/admin',
         element: <AdminLayout />,

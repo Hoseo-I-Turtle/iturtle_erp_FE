@@ -1,0 +1,111 @@
+/* 통합 검색 (CMN-2) */
+.card {
+  padding: 22px 24px;
+  gap: 18px;
+}
+
+/* ---------- 위 검색창 ---------- */
+.box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
+}
+.box:focus-within {
+  border-color: var(--brand-300);
+}
+.box input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+}
+.box input::placeholder {
+  color: var(--text-muted);
+}
+.go {
+  flex: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  background: var(--brand-400);
+  color: #fff;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+}
+.go:hover {
+  background: var(--brand-500);
+}
+
+/* ---------- 종류 칩 ---------- */
+.kinds {
+  display: flex;
+  overflow-x: auto;
+}
+
+/* ---------- 종류 묶음 ---------- */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-default);
+}
+.groupHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-h3);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.groupHead svg {
+  color: var(--brand-500);
+}
+.hits {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mark {
+  padding: 0 1px;
+  border-radius: 3px;
+  background: var(--status-warning-bg);
+  color: inherit;
+}
+.more {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.more:disabled {
+  color: var(--text-muted);
+}
+.fail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--status-negative-bg);
+  color: var(--status-negative);
+  font-size: var(--fs-caption);
+}
+.fail span {
+  flex: 1;
+}
+.fail button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--brand-500);
+}

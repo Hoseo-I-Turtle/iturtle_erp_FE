@@ -1,4 +1,4 @@
-import { Calendar, ClipboardList, Kanban, ListChecks, Megaphone, MessageCircle, Shield, SquareCheck } from 'lucide-react'
+import { Calendar, ClipboardList, Kanban, ListChecks, Megaphone, MessageCircle, Shield, SquareCheck, Wallet } from 'lucide-react'
 import type { NotiType } from '../../mocks/notifications'
 
 const MAP = {
@@ -10,6 +10,7 @@ const MAP = {
   REPORT: { icon: ClipboardList, color: 'var(--brand-500)' },
   VOTE: { icon: SquareCheck, color: 'var(--brand-500)' },
   ASSIGN: { icon: ListChecks, color: 'var(--brand-500)' },
+  LEDGER: { icon: Wallet, color: '#1e8a52' },
 } as const
 
 export function NotificationIcon({ type, size = 18 }: { type: NotiType; size?: number }) {

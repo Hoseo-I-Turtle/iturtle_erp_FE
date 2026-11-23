@@ -253,3 +253,22 @@ export async function bulkUpdateTasks(taskKeys: string[], change: BulkChange): P
   const r = await api<{ tasks: TaskCardDto[]; failures: BulkFailure[] | null }>('/tasks', { method: 'PATCH', body: { taskKeys, ...change } })
   return r.failures ?? []
 }
+
+// ───────────────────────── 작업 번호 찾기 (T-13) ─────────────────────────
+
+/** TaskLookupItemResponse — 볼 수 있는 작업만 온다 */
+export type TaskLookupItem = { taskId: number; taskKey: string; title: string; status: TaskStatus | 'CANCELLED'; projectKey: string }
+
+/** 작업 번호 모양 (DEFME-12). 프로젝트 키 규칙은 projectSettings KEY_PATTERN 과 같다 */
+export const TASK_KEY_PATTERN = /^[A-Z][A-Z0-9]{1,9}-\d+$/
+
+/** 작업 번호 여러 개를 찾는다 (GET /tasks/lookup). 없거나 볼 수 없는 번호는 빠진다. 목업이면 목업 작업에서 */
+export async function lookupTasks(keys: string[]): Promise<TaskLookupItem[]> {
+  if (getDataMode() !== 'live') {
+    return mockTasks
+      .filter((t) => keys.includes(t.taskKey))
+      .map((t, i) => ({ taskId: i + 1, taskKey: t.taskKey, title: t.title, status: t.status, projectKey: t.taskKey.replace(/-\d+$/, '') }))
+  }
+  const r = await api<{ tasks: TaskLookupItem[] }>('/tasks/lookup', { query: { keys: keys.join(',') } })
+  return r.tasks
+}

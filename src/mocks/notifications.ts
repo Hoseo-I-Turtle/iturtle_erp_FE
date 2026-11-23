@@ -1,5 +1,5 @@
 // 알림 목업 — docs/api/20-communication.md 알림 부분
-export type NotiType = 'MENTION' | 'TASK' | 'NOTICE' | 'CALENDAR' | 'ACCESS' | 'REPORT' | 'VOTE' | 'ASSIGN'
+export type NotiType = 'MENTION' | 'TASK' | 'NOTICE' | 'CALENDAR' | 'ACCESS' | 'REPORT' | 'VOTE' | 'ASSIGN' | 'LEDGER'
 export type NotiFilter = 'ALL' | 'UNREAD' | 'MENTION' | 'TASK' | 'NOTICE_CAL' | 'ACCESS'
 
 export type Notification = {

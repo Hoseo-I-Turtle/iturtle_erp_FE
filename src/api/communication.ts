@@ -95,7 +95,7 @@ const fetchMe = () => api<Me>('/members/me')
 
 /* ================= 공지 · 투표 (N-1, N-2, N-6) ================= */
 
-type NoticeSummaryDto = {
+export type NoticeSummaryDto = {
   noticeId: number
   title: string
   mustRead: boolean
@@ -114,7 +114,7 @@ type NoticeSummaryDto = {
   /** 필독이면 읽음 · 안 읽음 숫자 (명단은 상세에서만), 아니면 null */
   readSummary: { readCount: number; unreadCount: number } | null
 }
-type NoticeListDto = { pinned: NoticeSummaryDto[]; page: PageResponse<NoticeSummaryDto> }
+export type NoticeListDto = { pinned: NoticeSummaryDto[]; page: PageResponse<NoticeSummaryDto> }
 
 /** 공지 대상 (NoticeAudienceResponse / NoticeAudienceRequest) */
 export type NoticeAudienceType = 'ALL' | 'PROJECT' | 'MEMBER_TYPES'
@@ -1181,11 +1181,14 @@ export type NotiItem = Omit<Notification, 'day'> & { day: string }
 function notiType(t: string): NotiType {
   if (t === 'MENTIONED') return 'MENTION'
   if (t === 'TASK_ASSIGNED' || t === 'MINUTE_ACTION_ASSIGNED' || t === 'PROJECT_MEMBER_ADDED') return 'ASSIGN'
-  if (t === 'TASK_WATCH' || t === 'TASK_DUE' || t === 'THREAD_REPLY') return 'TASK'
+  // 정책 댓글은 프로젝트 묶음 (작업 · 스레드와 같이 거른다)
+  if (t === 'TASK_WATCH' || t === 'TASK_DUE' || t === 'THREAD_REPLY' || t === 'POLICY_COMMENT') return 'TASK'
   if (t === 'NOTICE_MUST_READ' || t === 'NOTICE_COMMENT') return 'NOTICE'
   if (t === 'POLL_OPENED' || t === 'POLL_CLOSING') return 'VOTE'
   if (t.startsWith('MEETING_POLL_') || t.startsWith('EVENT_')) return 'CALENDAR'
   if (t.startsWith('REPORT_')) return 'REPORT'
+  // 회계 장부: 먼저 낸 돈 돌려 달라는 요청 · 돌려받음 · 계좌 주인 넘겨받음
+  if (t.startsWith('LEDGER_')) return 'LEDGER'
   return 'ACCESS'
 }
 
@@ -1206,6 +1209,8 @@ const NOTI_FALLBACK: Record<string, string> = {
   TASK: '/projects',
   THREAD: '/projects',
   MINUTE: '/projects',
+  POLICY: '/projects',
+  LEDGER: '/ledger',
   REPORT: '/reports',
   ACCESS_REQUEST: '/admin/role-requests',
   SIGNUP_APPLICATION: '/admin/signups',

@@ -19,7 +19,7 @@ import {
   type MyWeekReport,
   type ReportFields,
 } from '../../api/content'
-import { FIELDS, sectionReady } from './weekly/constants'
+import { sectionReady } from './weekly/constants'
 import { GithubBox } from './weekly/GithubBox'
 import { SectionCard } from './weekly/SectionCard'
 import { LastWeekCommentCard, SubmissionSummaryCard } from './weekly/SideCards'
@@ -264,22 +264,10 @@ export function WeeklyReportPage() {
                       </Loadable>
                     </>
                   ) : (
+                    // 지난 주: 칸마다 그 주 작업 · GitHub 활동까지 읽기만 (ERP-39)
                     <>
                       {r.sections.map((x) => (
-                        <section key={x.projectKey} className={s.section}>
-                          <div className={s.sectionHead}>
-                            <strong>{x.projectName}</strong>
-                            <span className={s.sectionKey}>{x.projectKey}</span>
-                          </div>
-                          <div className={s.sectionBody}>
-                            {FIELDS.map(({ key, label }) => (
-                              <div key={key} className={s.field}>
-                                <span>{label}</span>
-                                <p className={s.readonly}>{x.fields[key] || '—'}</p>
-                              </div>
-                            ))}
-                          </div>
-                        </section>
+                        <SectionCard key={x.projectKey} section={x} report={r} github={gh.data} editable={false} readOnly />
                       ))}
                       {r.note && (
                         <div className={s.field}>
@@ -287,6 +275,10 @@ export function WeeklyReportPage() {
                           <p className={s.readonly}>{r.note}</p>
                         </div>
                       )}
+                      {otherTasks.length > 0 && <TaskBox tasks={otherTasks} readOnly />}
+                      <Loadable resource={gh} label="GitHub 활동">
+                        {(g) => <GithubBox g={g} />}
+                      </Loadable>
                     </>
                   )
                 }}

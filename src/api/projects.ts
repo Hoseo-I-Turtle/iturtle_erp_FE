@@ -86,7 +86,7 @@ const fileSize = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)}MB` 
 // ───────────────────────── P-1 프로젝트 목록 ─────────────────────────
 
 /** ProjectSummaryResponse */
-type ProjectSummaryDto = {
+export type ProjectSummaryDto = {
   projectKey: string
   name: string
   status: ProjectStatusLive
@@ -106,7 +106,7 @@ type ProjectSummaryDto = {
   linkedServices: ServiceCode[]
 }
 /** ProjectListResponse — categoryCounts 는 ALL + 프로젝트가 있는 카테고리만 (공통코드 표시 순서) */
-type ProjectListResponse = { categoryCounts: Record<string, number>; page: PageResponse<ProjectSummaryDto> }
+export type ProjectListResponse = { categoryCounts: Record<string, number>; page: PageResponse<ProjectSummaryDto> }
 
 const rememberCategory = (code: string, name: string | null | undefined) => {
   if (name) seenCategoryNames.set(code, name)
@@ -267,6 +267,9 @@ type ActivityType =
   | 'THREAD_POSTED'
   | 'THREAD_PINNED'
   | 'THREAD_EDITED'
+  | 'POLICY_RECORDED'
+  | 'POLICY_UPDATED'
+  | 'POLICY_STATUS_CHANGED'
   | 'MINUTE_CREATED'
   | 'MINUTE_ACTIONS_CONVERTED'
   | 'SETTINGS_CHANGED'
@@ -386,6 +389,12 @@ function activityText(a: ActivityDto, inTask: boolean) {
       return `스레드 글 "${refTitle}" 를 고정했어요`
     case 'THREAD_EDITED':
       return `스레드 글 "${refTitle}" 를 고쳤어요`
+    case 'POLICY_RECORDED':
+      return `정책 ${refTitle} 를 남겼어요`
+    case 'POLICY_UPDATED':
+      return `정책 ${refTitle} 를 고쳤어요${a.after ? ` (${a.after})` : ''}`
+    case 'POLICY_STATUS_CHANGED':
+      return `정책 ${refTitle} 를 ${a.after === 'RETIRED' ? '내렸어요' : '확정했어요'}`
     case 'MEMBER_ADDED':
       // ref = 그 구성원, after = 역할
       return `${refTitle || '구성원'} 님을 ${ROLE_NAME[a.after ?? ''] ?? '참여자'}로 더했어요`
