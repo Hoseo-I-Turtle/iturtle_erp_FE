@@ -259,39 +259,3 @@
 .tasksCard {
   isolation: isolate;
 }
-.objectToggles {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-.objectToggles > span {
-  font-size: var(--fs-caption);
-  font-weight: 500;
-  color: var(--page-subtitle);
-}
-.objectToggles button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-full);
-  background: var(--surface-card);
-  font-size: var(--fs-caption);
-  font-weight: 500;
-  color: var(--text-body);
-}
-.objectToggles button:hover {
-  border-color: var(--accent-line);
-}
-.objectToggles .objectOn {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--text-on-dark);
-}
-.objectToggles em {
-  font-style: normal;
-  font-size: 11px;
-  opacity: 0.7;
-}

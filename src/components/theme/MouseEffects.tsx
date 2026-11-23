@@ -1,7 +1,7 @@
 // 마우스에 반응하는 효과 — 화면 맨 위에 눌리지 않는 캔버스 한 장을 깔고 테마마다 다른 것을 그린다.
 //   바다       : 마우스가 지나간 자리에서 방울이 떠오른다
 //   크리스마스 : 마우스 주변에서 눈과 반짝이가 흩날린다
-//   다크       : 마우스를 따라오는 은은한 빛
+//   다크       : 없음 (깔끔하게 쓰는 테마)
 // 설정 › 테마의 "마우스 효과" 스위치로 끈다. 기기의 "움직임 줄이기"가 켜져 있으면 그리지 않는다.
 // 틀의 색 · 장식 오브젝트와는 따로 돈다 (lib/theme.ts 의 data-effects).
 import { useEffect, useRef } from 'react'
@@ -51,16 +51,11 @@ export function MouseEffects() {
 
     let particles: Particle[] = []
     const mouse = { x: -999, y: -999, seen: false }
-    const glow = { x: -999, y: -999 }
     let lastSpawn = 0
     const move = (e: PointerEvent) => {
       mouse.x = e.clientX
       mouse.y = e.clientY
-      if (!mouse.seen) {
-        glow.x = mouse.x
-        glow.y = mouse.y
-        mouse.seen = true
-      }
+      mouse.seen = true
       // 너무 많이 만들지 않게 35ms 에 한 번
       const now = performance.now()
       if (now - lastSpawn > 35 && particles.length < MAX_PARTICLES) {
@@ -77,17 +72,6 @@ export function MouseEffects() {
     const frame = () => {
       raf = 0
       ctx.clearRect(0, 0, w, h)
-
-      if (active === 'dark' && mouse.seen) {
-        // 빛은 마우스를 조금 늦게 따라온다
-        glow.x += (mouse.x - glow.x) * 0.12
-        glow.y += (mouse.y - glow.y) * 0.12
-        const g = ctx.createRadialGradient(glow.x, glow.y, 0, glow.x, glow.y, 260)
-        g.addColorStop(0, 'rgba(120, 170, 235, 0.16)')
-        g.addColorStop(1, 'rgba(120, 170, 235, 0)')
-        ctx.fillStyle = g
-        ctx.fillRect(glow.x - 260, glow.y - 260, 520, 520)
-      }
 
       particles = particles.filter((p) => p.life < p.max)
       for (const p of particles) {
@@ -130,8 +114,7 @@ export function MouseEffects() {
       }
 
       // 그릴 것이 남아 있을 때만 다음 장면을 예약한다 (가만히 있으면 쉰다)
-      const glowMoving = active === 'dark' && mouse.seen && Math.hypot(mouse.x - glow.x, mouse.y - glow.y) > 0.5
-      if (particles.length > 0 || glowMoving) raf = requestAnimationFrame(frame)
+      if (particles.length > 0) raf = requestAnimationFrame(frame)
     }
 
     window.addEventListener('pointermove', move, { passive: true })
