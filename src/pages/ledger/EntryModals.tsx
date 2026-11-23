@@ -103,7 +103,8 @@ export function EntryFormModal({ bookId, categories, editing, onClose, onSaved }
       memo: memo.trim(),
       memberId: memberId ? Number(memberId) : null,
       paidFrom: kind === 'EXPENSE' ? paidFrom : 'ACCOUNT',
-      paidBy: isMember && paidBy ? Number(paidBy) : null,
+      // '나' 는 내 ID 를 그대로 보낸다 (비워 보내면 고칠 때 서버가 원래 낸 사람을 그대로 둔다)
+      paidBy: isMember ? (paidBy ? Number(paidBy) : (people.meId ?? null)) : null,
       attachmentFileIds: files.filter((f) => f.state === 'done' && f.publicId).map((f) => f.publicId as string),
       version: editing?.version,
     }
