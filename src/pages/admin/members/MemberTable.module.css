@@ -1,0 +1,71 @@
+.tableCard {
+  gap: 8px;
+}
+.thead,
+.row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 0.6fr 0.7fr 1.6fr 0.9fr 24px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+}
+.thead {
+  margin-top: 8px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.row {
+  min-height: 60px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  text-align: left;
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.row:hover {
+  background: var(--surface-sunken);
+}
+.rowOn,
+.rowOn:hover {
+  background: var(--surface-tint);
+  border-color: var(--brand-400);
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.who > span {
+  display: flex;
+  flex-direction: column;
+}
+.who strong {
+  font-size: var(--fs-body);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.who small {
+  color: var(--text-secondary);
+}
+.rolesCell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.last {
+  color: var(--text-secondary);
+}
+.more {
+  color: var(--text-secondary);
+}
+
+.conflictMark {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--status-warning-bg, #fff1dc);
+  color: var(--status-warning-text, #b26a00);
+  font-size: 11px;
+  font-weight: 500;
+}

@@ -1,0 +1,464 @@
+/* 프로젝트 설정 패널 (일반 · 참여자 · 라벨 · 보관 · 삭제) */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+.head p {
+  margin: 4px 0 0;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.headRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.label {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  flex: 1;
+  min-width: 0;
+}
+.input:focus-within,
+.textarea:focus {
+  border-color: var(--brand-300);
+  box-shadow: 0 0 0 3px rgba(128, 170, 211, 0.25);
+}
+.input input,
+.input select {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+}
+.input small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-overline);
+  white-space: nowrap;
+}
+.textarea {
+  padding: 12px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+  resize: vertical;
+  outline: 0;
+}
+.textarea:disabled,
+.input:has(input:disabled) {
+  background: var(--surface-sunken);
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.period {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hint {
+  font-size: var(--fs-overline);
+  color: var(--text-muted);
+}
+.muted {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.bad,
+.failText {
+  font-size: var(--fs-caption);
+  color: var(--status-negative);
+}
+.okText {
+  font-size: var(--fs-caption);
+  color: #1e7d4f;
+}
+.warn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--status-warning-text, #b26a00);
+}
+
+.options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.statusOptions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+@media (max-width: 720px) {
+  .statusOptions {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+  text-align: left;
+  color: var(--brand-500);
+}
+.option span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.option strong {
+  color: var(--text-primary);
+}
+.option small {
+  font-size: var(--fs-overline);
+  color: var(--text-secondary);
+}
+.optionOn {
+  border-color: var(--brand-400);
+  background: var(--surface-tint);
+}
+.option:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.actions button:disabled {
+  opacity: 0.5;
+}
+.keyRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.keyRow .input {
+  max-width: 360px;
+}
+
+/* 참여자 */
+.addBox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.candidate {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  background: var(--surface-card);
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.candidate small {
+  color: var(--text-muted);
+}
+.candidate:hover {
+  background: var(--surface-tint);
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-caption);
+}
+.table th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-default);
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--surface-sunken);
+  color: var(--text-primary);
+}
+.who {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+}
+.select {
+  padding: 6px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  font: inherit;
+  color: var(--brand-500);
+}
+.right {
+  text-align: right;
+}
+.iconBtn {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+}
+.iconBtn:hover {
+  background: var(--surface-tint);
+}
+.iconBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.former {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fold {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.formerList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.formerList li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  font-size: var(--fs-caption);
+}
+
+/* 라벨 */
+.labelList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+.labelEditing {
+  background: var(--surface-tint);
+}
+.dot {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: var(--radius-full);
+}
+.labelText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.labelText strong {
+  font-weight: 500;
+}
+.labelText small {
+  font-size: var(--fs-overline);
+  color: var(--text-secondary);
+}
+.labelName {
+  flex: 0 0 160px;
+}
+.labelNew {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.colors {
+  display: inline-flex;
+  gap: 4px;
+  flex: none;
+}
+.swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+}
+.swatchOn {
+  border-color: var(--surface-card);
+  box-shadow: 0 0 0 2px var(--brand-500);
+}
+.confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 보관 · 삭제 */
+.zone {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+}
+.zoneIcon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: var(--brand-500);
+}
+.zoneText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.zoneText strong {
+  font-weight: 600;
+}
+.zoneText small {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.danger {
+  border: 1px solid #f3b4b6;
+  background: var(--status-negative-bg);
+}
+.dangerIcon,
+.dangerText {
+  color: var(--status-negative);
+}
+.dangerBtn {
+  border-color: #f3b4b6 !important;
+  color: var(--status-negative) !important;
+}
+.deleteBtn {
+  background: var(--status-negative) !important;
+}
+.deleteBtn:disabled {
+  opacity: 0.5;
+}
+.confirmBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: var(--fs-caption);
+  color: var(--text-primary);
+}
+.confirmBody p {
+  margin: 0;
+}
+.radios {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.radios label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.grow {
+  flex: 1;
+}
+
+@media (max-width: 720px) {
+  .grid,
+  .options {
+    grid-template-columns: 1fr;
+  }
+  .labelRow,
+  .zone,
+  .keyRow,
+  .headRow {
+    flex-wrap: wrap;
+  }
+  .labelName {
+    flex: 1 1 100%;
+  }
+  .table th:nth-child(2),
+  .table td:nth-child(2),
+  .table th:nth-child(4),
+  .table td:nth-child(4) {
+    display: none;
+  }
+}

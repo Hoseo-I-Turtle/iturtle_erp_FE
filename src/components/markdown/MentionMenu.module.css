@@ -1,0 +1,47 @@
+/* 사람 언급 자동완성 목록 (ERP-34) — 쓰는 칸을 감싼 position: relative 상자 안에서 칸 아래(또는 위)에 뜬다 */
+.menu {
+  position: absolute;
+  left: 0;
+  z-index: 30;
+  min-width: 220px;
+  max-width: 100%;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  box-shadow: 0 8px 24px rgb(0 15 34 / 0.12);
+}
+.item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.item small {
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+}
+.item:hover,
+.active {
+  background: var(--surface-tint);
+}
+.below {
+  top: calc(100% + 4px);
+}
+.inside {
+  left: 8px;
+  bottom: 8px;
+}
+.above {
+  bottom: calc(100% + 4px);
+}

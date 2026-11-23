@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Calendar, Check, Info, X } from 'lucide-react'
-import { Avatar, Button, Card, Empty, Loadable, Segmented, Select } from '../../components/ui'
+import { Check } from 'lucide-react'
+import { Card, Loadable } from '../../components/ui'
 import { adminMembers, type SignupRequest } from '../../mocks/admin'
 import { whenLive } from '../../api/useResource'
 import { errorText, isLive, reviewSignup, todayKst, useLoginIdCheck, useSignups, type SignupsData } from '../../api/admin'
+import { ApproveForm } from './signups/ApproveForm'
+import { SignupInfo } from './signups/SignupInfo'
+import { SignupList } from './signups/SignupList'
+import type { SignupTab } from './signups/status'
 import a from './admin.module.css'
 import s from './SignupsPage.module.css'
 
-type Tab = SignupRequest['status']
-const STATUS_LABEL: Record<Tab, string> = { PENDING: '대기', APPROVED: '승인', REJECTED: '거절' }
 const randomPw = () => Math.random().toString(36).slice(2, 10) + '#7'
 
 export function SignupsPage() {
@@ -23,7 +25,7 @@ export function SignupsPage() {
 function SignupsView({ data }: { data: SignupsData }) {
   const { presets } = data
   const [reqs, setReqs] = useState(data.requests)
-  const [tab, setTab] = useState<Tab>('PENDING')
+  const [tab, setTab] = useState<SignupTab>('PENDING')
   const first = data.requests.find((r) => r.status === 'PENDING')
   const [id, setId] = useState(() => (isLive() ? (first?.id ?? 0) : 1))
   const [loginId, setLoginId] = useState(() => (isLive() ? (first ? (first.idTaken ? `${first.wantedId}2` : first.wantedId) : '') : 'haneul'))
@@ -44,9 +46,10 @@ function SignupsView({ data }: { data: SignupsData }) {
 
   const list = reqs.filter((r) => r.status === tab)
   const sel = reqs.find((r) => r.id === id) ?? list[0]
-  const count = (t: Tab) => reqs.filter((r) => r.status === t).length + data.extra[t]
+  const count = (t: SignupTab) => reqs.filter((r) => r.status === t).length + data.extra[t]
 
-  const localValid = /^[a-z][a-z0-9._]{2,19}$/.test(loginId)
+  // 백엔드 CredentialPolicyService 와 같은 규칙 (영문 소문자로 시작, 소문자 · 숫자 · . _ - 4~30자)
+  const localValid = /^[a-z][a-z0-9._-]{3,29}$/.test(loginId)
   const result = checkId === loginId ? check.data : null
   const taken = isLive()
     ? !!result && !result.available
@@ -64,7 +67,7 @@ function SignupsView({ data }: { data: SignupsData }) {
     setErr('')
   }
 
-  const decide = async (status: Tab) => {
+  const decide = async (status: SignupTab) => {
     const target = sel
     if (!target) return
     if (status === 'REJECTED' && isLive() && !rejectReason.trim()) return setErr('거절할 때는 사유를 적어 주세요.')
@@ -82,8 +85,9 @@ function SignupsView({ data }: { data: SignupsData }) {
                 loginId,
                 studentNumber: null, // 비우면 신청서 학번, 없으면 다음 인턴 번호
                 joinedOn: joinDate,
+                // 비우면 서버가 "인턴 기본" 을 적용한다. roleCodes 는 프리셋 밖에 더 줄 역할만 (지금 화면에는 없음)
                 presetIds: p ? [Number(p.id)] : [],
-                roleCodes: p?.roles ?? [],
+                roleCodes: [],
               },
         ),
       )
@@ -98,122 +102,46 @@ function SignupsView({ data }: { data: SignupsData }) {
 
   return (
     <div className={a.layoutList}>
-      <Card>
-        <Segmented
-          value={tab}
-          onChange={(t) => {
-            setTab(t)
-            const next = reqs.find((r) => r.status === t)
-            if (next) choose(next)
-          }}
-          options={(['PENDING', 'APPROVED', 'REJECTED'] as Tab[]).map((t) => ({ value: t, label: `${STATUS_LABEL[t]} ${count(t)}` }))}
-        />
-        {list.length === 0 && <Empty>신청이 없어요.</Empty>}
-        {list.map((r) => (
-          <button key={r.id} type="button" className={r.id === sel?.id ? `${a.pick} ${a.pickOn}` : a.pick} onClick={() => choose(r)}>
-            <Avatar name={r.name} size={36} />
-            <span className={a.pickText}>
-              <strong>{r.name}</strong>
-              <small>
-                {r.type} · {r.wantedId} · {r.ago}
-              </small>
-            </span>
-            {r.idTaken && <span className={`${a.state} ${a.warn}`}>희망 ID 사용 중</span>}
-          </button>
-        ))}
-        <p className={a.muted}>거절했거나 30일 동안 처리하지 않은 신청서는 90일 뒤 지워져요.</p>
-      </Card>
+      <SignupList
+        tab={tab}
+        onTab={(t) => {
+          setTab(t)
+          const next = reqs.find((r) => r.status === t)
+          if (next) choose(next)
+        }}
+        count={count}
+        list={list}
+        selectedId={sel?.id}
+        onChoose={choose}
+      />
 
       {sel && (
         <Card className={s.detail}>
-          <div className={s.head}>
-            <Avatar name={sel.name} size={48} />
-            <div>
-              <h2>{sel.name}</h2>
-              <small>공개 사이트 · {sel.appliedAt} 신청</small>
-            </div>
-            <span className={`${a.state} ${sel.status === 'PENDING' ? a.warn : sel.status === 'APPROVED' ? a.ok : a.off}`}>
-              {STATUS_LABEL[sel.status]}
-            </span>
-          </div>
-          <dl className={a.kv}>
-            <dt>구분</dt>
-            <dd>
-              <span className={`${a.state} ${a.info}`}>{sel.type}</span>
-            </dd>
-            <dt>학번 (있으면)</dt>
-            <dd>{sel.studentNo ?? '(입력 안 함)'}</dd>
-            <dt>희망 로그인 ID</dt>
-            <dd>{sel.wantedId}</dd>
-            <dt>이메일</dt>
-            <dd>{sel.email ?? '(입력 안 함)'}</dd>
-            <dt>연락처</dt>
-            <dd>{sel.phone}</dd>
-            <dt>개인정보 동의</dt>
-            <dd>
-              <span className={`${a.state} ${a.ok}`}>
-                <Check size={12} /> 동의함
-              </span>
-            </dd>
-          </dl>
-          <div className={a.muted}>신청 사유</div>
-          <p>{sel.reason}</p>
+          <SignupInfo sel={sel} />
 
           {done ? (
             <div className={s.done}>
               <Check size={18} /> {done.name} 계정을 만들었어요. 임시 비밀번호 <code>{done.pw}</code> — 지금 한 번만 보여요.
             </div>
           ) : sel.status === 'PENDING' ? (
-            <>
-              <div className={a.muted}>승인 설정</div>
-              <div className={s.approve}>
-                <label className={a.field}>
-                  로그인 ID
-                  <span className={s.idInput}>
-                    <input value={loginId} onChange={(e) => setLoginId(e.target.value.toLowerCase())} />
-                    {loginId &&
-                      (checking ? (
-                        <span className={`${a.state} ${a.info}`}>확인 중</span>
-                      ) : taken ? (
-                        <span className={`${a.state} ${a.bad}`}>사용 중</span>
-                      ) : !valid ? (
-                        <span className={`${a.state} ${a.warn}`}>형식 확인</span>
-                      ) : (
-                        <span className={`${a.state} ${a.ok}`}>
-                          <Check size={12} /> 사용 가능
-                        </span>
-                      ))}
-                  </span>
-                </label>
-                <label className={a.field}>
-                  입실일
-                  <span className={s.idInput}>
-                    <Calendar size={16} />
-                    <input type="date" value={joinDate} onChange={(e) => setJoinDate(e.target.value)} />
-                  </span>
-                </label>
-                <label className={a.field}>
-                  권한 프리셋
-                  <Select value={preset} label="권한 프리셋" options={presets.map((p) => ({ value: p.name, label: p.name }))} onChange={setPreset} />
-                </label>
-                <label className={a.field}>
-                  거절 사유 (거절할 때)
-                  <input className={a.input} maxLength={500} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
-                </label>
-              </div>
-              {err && <p className={a.err}>{err}</p>}
-              <div className={s.foot}>
-                <span className={s.hint}>
-                  <Info size={14} /> 승인하면 임시 비밀번호가 한 번만 보여요. 신청자에게 직접 전달해 주세요.
-                </span>
-                <Button variant="secondary" icon={X} onClick={() => decide('REJECTED')} disabled={busy}>
-                  거절
-                </Button>
-                <Button icon={Check} onClick={() => decide('APPROVED')} disabled={busy || checking || taken || !valid}>
-                  승인하고 계정 만들기
-                </Button>
-              </div>
-            </>
+            <ApproveForm
+              presets={presets}
+              loginId={loginId}
+              onLoginId={setLoginId}
+              checking={checking}
+              taken={!!taken}
+              valid={valid}
+              joinDate={joinDate}
+              onJoinDate={setJoinDate}
+              preset={preset}
+              onPreset={setPreset}
+              rejectReason={rejectReason}
+              onRejectReason={setRejectReason}
+              err={err}
+              busy={busy}
+              onReject={() => decide('REJECTED')}
+              onApprove={() => decide('APPROVED')}
+            />
           ) : null}
         </Card>
       )}

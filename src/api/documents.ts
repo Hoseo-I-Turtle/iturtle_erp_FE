@@ -1,330 +1,417 @@
-// 자료 상세 · 올리기 · 프로젝트 자료 · 지운 자료 — docs/api/40-document-file.md D-1 ~ D-7, 60-common.md 댓글
-import { api } from './client'
-import { ago, dotDate, type MemberRef, type PageResponse } from './types'
-import { invalidateAll, useResource } from './useResource'
-import { fetchMe, formatBytes, kstHm, kstYmd } from './communication'
-import { fileUrl, toDocument, type DocumentItem, type DocumentListResponse, type FileRef } from './content'
-import { MOCK_ME } from './projects'
-import {
-  deletedDocuments as mockDeleted,
-  documentDetailExtra as mockExtra,
-  type DeletedDocument,
-  type DocComment,
-  type DocFileGroup,
-  type DocFileVersion,
-} from '../mocks/documentDetail'
-import { CATEGORY_NAME, documents as mockDocuments, type DocumentCategory, type DocumentSummary } from '../mocks/documents'
-import { projects as mockProjects } from '../mocks/projects'
+// 자료실 · 폴더 · 올리기 (40-document-file.md D-1 ~ D-13, F-1 ~ F-3)
+import { useEffect } from 'react'
+import { api, ApiError } from './client'
+import { useResource } from './useResource'
+import { fileUrl, type FileRef } from './content'
+import { ago, type MemberRef, type PageResponse } from './types'
+import { getDataMode } from '../lib/dataMode'
 
-export type DocumentDetail = {
-  doc: DocumentSummary
-  body: string
-  links: { title: string; url: string }[]
-  files: DocFileGroup[]
-  comments: DocComment[]
-  resolvedCommentId: number | null
-  created: string
-  edited: string
-  permissions: { canEdit: boolean; canDelete: boolean; canPin: boolean; canResolve: boolean }
-  me: string
+export type DocVisibility = 'LAB' | 'PROJECT_MEMBERS' | 'PRIVATE'
+export const VISIBILITY_LABEL: Record<DocVisibility, string> = {
+  LAB: '연구실 전체',
+  PROJECT_MEMBERS: '프로젝트 참여자만',
+  PRIVATE: '나만',
 }
 
-type FileVersionDto = { documentFileId: number; version: number; file: FileRef; note: string | null; uploadedBy: MemberRef; createdAt: string }
-type DocumentDetailDto = DocumentItem & {
-  body: string | null
-  links: { linkId: number; url: string; title: string }[]
-  files: { logicalName: string; latest: FileVersionDto; previous: FileVersionDto[] }[]
-  resolvedCommentId: number | null
-  permissions: { canEdit: boolean; canDelete: boolean; canPin: boolean; canResolve: boolean; canRestore: boolean }
-  updatedAt: string
-  deletedAt: string | null
+/* ---------- 올리기 제한 (D-13) ---------- */
+
+export type DocumentPolicy = { maxFileMb: number; maxFilesPerUpload: number; maxFilesPerDocument: number }
+const DEFAULT_POLICY: DocumentPolicy = { maxFileMb: 200, maxFilesPerUpload: 10, maxFilesPerDocument: 20 }
+
+export function useDocumentPolicy() {
+  return useResource<DocumentPolicy>('document-policy', () => DEFAULT_POLICY, () => api<DocumentPolicy>('/documents/policy'))
 }
-type CommentDto = { commentId: number; author: MemberRef; body: string | null; deleted: boolean; createdAt: string; editedAt: string | null; replies?: CommentDto[] }
 
-const mdHm = (iso: string) => {
-  const d = kstYmd(iso)
-  return `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))} ${kstHm(iso)}`
+/* ---------- 폴더 (D-9 ~ D-12) ---------- */
+
+export type Folder = { folderId: number; name: string; parentId: number | null; path: string; documentCount: number; editable: boolean }
+export type FolderList = { folders: Folder[]; canCreate: boolean }
+
+const MOCK_FOLDERS: Record<string, Folder[]> = {
+  '': [
+    { folderId: 1, name: 'KCC 2027 투고', parentId: null, path: 'KCC 2027 투고', documentCount: 2, editable: true },
+    { folderId: 2, name: '원고', parentId: 1, path: 'KCC 2027 투고 / 원고', documentCount: 3, editable: true },
+    { folderId: 3, name: '세미나 발표', parentId: null, path: '세미나 발표', documentCount: 5, editable: false },
+  ],
+  DEFME: [{ folderId: 10, name: '회의 자료', parentId: null, path: '회의 자료', documentCount: 4, editable: true }],
 }
-const toVersion = (f: FileVersionDto): DocFileVersion => ({
-  version: f.version,
-  name: f.file.name,
-  size: formatBytes(f.file.size),
-  uploadedBy: f.uploadedBy.name,
-  createdAt: mdHm(f.createdAt),
-  note: f.note ?? '',
-  url: fileUrl(f.file.publicId),
-})
-const extOf = (name: string) => (name.includes('.') ? name.split('.').pop()!.toLowerCase() : '')
 
-/** 목업에서 고친 값(고정 · 해결 · 댓글)을 자료마다 기억한다 */
-const mockState = new Map<number, { pinned?: boolean; resolvedCommentId?: number | null; comments?: DocComment[]; files?: DocFileGroup[] }>()
-
-/** 자료 상세 (D-3) + 댓글 (CM-1 DOCUMENT) */
-export function useDocumentDetail(id: number) {
-  return useResource<DocumentDetail>(
-    ['document', id],
-    () => {
-      const base = mockDocuments.find((d) => d.documentId === id) ?? mockDocuments.find((d) => d.documentId === 212)!
-      const st = mockState.get(id) ?? {}
-      const isQna = base.categoryCode === 'QNA'
-      return {
-        doc: { ...base, pinned: st.pinned ?? base.pinned },
-        body: mockExtra.body,
-        links: mockExtra.links,
-        files: st.files ?? (base.fileTypes.length ? mockExtra.files : []),
-        comments: st.comments ?? mockExtra.comments,
-        resolvedCommentId: st.resolvedCommentId !== undefined ? st.resolvedCommentId : isQna && base.resolved ? mockExtra.comments[0].id : null,
-        created: mockExtra.created,
-        edited: mockExtra.edited,
-        permissions: { canEdit: true, canDelete: true, canPin: true, canResolve: isQna },
-        me: MOCK_ME,
-      }
-    },
+/** 한 범위(연구실이면 projectKey 없음)의 폴더 — 경로 순 */
+export function useFolders(projectKey: string | null) {
+  return useResource<FolderList>(
+    ['document-folders', projectKey ?? ''],
+    () => ({ folders: MOCK_FOLDERS[projectKey ?? ''] ?? [], canCreate: true }),
     async () => {
-      const [d, comments, me] = await Promise.all([
-        api<DocumentDetailDto>(`/documents/${id}`),
-        api<PageResponse<CommentDto>>('/comments', { query: { targetType: 'DOCUMENT', targetId: id, size: 100 } }),
-        fetchMe(),
-      ])
-      return {
-        doc: toDocument(d),
-        body: d.body ?? '',
-        links: d.links.map((l) => ({ title: l.title || l.url, url: l.url })),
-        files: d.files.map((g) => ({ logicalName: g.logicalName, ext: extOf(g.logicalName), latest: toVersion(g.latest), previous: g.previous.map(toVersion) })),
-        comments: comments.content
-          .flatMap((c) => [c, ...(c.replies ?? [])])
-          .filter((c) => !c.deleted)
-          .map((c) => ({ id: c.commentId, author: c.author.name, ago: ago(c.createdAt) + (c.editedAt ? ' · 수정됨' : ''), text: c.body ?? '', mine: c.author.memberId === me.memberId })),
-        resolvedCommentId: d.resolvedCommentId,
-        created: dotDate(d.createdAt),
-        edited: mdHm(d.updatedAt),
-        permissions: d.permissions,
-        me: me.name,
-      }
+      const r = await api<FolderList>('/documents/folders', { query: { projectKey: projectKey ?? undefined } })
+      return { ...r, folders: [...r.folders].sort((a, b) => a.path.localeCompare(b.path)) }
     },
   )
 }
 
-/** 고정 · 해결 표시 (D-4). 목업이면 기억만 한다 */
-export async function patchDocument(id: number, isLive: boolean, patch: { pinned?: boolean; resolvedCommentId?: number | null }) {
-  if (isLive) await api(`/documents/${id}`, { method: 'PATCH', body: patch })
-  else mockState.set(id, { ...mockState.get(id), ...patch })
-  invalidateAll()
+export const createFolder = (name: string, projectKey: string | null, parentId: number | null) =>
+  api<Folder>('/documents/folders', { method: 'POST', body: { name, projectKey, parentId } })
+
+export const renameFolder = (folderId: number, name: string) =>
+  api<Folder>(`/documents/folders/${folderId}`, { method: 'PATCH', body: { name } })
+
+export const deleteFolder = (folderId: number) =>
+  api<{ folderId: number; parentId: number | null; movedDocumentCount: number }>(`/documents/folders/${folderId}`, { method: 'DELETE' })
+
+/* ---------- 파일 올리기 (진행률 · 취소) ---------- */
+
+type UploadStart = {
+  publicId: string
+  mode: 'SINGLE' | 'MULTIPART'
+  single: { url: string; method: 'PUT'; headers: Record<string, string> | null } | null
+  multipart: { partSize: number; parts: { partNumber: number; url: string }[] } | null
 }
 
-/** 댓글 쓰기 (CM-2) */
-export async function postDocumentComment(id: number, isLive: boolean, text: string, current: DocComment[]) {
-  if (isLive) await api('/comments', { method: 'POST', body: { targetType: 'DOCUMENT', targetId: id, parentId: null, body: text, attachmentFileIds: [] } })
-  else mockState.set(id, { ...mockState.get(id), comments: [...current, { id: Date.now(), author: MOCK_ME, ago: '방금 전', text, mine: true }] })
-  invalidateAll()
-}
-/** 댓글 지우기 (CM-4) */
-export async function deleteDocumentComment(id: number, isLive: boolean, commentId: number, current: DocComment[]) {
-  if (isLive) await api(`/comments/${commentId}`, { method: 'DELETE' })
-  else mockState.set(id, { ...mockState.get(id), comments: current.filter((c) => c.id !== commentId) })
-  invalidateAll()
-}
-
-/** 파일 더하기 — 같은 이름이면 새 버전 (D-7) */
-export async function addDocumentFile(id: number, isLive: boolean, file: { publicId: string; name: string; size: number }, note: string, current: DocFileGroup[]) {
-  if (isLive) await api(`/documents/${id}/files`, { method: 'POST', body: { fileId: file.publicId, note: note || undefined } })
-  else {
-    const old = current.find((g) => g.logicalName === file.name)
-    const ver: DocFileVersion = { version: (old?.latest.version ?? 0) + 1, name: file.name, size: formatBytes(file.size), uploadedBy: MOCK_ME, createdAt: '방금 전', note, url: '#' }
-    const next = old
-      ? current.map((g) => (g === old ? { ...g, latest: ver, previous: [g.latest, ...g.previous] } : g))
-      : [...current, { logicalName: file.name, ext: extOf(file.name), latest: ver, previous: [] }]
-    mockState.set(id, { ...mockState.get(id), files: next })
-  }
-  invalidateAll()
+/** 서명 주소로 PUT (XHR — fetch 는 올리는 진행률을 못 받는다) */
+function put(url: string, body: Blob, headers: Record<string, string> | null, onProgress: (loaded: number) => void, signal: AbortSignal) {
+  return new Promise<string>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('PUT', url)
+    Object.entries(headers ?? {}).forEach(([k, v]) => xhr.setRequestHeader(k, v))
+    xhr.upload.onprogress = (e) => onProgress(e.loaded)
+    xhr.onload = () =>
+      xhr.status >= 200 && xhr.status < 300
+        ? resolve(xhr.getResponseHeader('ETag') ?? '')
+        : reject(new ApiError(xhr.status, 'UPLOAD', '파일을 올리지 못했어요.'))
+    xhr.onerror = () => reject(new ApiError(0, 'UPLOAD', '파일을 올리지 못했어요. 연결을 확인해 주세요.'))
+    xhr.onabort = () => reject(new ApiError(0, 'ABORTED', '올리기를 취소했어요.'))
+    signal.addEventListener('abort', () => xhr.abort(), { once: true })
+    xhr.send(body)
+  })
 }
 
-/** 지우기 (D-5) — 30일 뒤 완전 삭제 */
-export async function deleteDocument(id: number, isLive: boolean) {
-  if (isLive) await api(`/documents/${id}`, { method: 'DELETE' })
-  else {
-    const i = mockDocuments.findIndex((d) => d.documentId === id)
-    if (i >= 0) {
-      const [d] = mockDocuments.splice(i, 1)
-      mockDeleted.unshift({
-        documentId: d.documentId,
-        title: d.title,
-        categoryName: CATEGORY_NAME[d.categoryCode],
-        ext: d.fileTypes[0] ?? null,
-        contents: `파일 ${d.fileTypes.length}개 · 댓글 ${d.commentCount}`,
-        author: d.author,
-        deletedBy: MOCK_ME,
-        deletedByNote: d.author === MOCK_ME ? '글쓴이' : 'content-manage',
-        deletedOn: '오늘',
-        daysLeft: 30,
-      })
-      mockRemoved.set(id, d)
+/**
+ * 파일을 Garage 로 직접 올린다 (F-1 → PUT → F-2). onProgress 는 0~1.
+ * 취소하면 서버의 올리기도 지운다 (F-3).
+ */
+export async function uploadWithProgress(file: File, onProgress: (ratio: number) => void, signal: AbortSignal): Promise<FileRef> {
+  const start = await api<UploadStart>('/files/uploads', {
+    method: 'POST',
+    body: { filename: file.name, size: file.size, contentType: file.type || 'application/octet-stream', purpose: 'ATTACHMENT' },
+  })
+  try {
+    let parts: { partNumber: number; etag: string }[] | undefined
+    if (start.mode === 'SINGLE' && start.single) {
+      await put(start.single.url, file, start.single.headers, (loaded) => onProgress(loaded / Math.max(file.size, 1)), signal)
+    } else if (start.multipart) {
+      const { partSize } = start.multipart
+      parts = []
+      let done = 0
+      for (const p of start.multipart.parts) {
+        const chunk = file.slice((p.partNumber - 1) * partSize, p.partNumber * partSize)
+        const etag = await put(p.url, chunk, null, (loaded) => onProgress((done + loaded) / Math.max(file.size, 1)), signal)
+        done += chunk.size
+        parts.push({ partNumber: p.partNumber, etag })
+      }
     }
+    onProgress(1)
+    return await api<FileRef>(`/files/uploads/${start.publicId}/complete`, { method: 'POST', body: parts ? { parts } : {} })
+  } catch (e) {
+    // 올리다 멈춘 파일은 서버에서도 지운다 (실패해도 24시간 뒤 정리 작업이 지운다)
+    api(`/files/${start.publicId}`, { method: 'DELETE' }).catch(() => undefined)
+    throw e
   }
-  invalidateAll()
-}
-const mockRemoved = new Map<number, DocumentSummary>()
-
-/* ---------- 올리기 (D-2) ---------- */
-
-export type DocumentDraft = {
-  categoryCode: DocumentCategory
-  title: string
-  body: string
-  projectKey: string
-  visibility: 'LAB' | 'PROJECT_MEMBERS'
-  tags: string[]
-  files: { publicId: string; name: string; size: number }[]
-}
-export type ProjectOption = { projectKey: string; name: string }
-
-/** 올리기 창의 "프로젝트 연결" 선택지 (P-1 — 내가 참여한 프로젝트) */
-export function useMyProjectOptions() {
-  return useResource<ProjectOption[]>(
-    'my-project-options',
-    () => mockProjects.map((p) => ({ projectKey: p.projectKey, name: p.name })),
-    async () => {
-      const r = await api<{ page: PageResponse<{ projectKey: string; name: string }> }>('/projects', { query: { mine: true, size: 100 } })
-      return r.page.content.map((p) => ({ projectKey: p.projectKey, name: p.name }))
-    },
-  )
 }
 
-/** 자료 올리기 (D-2). 새 자료 번호를 돌려준다 */
-export async function createDocument(d: DocumentDraft, isLive: boolean, projects: ProjectOption[]) {
-  let id: number
-  if (isLive) {
-    const made = await api<{ documentId: number }>('/documents', {
-      method: 'POST',
-      body: {
-        categoryCode: d.categoryCode,
-        title: d.title,
-        body: d.body || undefined,
-        projectKey: d.projectKey || undefined,
-        visibility: d.visibility,
-        tags: d.tags,
-        links: [],
-        files: d.files.map((f) => ({ fileId: f.publicId, note: '' })),
-        inlineImageFileIds: [],
-      },
+/** 목업: 진행률만 흉내 낸다 */
+export function fakeUpload(file: File, onProgress: (ratio: number) => void, signal: AbortSignal): Promise<FileRef> {
+  return new Promise((resolve, reject) => {
+    let ratio = 0
+    const timer = window.setInterval(() => {
+      ratio = Math.min(1, ratio + 0.2)
+      onProgress(ratio)
+      if (ratio >= 1) {
+        window.clearInterval(timer)
+        resolve({ publicId: `mock-${file.name}`, name: file.name, size: file.size, contentType: file.type })
+      }
+    }, 250)
+    signal.addEventListener('abort', () => {
+      window.clearInterval(timer)
+      reject(new ApiError(0, 'ABORTED', '올리기를 취소했어요.'))
     })
-    id = made.documentId
-  } else {
-    id = Math.max(...mockDocuments.map((x) => x.documentId)) + 1
-    mockDocuments.unshift({
-      documentId: id,
+  })
+}
+
+/* ---------- 자료 만들기 (D-2) ---------- */
+
+export type NewDocument = {
+  categoryCode: string
+  title: string
+  body?: string
+  projectKey: string | null
+  visibility: DocVisibility
+  folderId: number | null
+  tags: string[]
+  fileIds: string[]
+}
+
+export const createDocument = (d: NewDocument) =>
+  api<{ documentId: number }>('/documents', {
+    method: 'POST',
+    body: {
       categoryCode: d.categoryCode,
       title: d.title,
-      author: MOCK_ME,
-      ago: '방금 전',
-      ageMinutes: 0,
-      project: projects.find((p) => p.projectKey === d.projectKey) ?? null,
+      body: d.body ?? null,
+      projectKey: d.projectKey,
+      visibility: d.visibility,
+      folderId: d.folderId,
+      tags: d.tags,
+      files: d.fileIds.map((fileId) => ({ fileId, note: null })),
+    },
+  })
+
+/** 자료실이 다시 불러오게 알린다 (올리기 모달 → 목록) */
+const CHANGED = 'iturtle:documents-changed'
+export const notifyDocumentsChanged = () => window.dispatchEvent(new Event(CHANGED))
+export function useDocumentsChanged(reload: () => void) {
+  useEffect(() => {
+    window.addEventListener(CHANGED, reload)
+    return () => window.removeEventListener(CHANGED, reload)
+  }, [reload])
+}
+
+/** 어디서든 올리기 모달을 연다 (새로 만들기 메뉴 → 자료) */
+const OPEN_UPLOAD = 'iturtle:open-upload'
+export type UploadOpen = { projectKey?: string | null }
+export const openUpload = (detail: UploadOpen = {}) => window.dispatchEvent(new CustomEvent<UploadOpen>(OPEN_UPLOAD, { detail }))
+export function useUploadRequests(open: (d: UploadOpen) => void) {
+  useEffect(() => {
+    const on = (e: Event) => open((e as CustomEvent<UploadOpen>).detail ?? {})
+    window.addEventListener(OPEN_UPLOAD, on)
+    return () => window.removeEventListener(OPEN_UPLOAD, on)
+  }, [open])
+}
+
+/* ---------- 자료 상세 (D-3) ---------- */
+
+type FileVersionDto = { documentFileId: number; version: number; file: FileRef | null; note: string | null; uploadedBy: MemberRef | null; createdAt: string }
+type DocumentDetailDto = {
+  documentId: number
+  categoryCode: string
+  categoryName: string | null
+  title: string
+  author: MemberRef
+  project: { projectKey: string; name: string } | null
+  folder: { folderId: number; name: string; path: string } | null
+  visibility: DocVisibility
+  tags: string[]
+  commentCount: number
+  pinned: boolean
+  body: string | null
+  links: { linkId: number; url: string; title: string | null }[]
+  files: { logicalName: string; latest: FileVersionDto; previous: FileVersionDto[] }[]
+  permissions?: { canEdit: boolean; canDelete: boolean }
+  createdAt: string
+  updatedAt: string
+}
+
+export type DocVersion = { version: number; name: string; size: number; url: string | null; note: string | null; who: string; ago: string }
+export type DocumentDetail = {
+  documentId: number
+  title: string
+  category: string
+  author: string
+  ago: string
+  edited: boolean
+  project: { projectKey: string; name: string } | null
+  folderPath: string | null
+  visibility: DocVisibility
+  tags: string[]
+  body: string
+  links: { url: string; title: string }[]
+  files: { name: string; latest: DocVersion; previous: DocVersion[] }[]
+  commentCount: number
+  /** 고치기 창에 채울 원래 값 */
+  categoryCode: string
+  folderId: number | null
+  canEdit: boolean
+}
+
+const toVersion = (v: FileVersionDto): DocVersion => ({
+  version: v.version,
+  name: v.file?.name ?? '(지운 파일)',
+  size: v.file?.size ?? 0,
+  url: v.file ? fileUrl(v.file.publicId) : null,
+  note: v.note,
+  who: v.uploadedBy?.name ?? '알 수 없음',
+  ago: ago(v.createdAt),
+})
+
+const MOCK_DETAIL: DocumentDetail = {
+  documentId: 1,
+  title: 'KCC 2027 초안 v3',
+  category: '논문',
+  author: '김민서',
+  ago: '2시간 전',
+  edited: false,
+  project: { projectKey: 'PAPER', name: 'KCC 2027 투고' },
+  folderPath: 'KCC 2027 투고 / 원고',
+  visibility: 'PROJECT_MEMBERS',
+  tags: ['논문', '초안', 'KCC'],
+  body: '심사 의견 반영 전 초안입니다. 3장 실험 결과 그래프는 **새 데이터**로 바꿨어요.',
+  links: [{ url: 'https://www.kiise.or.kr', title: 'KCC 2027 투고 안내' }],
+  files: [
+    {
+      name: 'KCC2027_초안.pdf',
+      latest: { version: 3, name: 'KCC2027_초안_v3.pdf', size: 2_400_000, url: null, note: '3장 그래프 교체', who: '김민서', ago: '2시간 전' },
+      previous: [{ version: 2, name: 'KCC2027_초안_v2.pdf', size: 2_100_000, url: null, note: null, who: '김민서', ago: '3일 전' }],
+    },
+  ],
+  commentCount: 2,
+  categoryCode: 'PAPER',
+  folderId: null,
+  canEdit: true,
+}
+
+export function useDocumentDetail(id: string | undefined) {
+  return useResource<DocumentDetail>(['document', id], () => ({ ...MOCK_DETAIL, documentId: Number(id) || 1 }), async () => {
+    const d = await api<DocumentDetailDto>(`/documents/${id}`)
+    return {
+      documentId: d.documentId,
+      title: d.title,
+      category: d.categoryName ?? d.categoryCode,
+      author: d.author?.name ?? '알 수 없음',
+      ago: ago(d.createdAt),
+      edited: d.updatedAt !== d.createdAt,
+      project: d.project,
+      folderPath: d.folder?.path ?? null,
       visibility: d.visibility,
       tags: d.tags,
-      fileTypes: [...new Set(d.files.map((f) => extOf(f.name)).filter(Boolean))],
-      latestVersion: 1,
-      commentCount: 0,
-      resolved: d.categoryCode === 'QNA' ? false : null,
-      pinned: false,
-    })
+      body: d.body ?? '',
+      links: d.links.map((l) => ({ url: l.url, title: l.title ?? l.url })),
+      files: d.files.map((g) => ({ name: g.logicalName, latest: toVersion(g.latest), previous: g.previous.map(toVersion) })),
+      commentCount: d.commentCount,
+      categoryCode: d.categoryCode,
+      folderId: d.folder?.folderId ?? null,
+      canEdit: !!d.permissions?.canEdit,
+    }
+  })
+}
+
+/* ---------- 자료 고치기 (D-4) · 파일 새 버전 (D-7) ---------- */
+
+export type DocumentEdit = {
+  categoryCode: string
+  title: string
+  body: string
+  visibility: DocVisibility
+  folderId: number | null
+  tags: string[]
+}
+
+/** 바뀐 칸만 보낸다 (본문 · 폴더는 비우면 null). 목업 모드면 보내지 않는다 */
+export async function updateDocument(documentId: number, before: DocumentEdit, after: DocumentEdit): Promise<void> {
+  if (getDataMode() !== 'live') return
+  const body: Record<string, unknown> = {}
+  if (after.categoryCode !== before.categoryCode) body.categoryCode = after.categoryCode
+  if (after.title !== before.title) body.title = after.title
+  if (after.body !== before.body) body.body = after.body.trim() ? after.body : null
+  if (after.visibility !== before.visibility) body.visibility = after.visibility
+  if (after.folderId !== before.folderId) body.folderId = after.folderId
+  if (JSON.stringify(after.tags) !== JSON.stringify(before.tags)) body.tags = after.tags
+  if (Object.keys(body).length === 0) return
+  await api(`/documents/${documentId}`, { method: 'PATCH', body })
+}
+
+/**
+ * 파일 새 버전 (D-7): logicalName 이 같은 파일의 다음 버전이 된다 (없으면 새 파일로 붙는다).
+ * 올리기는 자료 올리기와 같은 길(uploadWithProgress)을 쓴다. 목업이면 진행률만 흉내 낸다
+ */
+export async function addDocumentFile(documentId: number, file: File, logicalName: string | null, note: string | null, onProgress: (ratio: number) => void, signal: AbortSignal) {
+  if (getDataMode() !== 'live') {
+    await fakeUpload(file, onProgress, signal)
+    return
   }
-  invalidateAll()
-  return id
+  const ref = await uploadWithProgress(file, onProgress, signal)
+  await api(`/documents/${documentId}/files`, { method: 'POST', body: { fileId: ref.publicId, logicalName, note } })
 }
 
 /* ---------- 프로젝트 자료 (D-1 projectKey) ---------- */
 
-export type ProjectDocuments = { documents: DocumentSummary[]; total: number; labCount: number; privateCount: number; tags: { tag: string; count: number }[] }
+type DocumentItemDto = {
+  documentId: number
+  categoryCode: string
+  categoryName: string | null
+  title: string
+  author: MemberRef
+  folder: { folderId: number; name: string; path: string } | null
+  visibility: DocVisibility
+  tags: string[]
+  fileTypes: string[]
+  commentCount: number
+  createdAt: string
+}
+export type ProjectDocument = {
+  documentId: number
+  title: string
+  category: string
+  author: string
+  ago: string
+  folderId: number | null
+  folderPath: string | null
+  visibility: DocVisibility
+  tags: string[]
+  fileType: string | null
+  commentCount: number
+}
 
-export function useProjectDocuments(projectKey: string | undefined, keyword: string) {
-  const summarize = (docs: DocumentSummary[], total: number): ProjectDocuments => {
-    const counts = new Map<string, number>()
-    docs.forEach((d) => d.tags.forEach((t) => counts.set(t, (counts.get(t) ?? 0) + 1)))
-    return {
-      documents: docs,
-      total,
-      labCount: docs.filter((d) => d.visibility === 'LAB').length,
-      privateCount: docs.filter((d) => d.visibility === 'PROJECT_MEMBERS').length,
-      tags: [...counts].map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count).slice(0, 8),
-    }
-  }
-  return useResource<ProjectDocuments>(
-    ['project-documents', projectKey, keyword],
-    () => {
-      const kw = keyword.trim()
-      // 목업의 다른 프로젝트 자료도 이 프로젝트 것처럼 보여 준다 (목업 프로젝트가 하나뿐이라)
-      const docs = mockDocuments.filter((d) => d.project && (!kw || d.title.includes(kw) || d.tags.some((t) => t.includes(kw))))
-      return summarize(docs, docs.length)
-    },
+const MOCK_PROJECT_DOCS: ProjectDocument[] = [
+  { documentId: 1, title: '11/17 주간 회의 자료', category: '발표자료', author: '박지훈', ago: '2일 전', folderId: 10, folderPath: '회의 자료', visibility: 'PROJECT_MEMBERS', tags: ['회의'], fileType: 'pptx', commentCount: 1 },
+  { documentId: 2, title: 'SSO 로그인 흐름도', category: '개발 문서', author: '김민서', ago: '5일 전', folderId: null, folderPath: null, visibility: 'LAB', tags: ['SSO', '설계'], fileType: 'pdf', commentCount: 3 },
+  { documentId: 3, title: '배포 체크리스트 초안', category: '개발 문서', author: '이정훈', ago: '1주 전', folderId: null, folderPath: null, visibility: 'PRIVATE', tags: ['배포'], fileType: 'md', commentCount: 0 },
+]
+
+export function useProjectDocuments(projectKey: string | undefined, folderId: number | null) {
+  return useResource<ProjectDocument[]>(
+    ['project-documents', projectKey, folderId],
+    () => MOCK_PROJECT_DOCS.filter((d) => folderId === null || d.folderId === folderId),
     async () => {
-      const kw = keyword.trim()
-      const r = await api<DocumentListResponse>('/documents', { query: { projectKey, keyword: kw.length >= 2 ? kw : undefined, size: 100 } })
-      const docs = [...r.pinned, ...r.page.content].map(toDocument)
-      return summarize(docs, r.page.totalElements + r.pinned.length)
+      const r = await api<{ pinned: DocumentItemDto[]; page: PageResponse<DocumentItemDto> }>('/documents', {
+        query: { projectKey, folderId: folderId ?? undefined, size: 100, sort: 'createdAt,desc' },
+      })
+      return [...r.pinned, ...r.page.content].map((d) => ({
+        documentId: d.documentId,
+        title: d.title,
+        category: d.categoryName ?? d.categoryCode,
+        author: d.author?.name ?? '알 수 없음',
+        ago: ago(d.createdAt),
+        folderId: d.folder?.folderId ?? null,
+        folderPath: d.folder?.path ?? null,
+        visibility: d.visibility,
+        tags: d.tags,
+        fileType: d.fileTypes[0] ?? null,
+        commentCount: d.commentCount,
+      }))
     },
   )
 }
 
-/* ---------- 지운 자료 (D-1 deleted=true, D-6) ---------- */
-
-export function useDeletedDocuments(keyword: string) {
-  return useResource<DeletedDocument[]>(
-    ['deleted-documents', keyword],
-    () => mockDeleted.filter((d) => !keyword.trim() || d.title.includes(keyword.trim())),
-    async () => {
-      const kw = keyword.trim()
-      const r = await api<{ page: PageResponse<DocumentItem & { deletedAt: string | null }> }>('/documents', {
-        query: { deleted: true, keyword: kw.length >= 2 ? kw : undefined, size: 100 },
-      })
-      return r.page.content.map((d) => {
-        const deleted = d.deletedAt ?? new Date().toISOString()
-        const left = 30 - Math.floor((Date.now() - Date.parse(deleted)) / 86400000)
-        const day = kstYmd(deleted)
-        return {
-          documentId: d.documentId,
-          title: d.title,
-          categoryName: d.categoryName,
-          ext: d.fileTypes[0] ?? null,
-          contents: [d.fileTypes.length ? `파일 형식 ${d.fileTypes.join(', ')}` : null, `댓글 ${d.commentCount}`].filter(Boolean).join(' · '),
-          author: d.author.name,
-          // 명세 확인 필요: 목록에 "지운 사람"이 없다 (감사 로그에만 남음)
-          deletedBy: '—',
-          deletedByNote: '감사 로그에서 확인',
-          deletedOn: `${Number(day.slice(5, 7))}/${Number(day.slice(8, 10))}`,
-          daysLeft: Math.max(0, left),
-        }
-      })
-    },
-  )
+/** 사람이 읽는 크기 */
+export function fileSize(bytes: number) {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(bytes >= 100 * 1024 * 1024 ? 0 : 1)}MB`
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)}KB`
+  return `${bytes}B`
 }
 
-/** 되살리기 (D-6) */
-export async function restoreDocument(id: number, isLive: boolean) {
-  if (isLive) await api(`/documents/${id}/restore`, { method: 'POST' })
-  else {
-    const i = mockDeleted.findIndex((d) => d.documentId === id)
-    if (i >= 0) {
-      const [d] = mockDeleted.splice(i, 1)
-      const back = mockRemoved.get(id)
-      mockDocuments.unshift(
-        back ?? {
-          documentId: d.documentId,
-          categoryCode: (Object.keys(CATEGORY_NAME) as DocumentCategory[]).find((c) => CATEGORY_NAME[c] === d.categoryName) ?? 'FREE',
-          title: d.title,
-          author: d.author,
-          ago: '되살림',
-          ageMinutes: 0,
-          project: null,
-          visibility: 'LAB',
-          tags: [],
-          fileTypes: d.ext ? [d.ext] : [],
-          latestVersion: 1,
-          commentCount: 0,
-          resolved: null,
-          pinned: false,
-        },
-      )
-    }
-  }
-  invalidateAll()
+/* ---------- 카테고리 (공통코드 DOCUMENT_CATEGORY, GET /codes/{codeId}) ---------- */
+
+export type DocCategory = { code: string; name: string }
+const MOCK_CATEGORIES: DocCategory[] = [
+  { code: 'PAPER', name: '논문' },
+  { code: 'SLIDE', name: '발표자료' },
+  { code: 'DEV_DOC', name: '개발 문서' },
+  { code: 'DATA', name: '데이터' },
+  { code: 'FORM', name: '서식' },
+  { code: 'QNA', name: '질문 · 도움' },
+  { code: 'FREE', name: '자유' },
+]
+
+export function useDocumentCategories() {
+  return useResource<DocCategory[]>('document-categories', () => MOCK_CATEGORIES, () =>
+    api<{ code: string; name: string }[]>('/codes/DOCUMENT_CATEGORY').then((rows) => rows.map((r) => ({ code: r.code, name: r.name }))),
+  )
 }

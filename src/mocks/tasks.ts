@@ -25,6 +25,8 @@ export type Task = {
   priority: TaskPriority
   labels: string[]
   milestone: string | null
+  /** 시작일 'M/D' (없으면 null) */
+  startOn?: string | null
   dueOn: string | null // 'M/D'
   dueState?: 'overdue' | 'soon'
   checklist: { done: number; total: number } | null
@@ -47,17 +49,17 @@ const t = (x: Partial<Task> & Pick<Task, 'taskKey' | 'title' | 'status'>): Task 
 })
 
 export const tasks: Task[] = [
-  t({ taskKey: 'DEFME-47', title: '알림 종류별 받기 / 안 받기 설정', status: 'TODO', labels: ['알림'], dueOn: '12/1' }),
-  t({ taskKey: 'DEFME-45', title: '캘린더 반복 일정 "이후 모든 일정" 수정', status: 'TODO', priority: 'HIGH', labels: ['캘린더'], dueOn: '11/24', checklist: { done: 0, total: 4 }, commentCount: 1, assignee: '최현우' }),
-  t({ taskKey: 'DEFME-48', title: '익명 투표 결과 API 에 투표자 ID 노출 여부 점검', status: 'TODO', type: 'RESEARCH', priority: 'URGENT', labels: ['보안', '공지'], dueOn: '11/20', dueState: 'soon', commentCount: 2, assignee: '이정훈' }),
+  t({ taskKey: 'DEFME-47', startOn: '11/24', title: '알림 종류별 받기 / 안 받기 설정', status: 'TODO', labels: ['알림'], dueOn: '12/1' }),
+  t({ taskKey: 'DEFME-45', startOn: '11/19', title: '캘린더 반복 일정 "이후 모든 일정" 수정', status: 'TODO', priority: 'HIGH', labels: ['캘린더'], dueOn: '11/24', checklist: { done: 0, total: 4 }, commentCount: 1, assignee: '최현우' }),
+  t({ taskKey: 'DEFME-48', startOn: '11/16', title: '익명 투표 결과 API 에 투표자 ID 노출 여부 점검', status: 'TODO', type: 'RESEARCH', priority: 'URGENT', labels: ['보안', '공지'], dueOn: '11/20', dueState: 'soon', commentCount: 2, assignee: '이정훈' }),
   t({ taskKey: 'DEFME-50', title: '공지 첨부파일 미리보기', status: 'TODO', priority: 'LOW', labels: ['공지', '파일'], milestone: '문서화 · 운영 가이드', assignee: '한유진' }),
-  t({ taskKey: 'DEFME-51', title: '운영 가이드 초안', status: 'TODO', labels: ['문서'], milestone: '문서화 · 운영 가이드', dueOn: '12/10', assignee: '박지훈' }),
+  t({ taskKey: 'DEFME-51', startOn: '11/23', title: '운영 가이드 초안', status: 'TODO', labels: ['문서'], milestone: '문서화 · 운영 가이드', dueOn: '12/10', assignee: '박지훈' }),
   t({ taskKey: 'DEFME-52', title: '구성원 졸업 처리 시 Vault 토큰 회수', status: 'TODO', priority: 'HIGH', labels: ['vault'], assignee: '김민서' }),
-  t({ taskKey: 'DEFME-41', title: '로그인 화면 리팩터링 PR #128 반영', status: 'IN_PROGRESS', priority: 'HIGH', labels: ['auth'], dueOn: '어제', dueState: 'overdue', checklist: { done: 3, total: 5 }, commentCount: 4, assignee: '김민서', requester: '박지훈' }),
-  t({ taskKey: 'DEFME-46', title: 'MinIO 업로드 서명 주소 만료 5분', status: 'IN_PROGRESS', labels: ['파일'], dueOn: '11/25', checklist: { done: 1, total: 3 }, assignee: '박지훈' }),
+  t({ taskKey: 'DEFME-41', startOn: '11/9', title: '로그인 화면 리팩터링 PR #128 반영', status: 'IN_PROGRESS', priority: 'HIGH', labels: ['auth'], dueOn: '어제', dueState: 'overdue', checklist: { done: 3, total: 5 }, commentCount: 4, assignee: '김민서', requester: '박지훈' }),
+  t({ taskKey: 'DEFME-46', startOn: '11/17', title: 'MinIO 업로드 서명 주소 만료 5분', status: 'IN_PROGRESS', labels: ['파일'], dueOn: '11/25', checklist: { done: 1, total: 3 }, assignee: '박지훈' }),
   t({ taskKey: 'DEFME-49', title: 'Jenkins 상태 카드 캐시 5분 적용', status: 'IN_PROGRESS', priority: 'LOW', labels: ['연동'], assignee: '한유진' }),
   t({ taskKey: 'DEFME-53', title: '감사 로그 내보내기 CSV', status: 'IN_PROGRESS', labels: ['관리'], assignee: '이정훈' }),
-  t({ taskKey: 'DEFME-44', title: 'OIDC 로그아웃 테스트 케이스 추가', status: 'REVIEW', labels: ['sso', '테스트'], dueOn: '11/18', dueState: 'soon', checklist: { done: 5, total: 5 }, commentCount: 3, assignee: '박지훈', requester: '김민서' }),
+  t({ taskKey: 'DEFME-44', startOn: '11/12', title: 'OIDC 로그아웃 테스트 케이스 추가', status: 'REVIEW', labels: ['sso', '테스트'], dueOn: '11/18', dueState: 'soon', checklist: { done: 5, total: 5 }, commentCount: 3, assignee: '박지훈', requester: '김민서' }),
   t({ taskKey: 'DEFME-43', title: 'Penpot 2.x 콜백 경로 마이그레이션', status: 'REVIEW', type: 'BUG', priority: 'HIGH', labels: ['sso'], commentCount: 1, assignee: '김민서' }),
   t({ taskKey: 'DEFME-40', title: 'client_id 만으로 로그아웃 받기', status: 'DONE', priority: 'HIGH', labels: ['sso'], milestone: 'v1.1 — SSO 5단계', checklist: { done: 4, total: 4 }, commentCount: 6, assignee: '김민서' }),
   t({ taskKey: 'DEFME-39', title: '서비스 로그아웃 → 포털 로그인 화면', status: 'DONE', labels: ['sso'], milestone: 'v1.1 — SSO 5단계', commentCount: 2, assignee: '박지훈' }),

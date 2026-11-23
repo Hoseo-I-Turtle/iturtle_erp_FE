@@ -1,9 +1,11 @@
 import { useParams } from 'react-router-dom'
-import { Calendar, Check, Clock, FlaskConical, GitCommitHorizontal, LayoutGrid, ListChecks, Lock, Share2, Shield, Users } from 'lucide-react'
+import { Calendar, Clock, FlaskConical, ListChecks, Shield, Users } from 'lucide-react'
 import { Avatar, Card, Chip, Columns, Empty, ListItem, Loadable, Progress, SectionHead } from '../../components/ui'
 import { useProjectHome, type ProjectHome } from '../../api/projects'
-import { ServiceIcon, StatusChip } from './common'
+import { MemberTags, StatusChip } from './common'
+import { LinkedServices } from './home/LinkedServices'
 import s from './ProjectHomePage.module.css'
+import { mockTagsOf } from '../../api/memberTags'
 
 export function ProjectHomePage() {
   const { key } = useParams()
@@ -47,6 +49,7 @@ function ProjectHomeView({ d }: { d: ProjectHome }) {
                       {m.role === 'MANAGER' ? '프로젝트 관리자' : '참여자'}
                       {m.note && ` · ${m.note}`}
                     </small>
+                    <MemberTags tags={m.tags ?? mockTagsOf(m.name)} />
                   </span>
                 </li>
               ))}
@@ -102,43 +105,10 @@ function ProjectHomeView({ d }: { d: ProjectHome }) {
       }
       side={
         <>
-          <Card>
-            <SectionHead icon={LayoutGrid} title="연동 서비스" link={{ to: `${base}/settings`, label: '관리' }} />
-            {d.services.length === 0 && <Empty>연결한 서비스가 없어요.</Empty>}
-            {d.services.map((sv, i) => {
-              return (
-                <div key={`${sv.code}-${i}`} className={s.svc}>
-                  <div className={s.svcTop}>
-                    <ServiceIcon code={sv.code} size={20} />
-                    <span className={s.svcText}>
-                      <strong>{sv.name}</strong>
-                      <small>{sv.target}</small>
-                    </span>
-                    <button
-                      type="button"
-                      className={s.share}
-                      aria-label={`${sv.name} 열기`}
-                      onClick={() => sv.url && window.open(sv.url, '_blank', 'noopener')}
-                    >
-                      <Share2 size={16} />
-                    </button>
-                  </div>
-                  <div className={s.svcBottom}>
-                    <span className={sv.status.ok ? `${s.svcStatus} ${s.svcOk}` : s.svcStatus}>
-                      {sv.status.ok && <Check size={14} />}
-                      {sv.code === 'VAULT' && <Lock size={14} />}
-                      {sv.code === 'GITHUB' && <GitCommitHorizontal size={14} />}
-                      {sv.status.text}
-                    </span>
-                    {sv.myPerm && <span className={s.svcPerm}>{sv.myPerm}</span>}
-                  </div>
-                </div>
-              )
-            })}
-          </Card>
+          <LinkedServices services={d.services} manageTo={`${base}/settings?tab=links`} />
 
           <Card>
-            <SectionHead icon={Shield} title="프로젝트 서비스 권한" link={{ to: `${base}/settings`, label: '설정' }} />
+            <SectionHead icon={Shield} title="프로젝트 서비스 권한" link={{ to: `${base}/settings?tab=service`, label: '설정' }} />
             <ul className={s.perms}>
               {d.permissions.map((r) => (
                 <li key={r.who}>

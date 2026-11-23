@@ -4,6 +4,7 @@ import { Avatar, Button, Card, Empty, Loadable, Segmented } from '../../componen
 import { type RoleRequest } from '../../mocks/adminOps'
 import { whenLive } from '../../api/useResource'
 import { errorText, isLive, reviewAccessRequest, useRoleRequests, type ReviewRequest, type RoleRequestsData } from '../../api/admin'
+import { StateBadge } from './StateBadge'
 import a from './admin.module.css'
 import s from './RoleRequestsPage.module.css'
 
@@ -109,7 +110,7 @@ function RoleRequestsView({ data }: { data: RoleRequestsData }) {
                 </span>
               </span>
               <span>
-                <span className={`${a.state} ${a.info}`}>{r.target}</span>
+                <StateBadge tone="info">{r.target}</StateBadge>
               </span>
               <span className={s.reason}>{r.reason || r.note}</span>
               <span>{r.period}</span>
@@ -121,6 +122,11 @@ function RoleRequestsView({ data }: { data: RoleRequestsData }) {
                     <Button variant="secondary" onClick={() => open(r)} disabled={busy}>
                       검토
                     </Button>
+                  ) : r.own ? (
+                    // 자기 신청은 자기가 처리하지 못한다 (A013) — 다른 관리자가 한다
+                    <span className={a.muted} title="자기 신청은 직접 승인 · 거절할 수 없어요">
+                      내 신청 · 다른 관리자가 처리
+                    </span>
                   ) : (
                     // role-manage 는 프로젝트 신청을 보기만 한다 (승인은 그 프로젝트 관리자)
                     <span className={a.muted}>승인: {r.approverLabel}</span>
@@ -160,7 +166,7 @@ function RoleRequestsView({ data }: { data: RoleRequestsData }) {
         <div key={r.id} className={s.recent}>
           <Avatar name={r.who} size={26} />
           <strong>{r.who}</strong>
-          <span className={`${a.state} ${a.info}`}>{r.target}</span>
+          <StateBadge tone="info">{r.target}</StateBadge>
           <span className={`${a.state} ${TONE[r.status]}`}>{LABEL[r.status]}</span>
           <span className={s.note}>{r.note}</span>
           <span className={a.muted}>처리 · {r.handledBy}</span>

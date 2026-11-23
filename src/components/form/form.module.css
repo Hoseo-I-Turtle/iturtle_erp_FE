@@ -1,0 +1,193 @@
+/* 모달 · 설정 화면이 같이 쓰는 입력 칸 (Penpot 06 의 입력 · 고르기 · 칩 모양) */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 720px) {
+  .row2 {
+    grid-template-columns: 1fr;
+  }
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.label {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.req {
+  margin-left: 3px;
+  color: var(--status-negative);
+}
+.input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--brand-500);
+}
+.input:focus-within {
+  border-color: var(--brand-300);
+  box-shadow: 0 0 0 3px rgba(128, 170, 211, 0.25);
+}
+.input input,
+.input select {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+}
+.input select {
+  cursor: pointer;
+}
+.hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.bad {
+  font-size: 12px;
+  color: var(--status-negative);
+}
+.ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: #e3f6ec;
+  color: #1e7d4f;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* 고르기 칩 (하나 또는 여럿) */
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  color: var(--brand-500);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.pill:hover {
+  background: var(--surface-tint);
+}
+.pillOn {
+  background: var(--brand-500);
+  color: #fff;
+}
+.pillOn:hover {
+  background: var(--brand-500);
+}
+.pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* 태그 칩 + 추가 */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--surface-tint);
+  color: var(--brand-500);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.tagInput {
+  width: 110px;
+  padding: 4px 10px;
+  border: 1px dashed var(--brand-200);
+  border-radius: var(--radius-full);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-primary);
+  outline: 0;
+}
+
+/* 옵션 상자 (토글 · 아이콘 · 설명) */
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-sunken);
+}
+.optionOn {
+  background: var(--surface-tint);
+}
+.optionText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+.optionText strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.optionText span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* 아래 버튼 줄 왼쪽 안내 */
+.footNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.footError {
+  margin-right: auto;
+  font-size: 13px;
+  color: var(--status-negative);
+}

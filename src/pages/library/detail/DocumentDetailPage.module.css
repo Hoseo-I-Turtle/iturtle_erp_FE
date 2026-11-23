@@ -1,0 +1,201 @@
+.article {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.body {
+  color: var(--brand-500);
+  line-height: 1.6;
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.version {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--surface-sunken);
+}
+.latest {
+  background: var(--surface-tint);
+}
+.vTag {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--surface-card);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--brand-400);
+}
+.vMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.vMain strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.vMain small {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: var(--surface-card);
+  color: var(--brand-500);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+.download:hover {
+  background: var(--brand-500);
+  color: #fff;
+}
+.noFile {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.previous summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.previous[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--brand-400);
+  font-size: 14px;
+}
+.tags {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 고치기 창 */
+.grow {
+  flex: 1;
+}
+.tagAdd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--brand-400);
+}
+
+/* 새 버전 · 파일 더하기 */
+.uploader {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+.uploadLink {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--brand-400);
+  font: inherit;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  cursor: pointer;
+}
+.uploadLink:hover {
+  color: var(--brand-500);
+}
+.uploadRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.uploadName {
+  font-size: var(--fs-caption);
+  color: var(--text-primary);
+}
+.noteInput {
+  flex: 1;
+  min-width: 160px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  font: inherit;
+}
+.progress {
+  flex: 1;
+  min-width: 120px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--surface-tint);
+  overflow: hidden;
+}
+.progress i {
+  display: block;
+  height: 100%;
+  background: var(--brand-400);
+}
+.uploadPct {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.uploadCancel {
+  display: inline-flex;
+  padding: 4px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.uploadError {
+  margin: 0;
+  color: var(--status-negative);
+  font-size: var(--fs-caption);
+}

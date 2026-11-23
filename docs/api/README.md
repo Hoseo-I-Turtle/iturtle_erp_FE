@@ -19,6 +19,8 @@
 | [40-document-file.md](40-document-file.md) | document, file | 자료실, 파일 올리기 · 내려받기 |
 | [50-infra.md](50-infra.md) | audit, github | 감사 로그, GitHub 연결 · 조직 · 웹훅 |
 | [60-common.md](60-common.md) | comment | 홈 대시보드 · 통합 검색이 부르는 API, 댓글 공통 규칙 |
+| [70-knowledge.md](70-knowledge.md) | knowledge | 지식 그래프: 용어집, 결정 · 검토 필요, 지식 가져오기, 커밋 규격 원본 (2026-11-19 추가) |
+| [80-mcp.md](80-mcp.md) | mcp | AI 도구용 MCP 서버 `/mcp`(JSON-RPC 도구 8개, REST 아님) · 보호 자원 정보 (2026-11-19 추가) |
 
 ---
 
@@ -168,6 +170,8 @@ WebSocket 은 쓰지 않고 **1분 이하 주기의 조회**로 맞춥니다.
 | `AU` | audit | `AU001~` | [50](50-infra.md) |
 | `G` | github | `G001~` | [50](50-infra.md) |
 | `CM` | comment | `CM001~` | [60](60-common.md) |
+| `K` | knowledge | `K001~` | [70](70-knowledge.md) |
+| `MC` | mcp | `MC001~` | [80](80-mcp.md) |
 
 각 문서 끝에 그 모듈의 **에러 코드 표**(HTTP · 코드 · 이름 · 메시지)를 둡니다. 이름은 enum 상수 이름 그대로입니다 (`NOTICE_NOT_FOUND`).
 
@@ -297,7 +301,7 @@ SRS · 화면 → API → 테이블 순서로 따라가며 맞지 않는 곳을 
 | # | 기능 | 문제 | 결정 |
 |---|------|------|------|
 | R1 | 권한 신청 승인 (INF-1) | `access_requests` 는 member 모듈인데, 프로젝트 권한 신청은 승인자(PM) 판단과 승인 결과 쓰기(`project_member_service_levels`)가 project 모듈에 있다. **member → project** 가 되어 `project → member` 와 순환 | **`access_requests` 를 auth 로 옮긴다.** auth 가 연구실 역할은 `MemberCommandApi`, 프로젝트 서비스 수준 · PM 확인은 project 공개 API 로 다룬다. project 는 auth 를 모르므로 순환 없음. 내 서비스 권한(`/auth/service-access/me`)도 auth |
-| R2 | 졸업 · 퇴실 처리 (MEM-4) | 확인 화면(참여 프로젝트, 끝나지 않은 담당 작업)과 처리(이전 참여자로 바꾸기, 작업 넘기기, GitHub 조직 제거)가 project · github 를 불러야 한다. member 는 그 모듈을 모른다 | **member 에 그대로 둔다.** member 가 같은 트랜잭션 안에서 `MemberDepartedEvent` 를 내고 project 가 `@EventListener` 로 받아 이전 참여자 · 작업 · PM 을 처리한다 (실패하면 전체 롤백, MEM-4-04). GitHub 조직 제거는 `AFTER_COMMIT` 로 받는다. 확인 화면은 project 의 `GET /projects/handover` 를 화면이 부른다 |
+| R2 | 졸업 · 퇴실 처리 (MEM-4) | 확인 화면(참여 프로젝트, 끝나지 않은 담당 작업)과 처리(이전 참여자로 바꾸기, 작업 넘기기)가 project 를 불러야 한다 (GitHub 조직 제거는 2026-11-19 뺌). member 는 그 모듈을 모른다 | **member 에 그대로 둔다.** member 가 같은 트랜잭션 안에서 `MemberDepartedEvent` 를 내고 project 가 `@EventListener` 로 받아 이전 참여자 · 작업 · PM 을 처리한다 (실패하면 전체 롤백, MEM-4-04). GitHub 조직에서는 자동으로 빼지 않는다. 확인 화면은 project 의 `GET /projects/handover` 를 화면이 부른다 |
 | R3 | 캘린더의 작업 기한 · 마일스톤 표시 (COM-4-09), 프로젝트 참여자로 모임 대상 채우기 (COM-3-09), 프로젝트로 일정 거르기 (COM-4-07) | calendar 가 project 를 읽어야 하는데 테이블 설계는 `project → calendar` (회의록이 일정을 읽음) | calendar 는 project 를 모르게 둔다. 비공개 프로젝트 일정의 열람 판단은 calendar 에 인터페이스를 두고 project 가 구현한다. 작업 기한은 `GET /tasks`, 마일스톤은 `GET /milestones` 를 화면이 따로 불러 겹친다. 프로젝트 모임은 `POST /projects/{key}/meeting-polls` 가 참여자를 펼쳐 calendar API 를 부른다 |
 | R4 | 감사 로그 화면 (INF-2) | 한 목록에 `audit_logs`(audit)와 `login_histories`(auth)를 시간순으로 섞어 페이지를 나눠야 한다. audit 는 의존이 없는 모듈이라 auth 를 못 읽고, 두 모듈 표를 섞은 페이지 계산도 어렵다 | **로그인 성공 · 실패도 `audit_logs` 에 한 줄 남긴다** (`category = LOGIN`). `login_histories` 는 잠금 판단용으로 그대로 둔다. 1년 보관도 같아진다 (INF-2-06) |
 | R5 | 파일 내려받기 권한 (DOC-2-04) | 파일 권한은 붙은 글의 권한을 따르는데 file 은 의존이 없는 모듈이다 | comment 의 `CommentTargetPolicy` 와 같은 방식으로 file 공개 API 에 **`FileTargetPolicy`** 를 두고 대상 모듈이 구현한다 (테이블 변화 없음, 문서에 적기만) |
@@ -429,6 +433,8 @@ API 를 하나씩 적으면서 나온 것입니다. 자세한 내용은 각 문�
 | [40-document-file](40-document-file.md) | 13 | `D001~D018`, `F001~F012` |
 | [50-infra](50-infra.md) | 11 | `AU001~AU002`, `G001~G011` |
 | [60-common](60-common.md) | 4 (댓글) | `CM001~CM007` |
-| **합계** | **153** | |
+| [70-knowledge](70-knowledge.md) | 9 | `K001~K006` |
+| [80-mcp](80-mcp.md) | 2 (MCP 엔드포인트 · 보호 자원 정보, 도구 8개는 따로) | `MC001~MC004` |
+| **합계** | **164** | |
 
 기존 API 를 그대로 두는 것(로그인 화면, 비밀번호 변경, 공통코드, client secret)은 세지 않았습니다.

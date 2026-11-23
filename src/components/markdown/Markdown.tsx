@@ -1,18 +1,31 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { Code, Download, Eye, Share2, TriangleAlert } from 'lucide-react'
+import { MENTION_RE, usePeople } from '../../api/people'
+import { FENCE, keyOfMatch, THREAD_LINK } from './threadLinks'
 import s from './Markdown.module.css'
 
-/** @이름 → 언급, DEFME-12 → 작업 링크 (코드 블록 밖에서만) */
-function decorate(html: string, projectKey?: string) {
+const escapeHtml = (v: string) => v.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
+
+/**
+ * @로그인ID → 이름 언급 (ERP-34, 서버 알림과 같은 규칙 · 모르는 아이디는 그대로), DEFME-12 → 작업 링크.
+ * 코드 블록 · 태그 밖의 글자에만.
+ */
+function decorate(html: string, projectKey: string | undefined, names: Map<string, string>) {
   const parts = html.split(/(<pre[\s\S]*?<\/pre>|<code[\s\S]*?<\/code>|<[^>]+>)/g)
   return parts
     .map((p) =>
       p.startsWith('<')
         ? p
         : p
-            .replace(/@([가-힣A-Za-z]{2,10})/g, '<span class="md-mention">@$1</span>')
+            .replace(MENTION_RE, (all: string, pre: string, raw: string) => {
+              // 끝의 . - _ 는 문장 부호로 본다 (서버와 같음)
+              const id = raw.replace(/[._-]+$/, '')
+              if (id.length < 4) return all
+              const name = names.get(id)
+              return `${pre}<span class="md-mention" title="@${id}">@${escapeHtml(name ?? id)}</span>${raw.slice(id.length)}`
+            })
             .replace(/\b([A-Z][A-Z0-9]+-\d+)\b/g, (_, k: string) =>
               projectKey && k.startsWith(projectKey + '-')
                 ? `<a class="md-task" href="/projects/${projectKey}/tasks/${k}">${k}</a>`
@@ -22,35 +35,80 @@ function decorate(html: string, projectKey?: string) {
     .join('')
 }
 
-type Block = { kind: 'html'; html: string } | { kind: 'mermaid'; code: string }
+type Block = { kind: 'html'; html: string } | { kind: 'mermaid'; code: string } | { kind: 'embed'; key: string }
 
-function split(source: string, projectKey?: string): Block[] {
+type Ctx = { projectKey?: string; names: Map<string, string>; embeds?: Map<string, ReactNode> }
+
+function split(source: string, ctx: Ctx): Block[] {
   const blocks: Block[] = []
   const re = /```mermaid\n([\s\S]*?)```/g
   let last = 0
   for (const m of source.matchAll(re)) {
-    const before = source.slice(last, m.index)
-    if (before.trim()) blocks.push({ kind: 'html', html: render(before, projectKey) })
+    blocks.push(...withEmbeds(source.slice(last, m.index), ctx))
     blocks.push({ kind: 'mermaid', code: m[1].trim() })
     last = m.index! + m[0].length
   }
-  const rest = source.slice(last)
-  if (rest.trim()) blocks.push({ kind: 'html', html: render(rest, projectKey) })
+  blocks.push(...withEmbeds(source.slice(last), ctx))
   return blocks
 }
 
-function render(md: string, projectKey?: string) {
-  const raw = marked.parse(md, { async: false, gfm: true, breaks: true })
-  return DOMPurify.sanitize(decorate(raw, projectKey))
+/**
+ * 스레드 링크가 있는 줄 바로 뒤에 그 스레드의 인용 카드를 둔다 (ERP-32). 링크만 있는 줄은 카드로 바꾸고,
+ * 문장 안의 링크는 문장을 그대로 두고 그 아래에 카드. 카드를 모르는 링크 · 코드 블록 안은 그대로.
+ */
+function withEmbeds(md: string, ctx: Ctx): Block[] {
+  if (!md.trim()) return []
+  const embeds = ctx.embeds
+  if (!embeds || embeds.size === 0) return [{ kind: 'html', html: render(md, ctx) }]
+  const out: Block[] = []
+  let buf: string[] = []
+  const flush = () => {
+    if (buf.join('\n').trim()) out.push({ kind: 'html', html: render(buf.join('\n'), ctx) })
+    buf = []
+  }
+  let fence = false
+  for (const line of md.split('\n')) {
+    if (FENCE.test(line)) fence = !fence
+    const keys = fence ? [] : [...line.matchAll(THREAD_LINK)].map(keyOfMatch).filter((k) => embeds.has(k))
+    if (keys.length === 0) {
+      buf.push(line)
+      continue
+    }
+    // 목록 기호 · 쉼표 말고 다른 글이 없으면 링크만 있는 줄
+    const onlyLinks = !line.replace(THREAD_LINK, '').replace(/[\s,·*>-]/g, '')
+    if (!onlyLinks) buf.push(line)
+    flush()
+    keys.forEach((key) => out.push({ kind: 'embed', key }))
+  }
+  flush()
+  return out
 }
 
-export function Markdown({ source, projectKey }: { source: string; projectKey?: string }) {
-  const blocks = useMemo(() => split(source, projectKey), [source, projectKey])
+function render(md: string, ctx: Ctx) {
+  const raw = marked.parse(md, { async: false, gfm: true, breaks: true })
+  return DOMPurify.sanitize(decorate(raw, ctx.projectKey, ctx.names))
+}
+
+type Props = {
+  source: string
+  projectKey?: string
+  /** 스레드 링크 자리에 넣을 카드 (열쇠 = threadKey). 없으면 링크 그대로 */
+  embeds?: Map<string, ReactNode>
+}
+
+export function Markdown({ source, projectKey, embeds }: Props) {
+  const people = usePeople()
+  const names = useMemo(() => new Map(people.map((p) => [p.loginId, p.name])), [people])
+  const blocks = useMemo(() => split(source, { projectKey, names, embeds }), [source, projectKey, names, embeds])
   return (
     <div className={s.md}>
       {blocks.map((b, i) =>
         b.kind === 'html' ? (
           <div key={i} dangerouslySetInnerHTML={{ __html: b.html }} />
+        ) : b.kind === 'embed' ? (
+          <div key={i} className={s.embed}>
+            {embeds?.get(b.key)}
+          </div>
         ) : (
           <Mermaid key={i} code={b.code} />
         ),
@@ -72,13 +130,19 @@ export function Mermaid({ code }: { code: string }) {
   useEffect(() => {
     let alive = true
     import('mermaid').then(async ({ default: mermaid }) => {
-      mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'strict', fontFamily: 'inherit' })
+      // suppressErrorRendering: 문법이 틀려도 mermaid 가 body 끝에 "Syntax error in text" 그림을 붙이지 않게 한다 (오류는 아래 칸에 보여 줌)
+      mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'strict', fontFamily: 'inherit', suppressErrorRendering: true })
+      const id = `mmd-${++seq}`
       try {
-        const { svg } = await mermaid.render(`mmd-${++seq}`, code)
+        const { svg } = await mermaid.render(id, code)
         if (alive) setState({ code, svg })
       } catch (e) {
         const msg = e instanceof Error ? e.message.split('\n').slice(0, 2).join(' ') : String(e)
         if (alive) setState({ code, error: msg })
+      } finally {
+        // 그리다 실패하면 mermaid 가 잠깐 만든 자리(#d{id} · #{id})가 body 에 남을 수 있다 — 화면 밖으로 새지 않게 지운다
+        document.getElementById(`d${id}`)?.remove()
+        document.getElementById(id)?.remove()
       }
     })
     return () => {

@@ -1,42 +1,142 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.label {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--brand-500);
+}
+.input:focus-within,
+.desc:focus-within {
+  border-color: var(--brand-300);
+  box-shadow: 0 0 0 3px rgba(128, 170, 211, 0.25);
+}
+.input input,
+.input select {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+}
+.input select {
+  cursor: pointer;
+}
+.input small {
+  font-size: var(--fs-overline);
+  color: var(--text-muted);
+}
+
+.desc {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.descHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: var(--surface-sunken);
+}
+.descHead small {
+  font-size: var(--fs-overline);
+  color: var(--text-muted);
+}
+.desc textarea {
+  min-height: 110px;
+  padding: 12px 14px;
+  border: 0;
+  outline: 0;
+  resize: vertical;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--brand-500);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 14px;
+}
+.hint,
+.hintBad {
+  font-size: var(--fs-overline);
+  color: var(--text-muted);
+}
+.hintBad {
+  color: var(--status-negative);
+}
+
 .labels {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
-.labels > span {
-  font-size: var(--fs-caption);
-  font-weight: 500;
-  color: var(--text-body);
-}
-.labels em {
-  font-style: normal;
-  font-size: var(--fs-caption);
-  color: var(--text-muted);
-}
-.label {
+.labelChip,
+.addChip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
   border-radius: var(--radius-full);
-  background: var(--surface-soft);
   font-size: var(--fs-caption);
   font-weight: 500;
-  color: var(--text-secondary);
 }
-.label:hover {
+.labelChip {
+  background: var(--brand-100);
+  color: var(--brand-500);
+}
+.labelChip:hover {
+  background: #a9d9f7;
+}
+.addChip {
+  background: var(--surface-sunken);
+  color: var(--brand-400);
+}
+.addChip:hover:not(:disabled) {
   background: var(--surface-tint);
 }
-.label i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.addChip:disabled {
+  color: var(--text-disabled);
+  cursor: default;
 }
-.labelOn,
-.labelOn:hover {
-  background: var(--accent-soft);
-  color: var(--text-body);
+.labelPick {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  font: inherit;
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+  background: var(--surface-card);
 }
 
 .checklist {
@@ -50,93 +150,139 @@
 .checkHead {
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: var(--text-primary);
+  gap: 8px;
+  color: var(--brand-500);
 }
 .checkHead strong {
   font-size: 15px;
   font-weight: 500;
+  color: var(--text-primary);
 }
-.checkHead span {
+.checkHead small {
   margin-left: auto;
   font-size: var(--fs-caption);
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--brand-400);
 }
-.item {
+.checkItem {
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: 14px;
-  color: var(--text-body);
+  color: var(--brand-500);
 }
-.item i {
+.box {
   width: 18px;
   height: 18px;
   flex: none;
-  border: 1px solid var(--accent-2);
+  border: 1.5px solid var(--brand-400);
   border-radius: 5px;
-  background: var(--surface-card);
 }
-.item span {
+.checkText {
   flex: 1;
   min-width: 0;
 }
-.item button {
-  display: inline-flex;
+.checkItem button {
+  display: flex;
+  padding: 2px;
+  border-radius: 6px;
   color: var(--text-muted);
 }
-.item button:hover {
+.checkItem button:hover {
+  background: var(--surface-sunken);
   color: var(--status-negative);
 }
-.addItem {
+.checkAdd {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-.addItem input {
-  flex: 1;
-  min-width: 0;
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  outline: 0;
-  font: inherit;
-  font-size: 14px;
-  color: var(--text-primary);
-}
-.addItem input:focus {
-  border-color: var(--accent-line);
-}
-.addItem button {
-  display: inline-flex;
-  align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  align-self: flex-start;
+  min-width: 240px;
+  padding: 3px 10px;
   border-radius: var(--radius-full);
-  background: var(--surface-soft);
-  font-size: var(--fs-caption);
-  font-weight: 500;
-  color: var(--text-secondary);
+  background: var(--surface-sunken);
+  color: var(--brand-400);
 }
-.addItem button:disabled {
-  opacity: 0.5;
+.checkAdd input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.checkAdd input::placeholder {
+  color: var(--brand-400);
+}
+
+.error,
+.notice {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-caption);
+}
+.error {
+  background: var(--status-negative-bg);
+  color: var(--status-negative);
+}
+.notice {
+  background: var(--surface-tint);
+  color: var(--brand-500);
 }
 
 .foot {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 100%;
 }
-.footText {
-  flex: 1;
-  min-width: 0;
+.again {
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--brand-500);
+}
+.footNote {
   font-size: var(--fs-caption);
   color: var(--text-muted);
 }
-.footText strong {
-  font-weight: 500;
-  color: var(--text-body);
+.grow {
+  flex: 1;
 }
+.foot button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (max-width: 720px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .foot {
+    flex-wrap: wrap;
+  }
+}
+
+/* 맡은 일 태그로 담당 찾기 (ERP-14) */
+.tagFilter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.tagChip {
+  padding: 2px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+  cursor: pointer;
+}
+.tagChipOn {
+  border-color: var(--brand-400);
+  background: var(--surface-tint);
+  color: var(--text-primary);
+}
+

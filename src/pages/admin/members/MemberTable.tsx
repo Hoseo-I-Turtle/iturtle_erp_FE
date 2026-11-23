@@ -1,0 +1,108 @@
+import { Ellipsis, Lock, Search } from 'lucide-react'
+import { Avatar, Card } from '../../../components/ui'
+import { isLive, type AdminRow } from '../../../api/admin'
+import { StateBadge } from '../StateBadge'
+import a from '../admin.module.css'
+import s from './MemberTable.module.css'
+
+export type MemberFilter = 'ACTIVE' | 'GRADUATED' | 'DISABLED' | 'LOCKED'
+
+const FILTERS = [
+  ['ACTIVE', '재실'],
+  ['GRADUATED', '졸업생'],
+  ['DISABLED', '비활성'],
+  ['LOCKED', '잠김'],
+] as const
+
+type Props = {
+  list: AdminRow[]
+  counts: Record<MemberFilter, number>
+  filter: MemberFilter
+  onFilter: (f: MemberFilter) => void
+  q: string
+  onQuery: (q: string) => void
+  selectedId: number
+  onSelect: (id: number) => void
+  /** 같이 가질 수 없는 역할을 둘 다 가진 구성원 (경고 표시) */
+  conflictIds?: number[]
+}
+
+/** 구성원 표: 검색 · 상태 필터 · 행 (누르면 오른쪽 상세) */
+export function MemberTable({ list, counts, filter, onFilter, q, onQuery, selectedId, onSelect, conflictIds = [] }: Props) {
+  return (
+    <Card className={s.tableCard}>
+      <div className={a.toolbar}>
+        <label className={a.search}>
+          <Search size={16} />
+          <input value={q} onChange={(e) => onQuery(e.target.value)} placeholder="이름 · 로그인 ID · 구성원 번호" />
+        </label>
+        <span className={a.grow} />
+        {FILTERS.map(([k, label]) => (
+          <button key={k} type="button" className={filter === k ? `${a.chipBtn} ${a.chipBtnOn}` : a.chipBtn} onClick={() => onFilter(k)}>
+            {label} {counts[k]}
+          </button>
+        ))}
+      </div>
+
+      <div className={s.thead}>
+        <span>구성원</span>
+        <span>구성원 번호</span>
+        <span>구분</span>
+        <span>상태</span>
+        <span>역할</span>
+        <span>마지막 로그인</span>
+        <span />
+      </div>
+      {list.length === 0 && <p className={a.muted}>해당하는 구성원이 없어요.{isLive() ? '' : ' (졸업생 목록은 목업에 없어요)'}</p>}
+      {list.map((m) => (
+        <button key={m.memberId} type="button" className={m.memberId === selectedId ? `${s.row} ${s.rowOn}` : s.row} onClick={() => onSelect(m.memberId)}>
+          <span className={s.who}>
+            <Avatar name={m.name} size={32} />
+            <span>
+              <strong>
+                {m.name}
+                {'noEmail' in m && m.noEmail && (
+                  <span className={s.conflictMark} title="Cloudflare 가입 이메일이 없어 Cloudflare 접속 허용 목록에 넣지 못해요">
+                    이메일 없음
+                  </span>
+                )}
+                {conflictIds.includes(m.memberId) && (
+                  <span className={s.conflictMark} title="같이 가질 수 없는 역할을 둘 다 가지고 있어요">
+                    겹치는 권한
+                  </span>
+                )}
+              </strong>
+              <small>{m.loginId}</small>
+            </span>
+          </span>
+          <span>{m.memberNo}</span>
+          <span>
+            <StateBadge tone="info">{m.memberType}</StateBadge>
+          </span>
+          <span>
+            <MemberStateBadge member={m} />
+          </span>
+          <span className={s.rolesCell}>
+            {m.presets.join(' + ')} · {m.roleCount}개{m.tempPassword && <StateBadge tone="warn">임시 비밀번호</StateBadge>}
+          </span>
+          <span className={s.last}>{m.lastLogin}</span>
+          <Ellipsis size={18} className={s.more} />
+        </button>
+      ))}
+    </Card>
+  )
+}
+
+/** 목록의 상태 칸: 졸업 → 휴학 → 잠김 → 비활성 → 재실 순으로 하나만 */
+function MemberStateBadge({ member: m }: { member: AdminRow }) {
+  if (m.graduated) return <StateBadge tone="off">졸업</StateBadge>
+  if (m.onLeave) return <StateBadge tone="warn">휴학</StateBadge>
+  if (m.state === 'LOCKED')
+    return (
+      <StateBadge tone="bad">
+        <Lock size={12} /> 잠김
+      </StateBadge>
+    )
+  if (m.state === 'DISABLED') return <StateBadge tone="off">비활성</StateBadge>
+  return <StateBadge tone="ok">재실</StateBadge>
+}

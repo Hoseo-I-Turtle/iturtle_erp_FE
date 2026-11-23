@@ -7,7 +7,7 @@
 
 | 기능 | 모듈 | 다른 모듈과 주고받는 방법 |
 |------|------|---------------------------|
-| 졸업 · 퇴실 처리 (MEM-4) | **member** (`member_departures`) | member 가 같은 트랜잭션 안에서 `MemberDepartedEvent` 를 낸다. project 가 받아(`@EventListener`) 이전 참여자로 바꾸고 작업 · PM 을 넘긴다. 실패하면 예외로 전체가 되돌려진다 (MEM-4-04). github 는 커밋 뒤(`@TransactionalEventListener(AFTER_COMMIT)`) 조직 제거 작업을 만든다. 확인 화면의 프로젝트 · 작업은 project 의 [P-9a](30-project.md) 가 준다 |
+| 졸업 · 퇴실 처리 (MEM-4) | **member** (`member_departures`) | member 가 같은 트랜잭션 안에서 `MemberDepartedEvent` 를 낸다. project 가 받아(`@EventListener`) 이전 참여자로 바꾸고 작업 · PM 을 넘긴다. 실패하면 예외로 전체가 되돌려진다 (MEM-4-04). GitHub 조직에서는 자동으로 빼지 않는다 (2026-11-19, 필요하면 `github-manage` 가 G-6 으로). 확인 화면의 프로젝트 · 작업은 project 의 [P-9a](30-project.md) 가 준다 |
 | 권한 신청 (INF-1), 내 서비스 권한 (PRJ-1-50) | **auth** (`access_requests`) | 연구실 역할은 `MemberCommandApi`, 프로젝트 서비스 수준 · PM 확인은 project 공개 API 를 부른다. auth → member · project 방향이고 project 는 auth 를 모르므로 순환이 없다 |
 
 ## 공통 모양
@@ -192,8 +192,9 @@
 |------|------|------|
 | 403 | `C003` | 남의 사진인데 `member-manage` 가 없음 |
 | 404 | `M001` | 구성원이 없음 |
-| 400 | `M019` | 파일이 없거나, 내가 올린 것이 아니거나, 이미 붙었거나, `PROFILE_PHOTO` 가 아님 |
-| 400 | `M020` | 자를 영역이 사진 밖 |
+| 404 · 400 · 409 · 403 | `F001` · `F005` · `F008` · `F010` | 파일이 없음 · `PROFILE_PHOTO` 가 아님 · 이미 붙음 · 내가 올린 것이 아님 (**구현: 명세의 M019 대신 file 코드**) |
+| 400 | `F013` | 자를 영역이 사진 밖 (**구현: 명세의 M020 대신**) |
+| 400 | `F014` | 사진을 읽을 수 없음 |
 | 400 | `F` 코드 | 형식(JPG · PNG · WEBP 아님) · 크기(5MB 초과) — 올릴 때 file 모듈이 먼저 거른다 ([40](40-document-file.md)) |
 
 ### 1-4. 프로필 사진 지우기
@@ -240,7 +241,7 @@
 
 | 이름 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| `group` | string | X | `ACTIVE`(재실, 기본) · `ALUMNI`(졸업 · 퇴실) · `ALL` |
+| `group` | string | X | `ACTIVE`(재실, 기본) · `ON_LEAVE`(휴학) · `ALUMNI`(졸업 · 퇴실) · `ALL` |
 | `memberType` | string | X | `PROFESSOR` · `STUDENT` · `INTERN` |
 | `keyword` | string | X | 이름 · 로그인 ID · 구성원 번호 (2글자 이상이면 부분 일치) |
 | `enabled` | boolean | X | `member-manage` 만. `false` = 비활성 |
@@ -256,6 +257,7 @@
 | 필드 | 타입 | 보이는 사람 | 설명 |
 |------|------|------------|------|
 | `counts.active` | number | 로그인 | 재실 수 (탭) |
+| `counts.onLeave` | number | 로그인 | 휴학 수 |
 | `counts.alumni` | number | 로그인 | 졸업 · 퇴실 수 |
 | `counts.disabled` | number | `member-manage` | 재실 중 비활성 수 |
 | `counts.locked` | number | `member-manage` | 지금 잠긴 수 |
@@ -280,7 +282,7 @@
 ```json
 { "success": true, "error": null,
   "data": {
-    "counts": { "active": 10, "alumni": 24 },
+    "counts": { "active": 10, "onLeave": 1, "alumni": 24 },
     "page": { "content": [
       { "memberId": 4, "name": "박지훈", "memberType": "STUDENT", "status": "ACTIVE",
         "photoUrl": "/api/v1/files/7d2e9c1a-…/download?size=128", "studentNumber": "20221187", "loginId": "jihoon.park",
@@ -470,7 +472,7 @@
 | 409 | `M012` | 이메일이 이미 있음 |
 | 400 | `M029` | 입실일이 졸업 · 퇴실일보다 뒤 |
 | 403 | `C003` | `applyDefaultPreset` 인데 `role-manage` 가 없음 |
-| 400 | `M015` | 새 구분의 기본 프리셋이 없거나 사용 안 함 |
+| 409 | `M015` | 새 구분의 기본 프리셋이 없거나 사용 안 함 (**구현: 5-2 와 같은 409**) |
 
 ### 3-4. 역할 저장
 
@@ -750,7 +752,21 @@
 
 ---
 
-## 6. 졸업 · 퇴실 처리 — MEM-4 (화면: 04 · 관리 · 졸업 처리) · member 모듈
+## 6. 졸업 · 퇴실 · 휴학 처리 — MEM-4 (화면: 04 · 관리 · 졸업 처리) · member 모듈
+
+**휴학도 같은 API 로 처리합니다** (2026-11-19 결정, 새 API 를 두지 않음). `kind` 가 `MILITARY_LEAVE`(군휴학) · `LEAVE_OF_ABSENCE`(일반휴학)이면:
+
+| | 졸업 · 퇴실 | 휴학 |
+|---|---|---|
+| 상태 | `GRADUATED` · `LEFT` | `ON_LEAVE` |
+| 로그인 | 막음 (`enabled = false`) | ERP 는 됨. 연동 서비스(Vault · Jenkins · Penpot) SSO 는 막음 |
+| 역할 | 모두 회수 | 그대로 |
+| 프로젝트 | 모두 이전 참여자 | 자리는 그대로, **PM 은 내려놓고(참여자로)** 끝나지 않은 담당 작업은 넘김 |
+| 연락처 1년 뒤 삭제 | 대상 | 대상 아님 (`left_on` 을 두지 않음) |
+| 재실 집계 (필독 · 투표 · 작업 담당 · 주간 보고 대상) | 빠짐 | 빠짐 |
+| 되돌리기(6-4) | 재입학 | **복학** (`restoreRoles: false` 로 부르면 됨) |
+
+넘긴 PM · 작업은 처리 기록의 `handovers` 에 남아 복학할 때 누구에게서 되돌려 받을지 볼 수 있습니다 (졸업 · 퇴실도 같이 남김).
 
 ### 6-1. 확인 화면 — 따로 두지 않음
 
@@ -764,7 +780,7 @@
 
 자기 자신 · 마지막 관리 역할 보유자 같은 "처리할 수 없는 이유"는 6-2 가 에러로 알려 줍니다.
 
-### 6-2. 졸업 · 퇴실 처리
+### 6-2. 졸업 · 퇴실 · 휴학 처리
 
 `POST /api/v1/members/{memberId}/departures`
 
@@ -776,14 +792,15 @@
 | 감사 로그 · 알림 | `MEMBER_DEPARTED`, 넘긴 작업마다 작업 활동 기록 · 새 담당자에게 `TASK_ASSIGNED`, 세션 끊기 |
 
 한 트랜잭션으로 처리합니다. member 가 상태 · 역할을 바꾸고 `MemberDepartedEvent`(작업 넘기기 · PM 넘기기 목록 포함)를 내면, project 가 같은 트랜잭션 안에서 받아 이전 참여자 · 작업 · PM 을 처리합니다. project 쪽 검사가 실패하면(`P011`, `P012`, `P040`) 전체가 되돌려집니다.
-GitHub 조직 제거만 커밋 뒤 이벤트로 돌고, 실패하면 관리 · GitHub 화면에서 다시 시도합니다 ([50](50-infra.md)).
+GitHub 조직에서는 빼지 않습니다 (2026-11-19 결정). 빼야 하면 GitHub 관리 화면에서 손으로 뺍니다 ([50](50-infra.md) G-6).
 
 **요청 본문**
 
 | 필드 | 타입 | 필수 | 규칙 |
 |------|------|------|------|
-| `kind` | string | O | `GRADUATED` 졸업 · `LEFT` 퇴실 |
-| `departedOn` | date | O | 입실일 이후. 화면 기본값 오늘 |
+| `kind` | string | O | `GRADUATED` 졸업 · `LEFT` 퇴실 · `MILITARY_LEAVE` 군휴학 · `LEAVE_OF_ABSENCE` 일반휴학 |
+| `departedOn` | date | O | 입실일 이후 (휴학이면 휴학 시작일). 화면 기본값 오늘 |
+| `expectedReturnOn` | date | X | 휴학일 때만, 복학 예정일 (`departedOn` 이후). 졸업 · 퇴실에 보내면 `M035` |
 | `taskReassignments` | `{ taskKey, assigneeMemberId }[]` | O | P-9a 의 `openTasks` **모두**. `assigneeMemberId: null` = 담당자 없음 |
 | `projectManagerHandovers` | `{ projectKey, newManagerMemberId }[]` | 조건부 | P-9a 에서 `lastManager: true` 인 프로젝트 모두 ([README S3](README.md#33-화면--srs--테이블-불일치) 제안) |
 
@@ -801,8 +818,9 @@ GitHub 조직 제거만 커밋 뒤 이벤트로 돌고, 실패하면 관리 · G
 | `departureId` | number | |
 | `member` | `MemberRef` | 바뀐 상태 |
 | `revokedRoleCodes` | string[] | 회수한 역할 |
-| `formerProjects` | `{ projectKey, projectRole }[]` | 이전 참여자가 된 프로젝트 |
-| `githubRemovalStatus` | string | `NOT_NEEDED\|PENDING` (처리 직후) |
+| `formerProjects` | `{ projectKey, projectRole }[]` | 이전 참여자가 된 프로젝트 (휴학이면 빈 배열) |
+| `handovers` | `{ kind, projectKey, taskKey, taskTitle, toMemberId }[]` | 넘긴 것. `kind` = `PROJECT_MANAGER`(PM 이던 프로젝트, `toMemberId` = 새 PM · 없으면 다른 PM 이 있어 내려놓기만) · `TASK`(넘긴 작업, `toMemberId` null = 담당자 없음) |
+| `githubRemovalStatus` | string | 항상 `NOT_NEEDED` (2026-11-19 부터 GitHub 조직에서 자동으로 빼지 않음) |
 
 ```json
 { "success": true, "error": null,
@@ -818,7 +836,8 @@ GitHub 조직 제거만 커밋 뒤 이벤트로 돌고, 실패하면 관리 · G
 | 404 | `M001` | 구성원이 없음 |
 | 400 | `M032` | 자기 자신 |
 | 400 | `M017` | `role-manage` · `member-manage` 를 가진 마지막 재실 구성원 |
-| 400 | `M018` | 이미 졸업 · 퇴실 |
+| 400 | `M018` | 이미 졸업 · 퇴실 (휴학 중에는 다시 휴학할 수 없음. 졸업 · 퇴실은 됨) |
+| 400 | `M035` | 복학 예정일이 휴학이 아닌데 있거나 시작일보다 앞 |
 | 400 | `M029` | 졸업 · 퇴실일이 입실일보다 앞 |
 | 400 | `P011` | 끝나지 않은 담당 작업 중 빠진 것이 있음 (그사이 새 작업이 배정된 경우 포함 — P-9a 를 다시 부름) |
 | 400 | `P012` | 새 담당자가 그 프로젝트의 재실 참여자가 아님 |
@@ -841,14 +860,16 @@ GitHub 조직 제거만 커밋 뒤 이벤트로 돌고, 실패하면 관리 · G
 | `departureId` | number | |
 | `kind` | string | |
 | `departedOn` | date | |
+| `expectedReturnOn` | date\|null | 휴학일 때 복학 예정일 |
 | `revokedRoleCodes` | string[] | |
 | `formerProjects` | `{ projectKey, projectRole }[]` | |
+| `handovers` | `{ kind, projectKey, taskKey, taskTitle, toMemberId }[]` | 6-2 와 같음 |
 | `githubRemovalStatus` | string | `NOT_NEEDED\|PENDING\|DONE\|FAILED` |
 | `restoredAt` | 시각\|null | |
 | `restoredRoles` | boolean\|null | |
 | `createdAt`, `createdBy` | | 처리한 시각 · 사람 |
 
-### 6-4. 재실로 되돌리기
+### 6-4. 재실로 되돌리기 (재입학 · 복학)
 
 `POST /api/v1/members/{memberId}/departures/{departureId}/reinstate`
 
@@ -859,7 +880,7 @@ GitHub 조직 제거만 커밋 뒤 이벤트로 돌고, 실패하면 관리 · G
 | 테이블 | `members` (`status = ACTIVE`, `left_on = NULL`, `enabled = true`), `member_roles`, `member_departures` (`restored_at`, `restored_roles`) |
 | 감사 로그 · 알림 | `MEMBER_REINSTATED` |
 
-프로젝트 참여는 되돌리지 않습니다 (이전 참여자 그대로. 필요하면 PM 이 다시 넣음). GitHub 조직은 구성원이 다시 연결하면 초대됩니다.
+프로젝트 참여는 되돌리지 않습니다 (졸업 · 퇴실은 이전 참여자 그대로, 휴학은 참여자로 남아 있음. 넘긴 PM · 작업은 `handovers` 를 보고 PM 이 다시 줌). GitHub 조직은 구성원이 다시 연결하면 초대됩니다.
 
 **요청 본문**
 
@@ -1103,7 +1124,7 @@ GitHub 조직 제거만 커밋 뒤 이벤트로 돌고, 실패하면 관리 · G
 | 테이블 | `signup_applications` (`status = PENDING`, `client_ip`, `privacy_agreed_at`) |
 | 감사 로그 · 알림 | `SIGNUP_RECEIVED`, `member-manage` 에게 `SIGNUP_REQUEST` |
 
-**바깥에 여는 방식은 미정입니다** ([개발 계획 M8](../development-plan.md#m8-가입-신청-공개-사이트)). 경로와 본문은 공개 사이트가 직접 부르든 중계하든 같게 둡니다.
+**바깥에는 Cloudflare Tunnel 로 이 경로 하나만 엽니다** (2026-11-19 결정, 공개 사이트가 직접 부름). 봇 확인은 두지 않고 같은 IP 횟수 제한으로만 막습니다.
 
 **요청 헤더**
 
@@ -1123,12 +1144,11 @@ GitHub 조직 제거만 커밋 뒤 이벤트로 돌고, 실패하면 관리 · G
 | `phone` | string | O | 숫자와 `-`, 9~20자 |
 | `reason` | string | O | 1~1,000자 |
 | `privacyAgreed` | boolean | O | true 여야 함 |
-| `captchaToken` | string | O | 봇 확인 토큰 (Cloudflare Turnstile 등, 공개 사이트 설계 때 확정) |
 
 ```json
 { "name": "강하늘", "studentNumber": "20261055", "desiredLoginId": "haneul", "email": null,
   "phone": "010-1234-5678", "reason": "정재훈 교수님 연구실에서 겨울 인턴으로 참여하고 싶습니다.",
-  "privacyAgreed": true, "captchaToken": "0.Ab3…" }
+  "privacyAgreed": true }
 ```
 
 - 이미 쓰는 로그인 ID · 구성원 번호여도 **거절하지 않고 받습니다.** 바깥에서 연구실 계정 ID · 학번이 있는지 알아낼 수 없게 하려는 것이고, 승인할 때 관리자가 다른 값을 넣습니다 (MEM-3-06). SRS MEM-3 신청 항목의 "이미 쓰는 ID 면 거절"을 바꿔야 합니다 ([README S5](README.md#33-화면--srs--테이블-불일치)).
@@ -1149,7 +1169,6 @@ GitHub 조직 제거만 커밋 뒤 이벤트로 돌고, 실패하면 관리 · G
 |------|------|------|
 | 400 | `C001` | 칸 형식이 틀림 (동의 안 함 포함) |
 | 400 | `M006` | 희망 로그인 ID 형식이 틀림 |
-| 400 | `M026` | 봇 확인 실패 |
 | 409 | `M025` | 같은 학번 · 같은 희망 로그인 ID 로 대기 중인 신청이 있음 (MEM-3-02) |
 | 429 | `M024` | 요청이 너무 잦음 (응답 헤더 `Retry-After`) |
 
@@ -1194,7 +1213,7 @@ GitHub 조직 제거만 커밋 뒤 이벤트로 돌고, 실패하면 관리 · G
 | `reviewedAt` | 시각\|null | |
 | `rejectReason` | string\|null | |
 | `createdMember` | `MemberRef`\|null | 승인으로 만든 구성원 |
-| `purgeAfter` | 시각\|null | 지워질 시각 |
+| `purgeAfter` | 시각\|null | 지워질 시각 (승인 · 거절은 처리 90일 뒤, 대기는 30일이 지나면 그때부터 90일 뒤) |
 | `createdAt` | 시각 | 신청 시각 |
 
 **에러** — 공통만
@@ -1330,14 +1349,13 @@ GitHub 조직 제거만 커밋 뒤 이벤트로 돌고, 실패하면 관리 · G
 | 400 | `M016` | `PRESET_DISABLED` | 사용 안 함으로 된 프리셋이에요. |
 | 400 | `M017` | `LAST_ADMIN_ROLE_HOLDER` | role-manage · member-manage 를 가진 재실 구성원이 한 명은 남아 있어야 해요. |
 | 400 | `M018` | `MEMBER_NOT_ACTIVE` | 졸업 · 퇴실한 구성원에게는 할 수 없어요. |
-| 400 | `M019` | `INVALID_PHOTO_FILE` | 프로필 사진으로 쓸 수 없는 파일이에요. 다시 올려 주세요. |
-| 400 | `M020` | `INVALID_PHOTO_CROP` | 자를 영역이 사진 밖에 있어요. |
+| — | ~~`M019`~~ | — | 쓰지 않음: file 모듈 코드(F001 · F005 · F008 · F010)로 대신 |
+| — | ~~`M020`~~ | — | 쓰지 않음: file 모듈 `F013` 으로 대신 |
 | 404 | `M021` | `PHOTO_NOT_FOUND` | 프로필 사진이 없어요. |
 | 400 | `M022` | `INVALID_PROPAGATION_TARGET` | 반영 대상에 이 프리셋을 적용받지 않은 구성원이 있어요. |
 | 404 | `M023` | `SIGNUP_NOT_FOUND` | 가입 신청을 찾을 수 없어요. |
 | 429 | `M024` | `SIGNUP_TOO_MANY_REQUESTS` | 잠시 뒤에 다시 신청해 주세요. |
 | 409 | `M025` | `DUPLICATE_PENDING_SIGNUP` | 같은 학번이나 희망 로그인 ID 로 처리 중인 신청이 있어요. |
-| 400 | `M026` | `CAPTCHA_FAILED` | 사람인지 확인하지 못했어요. 다시 시도해 주세요. |
 | 400 | `M027` | `ADMIN_ROLE_NOT_REQUESTABLE` | 관리 역할은 신청 가능으로 바꿀 수 없어요. |
 | 404 | `M028` | `ROLE_CODE_NOT_FOUND` | 역할을 찾을 수 없어요. (경로의 역할. 본문의 없는 코드는 `M007`) |
 | 400 | `M029` | `INVALID_MEMBER_DATES` | 졸업 · 퇴실일은 입실일 이후여야 해요. |

@@ -57,6 +57,7 @@ export const codeGroups: CodeGroup[] = [
   { code: 'FILE_POLICY', name: '파일 크기 · 확장자', isNew: true },
   { code: 'WEEKLY_REPORT_POLICY', name: '주간 보고 마감', isNew: true },
   { code: 'GITHUB_LOC_EXCLUDE', name: '줄 수 제외 기본값', isNew: true },
+  { code: 'ROLE_CONFLICT', name: '같이 가질 수 없는 역할', isNew: true },
 ]
 
 export type CodeRow = { code: string; name: string; ref1: string; ref2: string[]; ref4: string; enabled: boolean }
@@ -68,6 +69,13 @@ export const codeRows: Record<string, { desc: string; columns: [string, string, 
       { code: 'vault', name: 'Vault', ref1: 'https://vault.iturtle.win', ref2: ['@project', 'vault-admin'], ref4: '.../ui/vault/auth/oidc/oidc/callback, localhost:8250/oidc/callback', enabled: true },
       { code: 'jenkins', name: 'Jenkins', ref1: 'https://lab.iturtle.win/jenkins/', ref2: ['@project', 'jenkins-admin'], ref4: '.../jenkins/securityRealm/finishLogin', enabled: true },
       { code: 'penpot', name: 'Penpot', ref1: 'https://penpot.iturtle.win', ref2: ['penpot-member'], ref4: '.../api/auth/oidc/callback', enabled: true },
+    ],
+  },
+  ROLE_CONFLICT: {
+    desc: '같이 가질 수 없는 역할 쌍 (설명 = 이유). 역할 주기 · 프리셋 · 권한 신청 승인 · 구성원 추가에서 막고, 이미 가진 사람은 경고만',
+    columns: ['역할 A (ref1)', '역할 B (ref2)', '이유', '사용'],
+    rows: [
+      { code: 'REPORT_WRITE_REVIEW', name: '주간 보고 쓰기 ↔ 확인', ref1: 'report-write', ref2: ['report-review'], ref4: '보고를 쓰는 사람이 확인하는 사람이 되면 제출 현황 · 확인이 꼬인다', enabled: true },
     ],
   },
   AUTH_LOGIN_POLICY: {

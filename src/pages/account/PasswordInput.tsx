@@ -8,16 +8,21 @@ type Props = {
   invalid?: boolean
   autoComplete?: string
   placeholder?: string
+  /** 폼으로 낼 때의 파라미터 이름 (로그인 폼은 password) */
+  name?: string
+  required?: boolean
 }
 
 /** 자물쇠 아이콘 + 보기/숨기기 버튼이 있는 비밀번호 입력 */
-export function PasswordInput({ value, onChange, invalid, autoComplete, placeholder }: Props) {
+export function PasswordInput({ value, onChange, invalid, autoComplete, placeholder, name, required }: Props) {
   const [show, setShow] = useState(false)
   return (
     <span className={invalid ? `${s.inputWrap} ${s.invalid}` : s.inputWrap}>
       <Lock size={18} />
       <input
         type={show ? 'text' : 'password'}
+        name={name}
+        required={required}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}

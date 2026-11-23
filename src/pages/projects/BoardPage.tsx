@@ -5,7 +5,8 @@ import { Avatar, FilterSelect, Loadable } from '../../components/ui'
 import { PRIORITY_NAME, STATUS_NAME, TYPE_NAME, type Task, type TaskPriority, type TaskStatus } from '../../mocks/tasks'
 import { ApiError } from '../../api/client'
 import { whenLive, type Resource } from '../../api/useResource'
-import { moveTaskInColumn, transitionTask, useBoard, type BoardData, type BoardPosition, type BoardTask } from '../../api/projects'
+import { moveTaskInColumn, transitionRule, transitionTask, useBoard, type BoardData, type BoardPosition, type BoardTask } from '../../api/projects'
+import { openTaskCreate, useTasksChanged } from '../../api/tasks'
 import s from './BoardPage.module.css'
 
 const COLUMNS: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE']
@@ -23,6 +24,7 @@ const PRIORITY_TONE: Record<TaskPriority, string> = {
 export function BoardPage() {
   const { key } = useParams()
   const board = useBoard(key)
+  useTasksChanged(board.reload)
   return (
     <Loadable resource={board} label="보드">
       {(d) => <BoardView d={d} board={board} />}
@@ -77,15 +79,31 @@ function BoardView({ d, board }: { d: BoardData; board: Resource<BoardData> }) {
     if (!task || taskKey === beforeKey) return
     const sameCol = task.status === to
     if (sameCol && !beforeKey) return
+    // 반려 · 다시 열기처럼 사유가 필요한 이동은 사유를 물어 함께 보낸다 (없으면 서버가 P107 · P106 으로 거절)
+    let reason: string | undefined
     if (!sameCol) {
-      // 화면에서 먼저 막는 규칙 (서버도 같은 규칙으로 다시 검사한다)
-      if (to === 'IN_PROGRESS' && !task.assignee) {
+      // 화면에서 먼저 막는 규칙 (서버 TaskService.TRANSITIONS 와 같은 표. 서버도 다시 검사한다)
+      const rule = transitionRule(task.status, to)
+      if (!rule) {
+        setError({ col: to, msg: `${STATUS_NAME[task.status]}에서 ${STATUS_NAME[to]}로는 옮길 수 없어요` })
+        return
+      }
+      if (to === 'IN_PROGRESS' && task.status === 'TODO' && !task.assignee) {
         setError({ col: to, msg: '담당자가 없는 작업은 진행 중으로 옮길 수 없어요' })
         return
       }
-      if (task.status === 'REVIEW' && to === 'DONE' && task.requester !== me && !d.isManager) {
-        setError({ col: to, msg: '검토 중인 작업은 요청자나 프로젝트 관리자만 완료할 수 있어요' })
+      if (rule.byRequester && task.requester !== me && !d.isManager) {
+        setError({ col: to, msg: '요청자나 프로젝트 관리자만 옮길 수 있어요' })
         return
+      }
+      if (!rule.byRequester && task.assignee !== me && !d.isManager) {
+        setError({ col: to, msg: '담당자나 프로젝트 관리자만 옮길 수 있어요' })
+        return
+      }
+      if (rule.reason) {
+        const typed = window.prompt(task.status === 'REVIEW' ? '반려 사유를 적어 주세요 (댓글로 남아요)' : '다시 여는 사유를 적어 주세요 (댓글로 남아요)')?.trim()
+        if (!typed) return
+        reason = typed
       }
     }
     setError(null)
@@ -105,8 +123,7 @@ function BoardView({ d, board }: { d: BoardData; board: Resource<BoardData> }) {
         await moveTaskInColumn(taskKey, position)
         return
       }
-      // 명세 확인 필요: 반려(검토 → 진행 중) · 다시 열기(완료 → 진행 중)는 사유가 필요해, 보드에서 끌면 서버가 P107 · P106 으로 거절한다
-      const r = await transitionTask(taskKey, { toStatus: to, version: task.version ?? 0, boardPosition: position })
+      const r = await transitionTask(taskKey, { toStatus: to, version: task.version ?? 0, reason, boardPosition: position })
       // 자리를 주지 않았으면 서버는 새 열의 맨 위에 놓는다 → 화면도 맞춘다 (새 version 도 받는다)
       setTasks((list) => {
         if (position) return list.map((x) => (x.taskKey === taskKey ? r.task : x))
@@ -180,7 +197,12 @@ function BoardView({ d, board }: { d: BoardData; board: Resource<BoardData> }) {
               <header className={s.colHead}>
                 <span className={`${s.colChip} ${s[`c${col}`]}`}>{STATUS_NAME[col]}</span>
                 <span className={s.colCount}>{list.length}</span>
-                <button type="button" className={s.add} aria-label={`${STATUS_NAME[col]}에 작업 추가`}>
+                <button
+                  type="button"
+                  className={s.add}
+                  aria-label={`${STATUS_NAME[col]}에 작업 추가`}
+                  onClick={() => openTaskCreate({ initialStatus: col === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'TODO' })}
+                >
                   <Plus size={16} />
                 </button>
               </header>

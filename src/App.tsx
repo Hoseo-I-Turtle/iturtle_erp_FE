@@ -5,60 +5,80 @@ import { AdminLayout } from './layouts/AdminLayout'
 import { AdminMembersPage } from './pages/admin/AdminMembersPage'
 import { PresetsPage } from './pages/admin/PresetsPage'
 import { SignupsPage } from './pages/admin/SignupsPage'
-import { AccessAdminPage, FilesPage, OpsPage } from './pages/admin/OpsPages'
+import { RoleRequestsPage } from './pages/admin/RoleRequestsPage'
 import { AuditPage } from './pages/admin/AuditPage'
 import { CodesPage } from './pages/admin/CodesPage'
 import { GithubPage } from './pages/admin/GithubPage'
+import { CloudflarePage } from './pages/admin/CloudflarePage'
 import { HomePage } from './pages/home/HomePage'
 import { NoticeDetailPage } from './pages/notices/NoticeDetailPage'
 import { NoticeListPage } from './pages/notices/NoticeListPage'
 import { CalendarPage } from './pages/calendar/CalendarPage'
-import { PollCreatePage } from './pages/calendar/PollCreatePage'
 import { SchedulePollPage } from './pages/calendar/SchedulePollPage'
-import { DeletedDocumentsPage } from './pages/library/DeletedDocumentsPage'
-import { DocumentDetailPage } from './pages/library/DocumentDetailPage'
 import { LibraryPage } from './pages/library/LibraryPage'
+import { DocumentDetailPage } from './pages/library/detail/DocumentDetailPage'
+import { ProjectFilesPage } from './pages/projects/files/ProjectFilesPage'
 import { MembersPage } from './pages/members/MembersPage'
 import { ProjectListPage } from './pages/projects/ProjectListPage'
-import { ProjectFilesPage } from './pages/projects/ProjectFilesPage'
 import { ProjectHomePage } from './pages/projects/ProjectHomePage'
 import { BoardPage } from './pages/projects/BoardPage'
 import { ThreadPage } from './pages/projects/ThreadPage'
 import { TaskDetailPage } from './pages/projects/TaskDetailPage'
-import { TaskListPage } from './pages/projects/TaskListPage'
-import { TimelinePage } from './pages/projects/TimelinePage'
-import { MinuteListPage } from './pages/projects/MinuteListPage'
-import { MinuteRevisionsPage } from './pages/projects/MinuteRevisionsPage'
-import { MinuteWritePage } from './pages/projects/MinuteWritePage'
 import { MinutesPage } from './pages/projects/MinutesPage'
+import { MinuteListPage } from './pages/projects/MinuteListPage'
+import { PoliciesPage } from './pages/projects/PoliciesPage'
+import { MinuteWritePage } from './pages/projects/MinuteWritePage'
 import { ProjectSettingsPage } from './pages/projects/ProjectSettingsPage'
 import { WeeklyReportPage } from './pages/reports/WeeklyReportPage'
+import { LedgerPage } from './pages/ledger/LedgerPage'
+import { SearchPage } from './pages/search/SearchPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
+import { TaskListPage } from './pages/projects/TaskListPage'
+import { SchedulePage } from './pages/projects/SchedulePage'
+import { ProjectReportsPage } from './pages/projects/ProjectReportsPage'
+import { MilestonesPage } from './pages/projects/MilestonesPage'
 import { StartPage } from './pages/start/StartPage'
 import { ModeGate } from './layouts/ModeGate'
 import { LoginPage } from './pages/account/LoginPage'
+import { LogoutPage } from './pages/account/LogoutPage'
 import { PasswordChangePage } from './pages/account/PasswordChangePage'
+import { AccountSetupPage } from './pages/account/AccountSetupPage'
 import { SignupPage } from './pages/account/SignupPage'
-import { AccessRequestPage } from './pages/account/AccessRequestPage'
 import { ProfilePage } from './pages/account/ProfilePage'
 import { SettingsPage, ThemeSettingsPage } from './pages/settings/SettingsPage'
-import { SearchPage } from './pages/search/SearchPage'
-import { MyTasksPage } from './pages/tasks/MyTasksPage'
 import { NotificationsPage } from './pages/account/NotificationsPage'
+import { IS_PROD } from './lib/dataMode'
+import { applyLoginReturn } from './lib/loginReturn'
 
+// 방금 로그인해서 / 에 왔으면, 로그인 화면으로 보내지기 전에 보던 주소로 바꾼 뒤 라우터를 만든다
+applyLoginReturn()
+
+/*
+ * 백엔드가 브라우저를 보내는 화면 주소 (바꾸면 백엔드와 같이 바꿔야 한다)
+ * - /login, /login?error, /login?logout, /login?expired  (AuthSecurityConfig, LoginFailureHandler, SsoLogoutSuccessHandler)
+ * - /account/password  임시 비밀번호로 로그인했을 때 (PasswordChangeRequiredFilter.PASSWORD_PAGE)
+ * - /account/setup#token=…  초대 메일 링크 (InvitationMailService, 로그인 없이)
+ * - /, /?denied=<client_id>  로그인 성공 기본 주소, SSO 접근 역할이 없을 때 (LoginSuccessHandler, SsoAppAccessFilter)
+ * - /profile?github=linked | error&code=G00x  GitHub 연결 결과 (GithubProperties.profileUrl 기본값)
+ */
 const router = createBrowserRouter([
-  { path: '/start', element: <StartPage /> },
+  // 목업 / 실서버 고르기는 개발 서버에만 있다
+  { path: '/start', element: IS_PROD ? <Navigate to="/" replace /> : <StartPage /> },
   { path: '/login', element: <ModeGate><LoginPage /></ModeGate> },
-  { path: '/password', element: <ModeGate><PasswordChangePage /></ModeGate> },
+  { path: '/logout', element: <ModeGate><LogoutPage /></ModeGate> },
+  { path: '/account/password', element: <ModeGate><PasswordChangePage /></ModeGate> },
+  { path: '/account/setup', element: <ModeGate><AccountSetupPage /></ModeGate> },
+  { path: '/password', element: <Navigate to="/account/password" replace /> },
   { path: '/signup', element: <SignupPage /> },
   {
     element: <AppLayout />,
     children: [
       { path: '/', element: <HomePage /> },
+      // 공지 목록 화면은 디자인에 아직 없어 최신 공지 상세로 보낸다
+      // 공지 목록 화면은 아직 디자인 전 (docs/missing-screens.md) — 목업 공지로 보내지 않는다
       { path: '/notices', element: <NoticeListPage /> },
       { path: '/notices/:id', element: <NoticeDetailPage /> },
       { path: '/calendar', element: <CalendarPage /> },
-      { path: '/calendar/polls/new', element: <PollCreatePage /> },
       { path: '/calendar/polls/:id', element: <SchedulePollPage /> },
 
       { path: '/projects', element: <ProjectListPage /> },
@@ -68,26 +88,34 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <ProjectHomePage /> },
           { path: 'board', element: <BoardPage /> },
+          { path: 'schedule', element: <SchedulePage /> },
           { path: 'tasks', element: <TaskListPage /> },
           { path: 'tasks/:taskKey', element: <TaskDetailPage /> },
-          { path: 'timeline', element: <TimelinePage key="timeline" /> },
-          { path: 'milestones', element: <TimelinePage key="milestones" initialView="MILESTONE" /> },
+          { path: 'milestones', element: <MilestonesPage /> },
           { path: 'threads', element: <ThreadPage /> },
           { path: 'threads/new', element: <ThreadPage /> },
+          { path: 'threads/:threadId', element: <ThreadPage /> },
           { path: 'minutes', element: <MinuteListPage /> },
           { path: 'minutes/new', element: <MinuteWritePage /> },
           { path: 'minutes/:minuteId', element: <MinutesPage /> },
-          { path: 'minutes/:minuteId/revisions', element: <MinuteRevisionsPage /> },
+          { path: 'minutes/:minuteId/edit', element: <MinuteWritePage /> },
+          { path: 'policies', element: <PoliciesPage /> },
+          { path: 'policies/new', element: <PoliciesPage /> },
+          { path: 'policies/:policyKey', element: <PoliciesPage /> },
+          { path: 'policies/:policyKey/edit', element: <PoliciesPage /> },
           { path: 'files', element: <ProjectFilesPage /> },
+          { path: 'reports', element: <ProjectReportsPage /> },
           { path: 'settings', element: <ProjectSettingsPage /> },
         ],
       },
       { path: '/reports', element: <WeeklyReportPage /> },
+      { path: '/ledger', element: <LedgerPage /> },
 
       { path: '/library', element: <LibraryPage /> },
-      { path: '/library/deleted', element: <DeletedDocumentsPage /> },
       { path: '/library/:id', element: <DocumentDetailPage /> },
       { path: '/members', element: <MembersPage /> },
+      // 통합 검색 (CMN-2). 상단 검색창 Enter → /search?q=
+      { path: '/search', element: <SearchPage /> },
       {
         path: '/admin',
         element: <AdminLayout />,
@@ -96,20 +124,18 @@ const router = createBrowserRouter([
           { path: 'members', element: <AdminMembersPage /> },
           { path: 'presets', element: <PresetsPage /> },
           { path: 'signups', element: <SignupsPage /> },
-          { path: 'role-requests', element: <AccessAdminPage /> },
+          { path: 'role-requests', element: <RoleRequestsPage /> },
           { path: 'audit', element: <AuditPage /> },
           { path: 'codes', element: <CodesPage /> },
           { path: 'github', element: <GithubPage /> },
-          { path: 'ops', element: <OpsPage /> },
-          { path: 'files', element: <FilesPage /> },
+          { path: 'cloudflare', element: <CloudflarePage /> },
         ],
       },
-      { path: '/tasks', element: <MyTasksPage /> },
-      { path: '/search', element: <SearchPage /> },
-      { path: '/access-requests', element: <AccessRequestPage /> },
+      { path: '/profile', element: <ProfilePage /> },
       { path: '/settings', element: <SettingsPage /> },
       { path: '/settings/theme', element: <ThemeSettingsPage /> },
-      { path: '/me', element: <ProfilePage /> },
+      // 예전 주소
+      { path: '/me', element: <Navigate to="/profile" replace /> },
       { path: '/notifications', element: <NotificationsPage /> },
       { path: '*', element: <PlaceholderPage title="페이지를 찾을 수 없어요" /> },
     ],

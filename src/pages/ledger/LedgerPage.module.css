@@ -1,0 +1,431 @@
+/* 회계 장부 (ERP-44) */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.grow {
+  flex: 1;
+}
+.hint {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.error {
+  margin: 0;
+  color: var(--status-negative);
+  font-size: var(--fs-caption);
+}
+.info {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-caption);
+}
+
+/* ---------- 요약 ---------- */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--gap);
+}
+.stat {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+.stat > span:last-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.stat strong {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.stat small {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.statIcon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--surface-tint);
+  color: var(--brand-500);
+}
+.account {
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.accountMain {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+.accountLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.accountNo {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-default);
+  font-size: var(--fs-overline);
+  color: var(--brand-500);
+  cursor: pointer;
+}
+.copy:hover {
+  background: var(--surface-tint);
+}
+.who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.note {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.income {
+  color: #1e8a52;
+}
+.expense {
+  color: var(--status-negative);
+}
+.warnVal {
+  color: var(--status-warning-text);
+}
+
+/* ---------- 거래 목록 ---------- */
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.dates {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.dates input {
+  padding: 5px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+  background: var(--surface-card);
+}
+.search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+}
+.search input {
+  border: none;
+  outline: none;
+  width: 180px;
+  font-size: var(--fs-caption);
+  background: transparent;
+  color: var(--text-primary);
+}
+.check {
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.totals {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+}
+.totals strong {
+  margin-left: 6px;
+  font-size: var(--fs-body);
+}
+.tableWrap {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-caption);
+}
+.table th {
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border-default);
+}
+.table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--border-default);
+  vertical-align: top;
+}
+.table tbody tr {
+  cursor: pointer;
+}
+.table tbody tr:hover {
+  background: var(--surface-sunken);
+}
+.num {
+  text-align: right !important;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.nowrap {
+  white-space: nowrap;
+}
+.titleCell {
+  min-width: 160px;
+}
+.titleCell strong {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.titleCell small {
+  display: block;
+  color: var(--text-muted);
+}
+.deletedRow td {
+  color: var(--text-disabled);
+}
+.deletedRow .titleCell strong,
+.deletedRow .num {
+  text-decoration: line-through;
+  color: var(--text-disabled);
+}
+.paid {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ---------- 이관 기록 ---------- */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-default);
+  font-size: var(--fs-caption);
+}
+.list li small {
+  color: var(--text-muted);
+}
+.handLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---------- 창 (적기 · 상세 · 장부) ---------- */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 180px;
+}
+.field > span {
+  font-size: var(--fs-overline);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.field input,
+.field textarea {
+  padding: 9px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-caption);
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--surface-card);
+  outline: none;
+  resize: vertical;
+}
+.field input:focus,
+.field textarea:focus {
+  border-color: var(--brand-300);
+}
+.amountInput {
+  font-size: var(--fs-body) !important;
+  font-variant-numeric: tabular-nums;
+}
+.files {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  background: var(--surface-sunken);
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+  text-decoration: none;
+}
+a.file:hover {
+  background: var(--surface-tint);
+}
+.file button {
+  display: flex;
+  color: var(--brand-400);
+}
+.fileFailed {
+  background: var(--status-negative-bg);
+  color: var(--status-negative);
+}
+.upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
+}
+.upload:hover {
+  background: var(--surface-tint);
+}
+.headAmount {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.headAmount strong {
+  font-size: var(--fs-h2);
+  font-variant-numeric: tabular-nums;
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0;
+  font-size: var(--fs-caption);
+}
+.facts dt {
+  color: var(--text-muted);
+}
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-default);
+}
+.block h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--fs-body);
+}
+.versions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: var(--fs-caption);
+}
+.versions li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+.versions small {
+  color: var(--text-muted);
+}
+.versions p {
+  margin: 0;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}

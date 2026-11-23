@@ -1,0 +1,89 @@
+.no {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--status-negative-bg);
+  color: var(--status-negative);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.optIcon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--brand-500);
+}
+.signup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.signup button {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.signup button:hover {
+  text-decoration: underline;
+}
+.signup small {
+  color: var(--text-muted);
+}
+.lead {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+.secret {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--surface-sunken);
+}
+.secret span {
+  width: 100px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.secret code {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+
+/* 계정 전달 방법 (처음 비밀번호 / 초대 메일) — 옵션 상자를 고르는 버튼으로 */
+.choice {
+  width: 100%;
+  border: 1px solid transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.choice[aria-checked='true'] {
+  border-color: var(--brand-400);
+}
+.choice:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.choice:focus-visible {
+  outline: 2px solid var(--brand-400);
+  outline-offset: 2px;
+}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronLeft, ChevronRight, Clock, GitBranch, GitCommitHorizontal, Kanban, MessageCircle, Plus, RefreshCw, Send, TriangleAlert, Users, X } from 'lucide-react'
-import { Avatar, Button, Card, Chip, Columns, Empty, Loadable, Note, Segmented, SectionHead } from '../../components/ui'
+import { Check, ChevronLeft, ChevronRight, Clock, RefreshCw, Send, TriangleAlert } from 'lucide-react'
+import { Button, Card, Columns, Loadable, Note, Segmented } from '../../components/ui'
 import { PageHeader } from '../../layouts/PageHeader'
 import { ago } from '../../api/types'
 import { whenLive, type Resource } from '../../api/useResource'
@@ -19,17 +19,19 @@ import {
   type MyWeekReport,
   type ReportFields,
 } from '../../api/content'
+import { sectionReady } from './weekly/constants'
+import { GithubBox } from './weekly/GithubBox'
+import { SectionCard } from './weekly/SectionCard'
+import { LastWeekCommentCard, SubmissionSummaryCard } from './weekly/SideCards'
+import { MemberReportList, SubmissionStatusList } from './weekly/SubmissionLists'
+import { TaskBox } from './weekly/TaskBox'
 import s from './WeeklyReportPage.module.css'
 
 type Tab = 'mine' | 'status' | 'members'
-type Fields = ReportFields
-const FIELDS: { key: keyof Fields; label: string }[] = [
-  { key: 'done', label: '이번 주 한 일' },
-  { key: 'next', label: '다음 주 계획' },
-  { key: 'issues', label: '이슈 · 도움 필요' },
-]
-const STATE_LABEL = { SUBMITTED: '제출', LATE: '늦은 제출', MISSING: '미제출' } as const
 
+/**
+ * 주간 보고 (PRJ-4). 2026-11-20 부터 한 사람 한 장 안에 진행 중 프로젝트마다 칸(한 일 · 계획 · 이슈) + 공통 메모.
+ */
 export function WeeklyReportPage() {
   const [weeks] = useState(reportWeeks)
   const [tab, setTab] = useState<Tab>('mine')
@@ -38,6 +40,8 @@ export function WeeklyReportPage() {
   const [error, setError] = useState<string | null>(null)
   const timer = useRef<number | undefined>(undefined)
   const refreshTimer = useRef<number | undefined>(undefined)
+  // 이 화면에서 "작업 넣기"로 되돌린 작업 (주마다). 저장 때 excluded: false 로 보내 서버에 남은 '뺌'을 푼다
+  const restored = useRef(new Map<string, Set<string>>())
 
   const week = weeks[weekIdx]
   const isCurrent = weekIdx === weeks.length - 1
@@ -57,14 +61,23 @@ export function WeeklyReportPage() {
     })
 
   // 입력이 멈추면 1초 뒤 자동 저장 (WR-3). 목업은 상태만 바꾼다
-  const scheduleSave = (fields: Fields, excludedKeys: string[]) => {
+  const scheduleSave = (report: MyWeekReport) => {
     setSaveState('saving')
     window.clearTimeout(timer.current)
     const weekStartOn = week.weekStartOn
+    const includedKeys = [...(restored.current.get(weekStartOn) ?? [])].filter((k) => !report.excludedKeys.includes(k))
     timer.current = window.setTimeout(async () => {
       try {
-        const saved = await whenLive(() => saveMyReport(weekStartOn, fields, excludedKeys))
-        if (saved) mine.setData((r) => ({ ...r, reportId: saved.reportId, submitted: saved.submitted, editable: saved.editable }))
+        const saved = await whenLive(() => saveMyReport(weekStartOn, report, report.excludedKeys, includedKeys))
+        // 서버가 칸을 진행 프로젝트에 맞춰 바꿨을 수 있어 칸 모양(있고 없음 · detached)은 받고, 쓰는 중인 글은 화면 것을 둔다
+        if (saved)
+          mine.setData((r) => ({
+            ...r,
+            reportId: saved.reportId,
+            submitted: saved.submitted,
+            editable: saved.editable,
+            sections: saved.sections.map((x) => ({ ...x, fields: r.sections.find((y) => y.projectKey === x.projectKey)?.fields ?? x.fields })),
+          }))
         setSaveState('saved')
       } catch (e) {
         setSaveState('error')
@@ -72,31 +85,60 @@ export function WeeklyReportPage() {
       }
     }, 1000)
   }
-  const edit = (k: keyof Fields, v: string) => {
+  const update = (f: (r: MyWeekReport) => MyWeekReport) => {
     const r = mine.data
     if (!r) return
-    const fields = { ...r.fields, [k]: v }
-    setMine((x) => ({ ...x, fields }))
-    scheduleSave(fields, r.excludedKeys)
+    const next = f(r)
+    setMine(() => next)
+    scheduleSave(next)
   }
+  const editSection = (projectKey: string, key: keyof ReportFields, v: string) =>
+    update((r) => ({
+      ...r,
+      sections: r.sections.map((x) => (x.projectKey === projectKey ? { ...x, fields: { ...x.fields, [key]: v } } : x)),
+    }))
+  const editNote = (v: string) => update((r) => ({ ...r, note: v }))
+  /** 지난 주 칸마다 계획을 이번 주 같은 프로젝트 칸의 한 일로 (칸별 복사) */
   const copyLastWeek = () => {
-    const r = mine.data
-    if (!r || !last.data) return
-    const fields = { ...r.fields, ...last.data.copy }
-    setMine((x) => ({ ...x, fields }))
-    scheduleSave(fields, r.excludedKeys)
+    const copy = last.data?.copy
+    if (!copy) return
+    update((r) => ({
+      ...r,
+      sections: r.sections.map((x) => (copy[x.projectKey] ? { ...x, fields: { ...x.fields, ...copy[x.projectKey] } } : x)),
+    }))
   }
   const removeTask = (key: string) => {
-    const r = mine.data
-    if (!r) return
-    const excludedKeys = [...r.excludedKeys, key]
-    setMine((x) => ({ ...x, tasks: x.tasks.filter((t) => t.key !== key), excludedKeys }))
-    scheduleSave(r.fields, excludedKeys)
+    restored.current.get(week.weekStartOn)?.delete(key)
+    update((r) => {
+      const chip = r.tasks.find((t) => t.key === key)
+      return {
+        ...r,
+        tasks: r.tasks.filter((t) => t.key !== key),
+        excluded: chip ? [...r.excluded, chip] : r.excluded,
+        excludedKeys: [...r.excludedKeys, key],
+      }
+    })
+  }
+  /** 뺀 작업을 다시 넣는다. 서버는 자동 채우기 대상(그 주에 완료 · 진행한 내 작업)만 받아서(P238) 뺀 작업만 되돌릴 수 있다 */
+  const restoreTask = (key: string) => {
+    const set = restored.current.get(week.weekStartOn) ?? new Set<string>()
+    set.add(key)
+    restored.current.set(week.weekStartOn, set)
+    update((r) => {
+      const chip = r.excluded.find((t) => t.key === key)
+      if (!chip) return r
+      return { ...r, tasks: [...r.tasks, chip], excluded: r.excluded.filter((t) => t.key !== key), excludedKeys: r.excludedKeys.filter((k) => k !== key) }
+    })
   }
   const submit = async () => {
     const r = mine.data
     if (!r || r.submitted) return
     setError(null)
+    const empty = r.sections.filter((x) => !sectionReady(x))
+    if (empty.length > 0) {
+      setError(`${empty.map((x) => x.projectName).join(', ')} 칸의 이번 주 한 일과 다음 주 계획을 채워야 제출할 수 있어요.`)
+      return
+    }
     window.clearTimeout(timer.current)
     setMine((x) => ({ ...x, submitted: true }))
     try {
@@ -131,15 +173,13 @@ export function WeeklyReportPage() {
   )
 
   const submissions = subs.data ?? []
-  const total = submissions.length
-  const count = (st: keyof typeof STATE_LABEL) => submissions.filter((x) => x.state === st).length
   const submitted = mine.data?.submitted ?? false
 
   return (
     <>
       <PageHeader
         title="주간 보고"
-        subtitle={`${week.label} (${week.range}) · 마감 ${week.deadline}`}
+        subtitle={`${week.label} (${week.range}) · 마감 ${mine.data?.deadline ?? week.deadline}`}
         action={
           <Button icon={submitted ? Check : Send} onClick={submit} disabled={!isCurrent || !mine.data}>
             {submitted ? '제출함' : '제출하기'}
@@ -188,213 +228,87 @@ export function WeeklyReportPage() {
 
             {tab === 'mine' && (
               <Loadable resource={mine} label="내 보고">
-                {(r) =>
-                  isCurrent ? (
+                {(r) => {
+                  const sectionKeys = new Set(r.sections.map((x) => x.projectKey))
+                  const otherTasks = r.tasks.filter((t) => !sectionKeys.has(t.projectKey))
+                  const otherExcluded = r.excluded.filter((t) => !sectionKeys.has(t.projectKey))
+                  return isCurrent ? (
                     <>
-                      {FIELDS.map(({ key, label }) => (
-                        <label key={key} className={s.field}>
-                          <span>{label}</span>
-                          <textarea value={r.fields[key]} rows={2} readOnly={!r.editable} onChange={(e) => edit(key, e.target.value)} />
-                        </label>
+                      <p className={s.hint}>
+                        진행 중인 프로젝트마다 칸이 있어요. 칸마다 이번 주 한 일과 다음 주 계획을 채우면 제출할 수 있어요. 제출하면 칸이 그대로 굳어요.
+                      </p>
+                      {r.sections.map((x) => (
+                        <SectionCard
+                          key={x.projectKey}
+                          section={x}
+                          report={r}
+                          github={gh.data}
+                          editable={r.editable}
+                          onEdit={editSection}
+                          onRemoveTask={removeTask}
+                          onRestoreTask={restoreTask}
+                        />
                       ))}
 
-                      <TaskBox tasks={r.tasks} onRemove={removeTask} />
+                      <label className={s.field}>
+                        <span>공통 메모 · 프로젝트 밖 일 (선택)</span>
+                        <textarea value={r.note} rows={2} readOnly={!r.editable} onChange={(e) => editNote(e.target.value)} />
+                      </label>
+
+                      {(otherTasks.length > 0 || otherExcluded.length > 0) && (
+                        <TaskBox tasks={otherTasks} excluded={otherExcluded} onRemove={removeTask} onRestore={restoreTask} />
+                      )}
 
                       <Loadable resource={gh} label="GitHub 활동">
                         {(g) => <GithubBox g={g} onRefresh={() => refreshGithub(gh)} />}
                       </Loadable>
                     </>
                   ) : (
-                    FIELDS.map(({ key, label }) => (
-                      <div key={key} className={s.field}>
-                        <span>{label}</span>
-                        <p className={s.readonly}>{r.fields[key] || '—'}</p>
-                      </div>
-                    ))
+                    // 지난 주: 칸마다 그 주 작업 · GitHub 활동까지 읽기만 (ERP-39)
+                    <>
+                      {r.sections.map((x) => (
+                        <SectionCard key={x.projectKey} section={x} report={r} github={gh.data} editable={false} readOnly />
+                      ))}
+                      {r.note && (
+                        <div className={s.field}>
+                          <span>공통 메모</span>
+                          <p className={s.readonly}>{r.note}</p>
+                        </div>
+                      )}
+                      {otherTasks.length > 0 && <TaskBox tasks={otherTasks} readOnly />}
+                      <Loadable resource={gh} label="GitHub 활동">
+                        {(g) => <GithubBox g={g} />}
+                      </Loadable>
+                    </>
                   )
-                }
+                }}
               </Loadable>
             )}
 
             {tab === 'status' && (
               <Loadable resource={subs} label="제출 현황">
-                {(list) => (
-                  <ul className={s.statusList}>
-                    {list.map((x) => (
-                      <li key={x.name}>
-                        <Avatar name={x.name} size={28} />
-                        <strong>{x.name}</strong>
-                        <span className={`${s.state} ${s[x.state]}`}>{STATE_LABEL[x.state]}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                {(list) => <SubmissionStatusList list={list} />}
               </Loadable>
             )}
 
             {tab === 'members' && (
               <Loadable resource={subs} label="구성원별 보고">
-                {(list) => (
-                  <ul className={s.memberReports}>
-                    {list
-                      .filter((x) => x.summary)
-                      .map((x) => (
-                        <li key={x.name}>
-                          <Avatar name={x.name} size={28} />
-                          <div>
-                            <strong>{x.name}</strong>
-                            <p>{x.summary}</p>
-                          </div>
-                          <span className={`${s.state} ${s[x.state]}`}>{STATE_LABEL[x.state]}</span>
-                        </li>
-                      ))}
-                  </ul>
-                )}
+                {(list) => <MemberReportList list={list} />}
               </Loadable>
             )}
           </Card>
         }
         side={
           <>
-            <Card>
-              <SectionHead icon={Users} title={`${week.label} 제출 현황`} />
-              <div className={s.bar}>
-                <i style={{ width: `${total ? (count('SUBMITTED') / total) * 100 : 0}%`, background: 'var(--status-positive)' }} />
-                <i style={{ width: `${total ? (count('LATE') / total) * 100 : 0}%`, background: 'var(--status-warning-text)' }} />
-              </div>
-              <div className={s.counts}>
-                <span className={s.cOk}>제출 {count('SUBMITTED')}</span>
-                <span className={s.cLate}>늦은 제출 {count('LATE')}</span>
-                <span>미제출 {count('MISSING')}</span>
-              </div>
-              <ul className={s.notYet}>
-                {submissions
-                  .filter((x) => x.state !== 'SUBMITTED')
-                  .map((x) => (
-                    <li key={x.name}>
-                      <Avatar name={x.name} size={26} />
-                      <span>{x.name}</span>
-                      <span className={`${s.state} ${s[x.state]}`}>{STATE_LABEL[x.state]}</span>
-                    </li>
-                  ))}
-              </ul>
-              <p className={s.hint}>모든 구성원이 서로의 보고를 볼 수 있어요.</p>
-            </Card>
-
-            <Card>
-              <SectionHead icon={MessageCircle} title="지난 주 보고 코멘트" />
-              <Loadable resource={last} label="지난 주 코멘트">
-                {(l) =>
-                  l.comment ? (
-                    <div className={s.comment}>
-                      <Avatar name={l.comment.author} size={28} colorIndex={3} />
-                      <div>
-                        <div className={s.commentHead}>
-                          <strong>{l.comment.author}</strong>
-                          {l.comment.confirmed && (
-                            <span className={s.confirmed}>
-                              <Check size={12} /> 확인함
-                            </span>
-                          )}
-                        </div>
-                        <p>{l.comment.body}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <Empty>지난 주 보고에 코멘트가 없어요.</Empty>
-                  )
-                }
-              </Loadable>
-            </Card>
+            <SubmissionSummaryCard weekLabel={week.label} submissions={submissions} />
+            <LastWeekCommentCard last={last} />
 
             <Note icon={Clock} tone="warning">
-              {mine.data?.dueText ?? '마감'}. 제출한 뒤에도 교수님이 확인하기 전까지는 고칠 수 있어요.
+              {mine.data?.dueText ?? '마감'}. 제출한 뒤에도 교수님이 확인하기 전까지는 고칠 수 있어요. 진행 중인 프로젝트에 참여한 사람만 보고 대상이에요.
             </Note>
           </>
         }
       />
     </>
-  )
-}
-
-function TaskBox({ tasks, onRemove }: { tasks: MyWeekReport['tasks']; onRemove: (key: string) => void }) {
-  const doneCount = tasks.filter((t) => t.status === '완료').length
-  return (
-    <div className={s.tasks}>
-      <div className={s.boxHead}>
-        <Kanban size={18} />
-        <strong>작업 연동</strong>
-        <span className={s.grow} />
-        <small>
-          이번 주 완료 {doneCount} · 진행 중 {tasks.length - doneCount}
-        </small>
-      </div>
-      <div className={s.taskChips}>
-        {tasks.map((t) => (
-          <span key={t.key} className={s.taskChip}>
-            <Chip tone={t.status === '완료' ? 'brand' : t.status === '검토' ? 'warning' : 'tint'} className={t.status === '완료' ? s.doneChip : undefined}>
-              {t.status}
-            </Chip>
-            <strong>{t.key}</strong> {t.title}
-            <button type="button" aria-label="빼기" onClick={() => onRemove(t.key)}>
-              <X size={14} />
-            </button>
-          </span>
-        ))}
-        {/* 명세 확인 필요: 자동 채우기 대상이 아닌 작업은 넣을 수 없다 (WR-3 P238). 뺀 작업 되돌리기용으로 남겨 둠 */}
-        <button type="button" className={s.addTask}>
-          <Plus size={14} /> 작업 넣기
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function GithubBox({ g, onRefresh }: { g: GithubActivity; onRefresh: () => void }) {
-  return (
-    <div className={s.github}>
-      <div className={s.boxHead}>
-        <GitBranch size={18} />
-        <strong>GitHub 활동</strong>
-        <span className={s.grow} />
-        <small>마지막으로 받은 시각 · {g.fetchedAgo}</small>
-        <button type="button" className={s.copy} onClick={onRefresh}>
-          <RefreshCw size={16} /> 지금 새로 받기
-        </button>
-      </div>
-      <table className={s.table}>
-        <thead>
-          <tr>
-            <th>저장소 / 브랜치</th>
-            <th>커밋</th>
-            <th>추가</th>
-            <th>삭제</th>
-          </tr>
-        </thead>
-        <tbody>
-          {g.rows.map((r) => (
-            <tr key={r.repo + r.branch}>
-              <td>
-                <GitBranch size={14} /> {r.repo} <span className={s.branch}>{r.branch}</span>
-              </td>
-              <td>{r.commits}</td>
-              <td className={s.add}>+{r.add}</td>
-              <td className={s.del}>−{r.del}</td>
-            </tr>
-          ))}
-          <tr className={s.sum}>
-            <td>
-              <GitCommitHorizontal size={14} /> 합계 · 병합 커밋 {g.mergeCount}개와 lock 파일 제외
-            </td>
-            <td>{g.totals.c}</td>
-            <td className={s.add}>+{g.totals.add}</td>
-            <td className={s.del}>−{g.totals.del}</td>
-          </tr>
-        </tbody>
-      </table>
-      <p className={s.hint}>
-        줄 수는 참고 지표예요. 리팩터링이나 자동 생성 코드로 크게 달라질 수 있어요. 같은 커밋이 여러 브랜치에 있으면 한 번만 세요.
-      </p>
-    </div>
   )
 }

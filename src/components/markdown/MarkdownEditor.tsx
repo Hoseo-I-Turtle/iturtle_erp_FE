@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import {
   Bold,
   ChevronDown,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { Segmented } from '../ui'
 import { Markdown } from './Markdown'
+import { useAtMention } from './useAtMention'
 import s from './MarkdownEditor.module.css'
 
 const DIAGRAMS: { label: string; kind: string; template: string }[] = [
@@ -57,7 +58,9 @@ type Props = {
 export function MarkdownEditor({ value, onChange, projectKey, placeholder, minHeight = 360 }: Props) {
   const [mode, setMode] = useState<Mode>('split')
   const [menu, setMenu] = useState(false)
-  const ta = useRef<HTMLTextAreaElement>(null)
+  // @ 를 치면 사람 고르기 (ERP-34). 고르면 @로그인ID 를 넣는다
+  const { ref: mentionRef, detect: detectMention, onKeyDown: mentionKeyDown, popup: mentionPopup, close: closeMention } = useAtMention<HTMLTextAreaElement>(value, onChange, 'inside')
+  const ta = mentionRef
 
   /** 선택 영역을 감싸거나 커서 위치에 넣는다 */
   const insert = (before: string, after = '', fallback = '') => {
@@ -129,11 +132,18 @@ export function MarkdownEditor({ value, onChange, projectKey, placeholder, minHe
             ref={ta}
             className={s.input}
             value={value}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => {
+              onChange(e.target.value)
+              detectMention()
+            }}
+            onClick={() => detectMention()}
+            onKeyDown={mentionKeyDown}
+            onBlur={() => closeMention()}
             placeholder={placeholder}
             spellCheck={false}
           />
         )}
+        {mode !== 'preview' && mentionPopup}
         {mode !== 'write' && (
           <div className={s.preview}>
             <div className={s.previewLabel}>

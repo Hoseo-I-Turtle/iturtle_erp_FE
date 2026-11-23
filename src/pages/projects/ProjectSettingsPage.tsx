@@ -1,75 +1,84 @@
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { Check, Clock, List, Lock, Play, Shield, Users, X } from 'lucide-react'
-import { Avatar, Button, Card, Loadable, Note, Select, Switch } from '../../components/ui'
+import { useParams, useSearchParams } from 'react-router-dom'
+import { Check, Clock } from 'lucide-react'
+import { Button, Loadable, Note } from '../../components/ui'
 import { ApiError } from '../../api/client'
 import { whenLive } from '../../api/useResource'
 import {
+  AccessSaveError,
+  createCustomRole,
+  deleteCustomRole,
   requestVaultPath,
   retryProvision,
   saveServiceAccess,
+  updateCustomRole,
   useServiceAccess,
-  type AccessOverride,
   type AccessState,
-  type JenkinsLevel,
-  type ProvisionStatus,
   type ServiceAccessView,
-  type VaultLevel,
 } from '../../api/projects'
-import { ArchiveTab, GeneralTab, LabelsTab } from './settings/BasicTabs'
-import { LinksTab, MembersTab, RequestsTab } from './settings/PeopleTabs'
+import type { SyncService } from './settings/levels'
+import { MemberOverridesCard } from './settings/MemberOverridesCard'
+import { RoleDefaultsCard } from './settings/RoleDefaultsCard'
+import { ServiceToggleCard } from './settings/ServiceToggleCard'
+import { MENU_TAB, menuOfTab, type SettingsMenuItem } from './settings/menu'
+import { useProjectSettings, type ProjectSettings } from '../../api/projectSettings'
+import { ArchiveDeletePanel } from './settings/ArchiveDeletePanel'
+import { GeneralPanel } from './settings/GeneralPanel'
+import { LabelsPanel } from './settings/LabelsPanel'
+import { LinksPanel } from './settings/LinksPanel'
+import { MembersPanel } from './settings/MembersPanel'
+import { SettingsMenu } from './settings/SettingsMenu'
+import type { SyncState } from './settings/SyncStatus'
 import s from './ProjectSettingsPage.module.css'
-
-const MENU = ['일반', '참여자', '라벨', '연동 서비스', '서비스 권한', '권한 신청', '보관 · 삭제'] as const
-type Menu = (typeof MENU)[number]
-
-const VAULT: Record<VaultLevel, string> = { NONE: '없음', READ: '읽기', WRITE: '쓰기' }
-const JENKINS: Record<JenkinsLevel, string> = { NONE: '없음', READ: '읽기', BUILD: '빌드' }
-const opts = <T extends string>(m: Record<T, string>) => (Object.keys(m) as T[]).map((v) => ({ value: v, label: m[v] }))
 
 const errMsg = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback)
 
-/** 프로비저닝 결과 칩 문구 */
-const SYNC_TEXT = {
-  VAULT: { ok: '정책 · 그룹 만들어짐', fail: '정책 · 그룹 만들기 실패', pending: '정책 · 그룹 만드는 중' },
-  JENKINS: { ok: '항목 역할 만들어짐', fail: '항목 역할 만들기 실패', pending: '항목 역할 만드는 중' },
-}
-
 export function ProjectSettingsPage() {
   const { key } = useParams()
-  const [menu, setMenu] = useState<Menu>('서비스 권한')
-  const access = useServiceAccess(key)
+  const [params, setParams] = useSearchParams()
+  const menu = menuOfTab(params.get('tab'))
+  const setMenu = (m: SettingsMenuItem) => setParams({ tab: MENU_TAB[m] }, { replace: true })
 
   return (
     <div className={s.layout}>
-      <nav className={s.menu}>
-        {MENU.map((m) => (
-          <button key={m} type="button" className={m === menu ? `${s.menuItem} ${s.menuOn}` : s.menuItem} onClick={() => setMenu(m)}>
-            {m}
-          </button>
-        ))}
-      </nav>
+      <SettingsMenu value={menu} onChange={setMenu} />
 
       <div className={s.content}>
-        {menu === '일반' ? (
-          <GeneralTab projectKey={key ?? ''} />
-        ) : menu === '참여자' ? (
-          <MembersTab projectKey={key ?? ''} />
-        ) : menu === '라벨' ? (
-          <LabelsTab projectKey={key ?? ''} />
-        ) : menu === '연동 서비스' ? (
-          <LinksTab projectKey={key ?? ''} />
-        ) : menu === '권한 신청' ? (
-          <RequestsTab projectKey={key ?? ''} />
-        ) : menu === '보관 · 삭제' ? (
-          <ArchiveTab projectKey={key ?? ''} />
-        ) : (
-          <Loadable resource={access} label="서비스 권한">
-            {(v) => <AccessPanel key={JSON.stringify(v.state)} projectKey={key ?? ''} view={v} onSaved={(nv) => access.setData(() => nv)} />}
-          </Loadable>
-        )}
+        {menu === '서비스 권한' ? <ServiceAccessSection projectKey={key ?? ''} /> : <SettingsSection key={key} projectKey={key ?? ''} menu={menu} />}
       </div>
     </div>
+  )
+}
+
+/** 일반 · 참여자 · 라벨 · 보관 · 삭제 (P-3 · P-24 를 한 번 받아 패널끼리 나눠 쓴다) */
+function SettingsSection({ projectKey, menu }: { projectKey: string; menu: SettingsMenuItem }) {
+  const settings = useProjectSettings(projectKey)
+  const patch = (p: Partial<ProjectSettings>) => settings.setData((prev) => ({ ...prev, ...p }))
+  return (
+    <Loadable resource={settings} label="프로젝트 설정">
+      {(v) =>
+        menu === '일반' ? (
+          <GeneralPanel key={v.projectKey} settings={v} onChange={patch} />
+        ) : menu === '참여자' ? (
+          <MembersPanel settings={v} onChange={patch} onReload={settings.reload} />
+        ) : menu === '라벨' ? (
+          <LabelsPanel settings={v} onChange={patch} />
+        ) : menu === '연동 서비스' ? (
+          <LinksPanel settings={v} />
+        ) : (
+          <ArchiveDeletePanel settings={v} onChange={patch} />
+        )
+      }
+    </Loadable>
+  )
+}
+
+function ServiceAccessSection({ projectKey }: { projectKey: string }) {
+  const access = useServiceAccess(projectKey)
+  return (
+    <Loadable resource={access} label="서비스 권한">
+      {(v) => <AccessPanel key={JSON.stringify(v.state)} projectKey={projectKey} view={v} onSaved={(nv) => access.setData(() => nv)} />}
+    </Loadable>
   )
 }
 
@@ -79,7 +88,7 @@ function AccessPanel({ projectKey, view, onSaved }: { projectKey: string; view: 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // 프로비저닝: 서비스마다 상태 · 오류 문구. 'retrying' 은 다시 시도를 기다리는 중
-  const [sync, setSync] = useState<Record<'VAULT' | 'JENKINS', { status: ProvisionStatus | 'retrying'; error: string | null }>>({
+  const [sync, setSync] = useState<Record<SyncService, SyncState>>({
     VAULT: { status: view.vault.status, error: view.vault.error },
     JENKINS: { status: view.jenkins.status, error: view.jenkins.error },
   })
@@ -87,8 +96,25 @@ function AccessPanel({ projectKey, view, onSaved }: { projectKey: string; view: 
   const [pathDraft, setPathDraft] = useState('')
   const [pathMsg, setPathMsg] = useState<string | null>(null)
   const dirty = JSON.stringify(st) !== JSON.stringify(saved)
+  // 프로젝트 역할 (ERP-27): 바꾸면 바로 저장하고 서버가 준 P-16 으로 화면을 맞춘다
+  const [roleBusy, setRoleBusy] = useState(false)
+  const [roleError, setRoleError] = useState<string | null>(null)
+  const roleCall = (call: () => Promise<ServiceAccessView>, mock: (v: ServiceAccessView) => ServiceAccessView) => {
+    setRoleBusy(true)
+    setRoleError(null)
+    return whenLive(call)
+      .then((nv) => {
+        onSaved(nv ?? mock(view))
+        return true
+      })
+      .catch((e: unknown) => {
+        setRoleError(errMsg(e, '역할을 저장하지 못했어요.'))
+        return false
+      })
+      .finally(() => setRoleBusy(false))
+  }
 
-  const retry = (svc: 'VAULT' | 'JENKINS') => {
+  const retry = (svc: SyncService) => {
     setSync((x) => ({ ...x, [svc]: { ...x[svc], status: 'retrying' } }))
     whenLive(() => retryProvision(projectKey, svc))
       .then((nv) => {
@@ -121,9 +147,16 @@ function AccessPanel({ projectKey, view, onSaved }: { projectKey: string; view: 
         if (nv) onSaved(nv)
       })
       .catch((e: unknown) => {
-        // 명세 확인 필요: 서비스 설정(P-17) · 구성원(P-18) 을 나눠 저장해서, 앞의 것만 저장되고 실패할 수 있다
-        setSaved(before)
-        setError(errMsg(e, '저장하지 못했어요. 잠시 뒤 다시 해 주세요.'))
+        // 백엔드에 한 번에 저장하는 API 가 없어 서비스 설정(P-17) · 구성원(P-18) 을 나눠 저장한다.
+        // 앞의 것만 저장되고 실패하면 저장된 상태를 기준으로 삼아, 남은 바뀐 값은 다시 저장할 수 있게 둔다
+        const partial = e instanceof AccessSaveError ? e.saved : null
+        setSaved(partial ? partial.state : before)
+        const cause = e instanceof AccessSaveError ? e.reason : e
+        setError(
+          partial
+            ? `일부만 저장됐어요. ${errMsg(cause, '나머지를 저장하지 못했어요.')}`
+            : errMsg(cause, '저장하지 못했어요. 잠시 뒤 다시 해 주세요.'),
+        )
       })
       .finally(() => setSaving(false))
   }
@@ -141,165 +174,58 @@ function AccessPanel({ projectKey, view, onSaved }: { projectKey: string; view: 
     })
   }
 
-  const syncChip = (svc: 'VAULT' | 'JENKINS') => {
-    const x = sync[svc]
-    if (x.status === 'DONE')
-      return (
-        <span className={`${s.sync} ${s.syncOk}`}>
-          <Check size={14} /> {SYNC_TEXT[svc].ok}
-        </span>
-      )
-    if (x.status === 'FAILED' || x.status === 'retrying')
-      return (
-        <span className={`${s.sync} ${s.syncFail}`}>
-          <X size={14} /> {SYNC_TEXT[svc].fail}
-        </span>
-      )
-    return (
-      <span className={s.sync}>
-        <Clock size={14} /> {SYNC_TEXT[svc].pending}
-      </span>
-    )
-  }
-  const syncFail = (svc: 'VAULT' | 'JENKINS', fallback: string) => {
-    const x = sync[svc]
-    if (x.status !== 'FAILED' && x.status !== 'retrying') return null
-    return (
-      <span className={s.fail}>
-        {x.error ?? fallback}{' '}
-        <button type="button" onClick={() => retry(svc)} disabled={x.status === 'retrying'}>
-          {x.status === 'retrying' ? '다시 시도하는 중…' : '다시 시도'}
-        </button>
-      </span>
-    )
-  }
-
   return (
     <>
-      <Card>
-        <h2 className={s.h}>
-          <Shield size={20} /> 프로젝트 서비스 권한
-        </h2>
-        <div className={s.svc}>
-          <Switch checked={st.vaultOn} onChange={(v) => setSt({ ...st, vaultOn: v })} label="Vault 사용" />
-          <span className={s.svcIcon}>
-            <Lock size={18} />
-          </span>
-          <div className={s.svcText}>
-            <strong>Vault</strong>
-            <small>
-              경로 {view.vault.paths[0] ?? `secret/projects/${projectKey.toLowerCase()}/`} (프로젝트 키로 고정)
-              {view.vault.paths.length > 1 && ` · 묶은 경로 ${view.vault.paths.slice(1).join(', ')}`}
-            </small>
-            {pending.map((p) => (
-              <span key={p} className={s.pending}>
-                추가 경로 {p} · sso-admin 승인 대기
-              </span>
-            ))}
-            {syncFail('VAULT', 'Vault 정책을 만들지 못했어요')}
-            <span className={s.pathReq}>
-              <input
-                value={pathDraft}
-                onChange={(e) => setPathDraft(e.target.value)}
-                placeholder="기존 경로 묶기 · secret/…/"
-                aria-label="묶을 기존 Vault 경로"
-              />
-              <button type="button" onClick={requestPath} disabled={!pathDraft.trim()}>
-                신청
-              </button>
-            </span>
-            {pathMsg && <span className={s.fail}>{pathMsg}</span>}
-          </div>
-          {syncChip('VAULT')}
-        </div>
-        <div className={s.svc}>
-          <Switch checked={st.jenkinsOn} onChange={(v) => setSt({ ...st, jenkinsOn: v })} label="Jenkins 사용" />
-          <span className={s.svcIcon}>
-            <Play size={18} />
-          </span>
-          <div className={s.svcText}>
-            <strong>Jenkins</strong>
-            <small>{view.jenkins.jobs.length ? `작업 패턴 ${view.jenkins.jobs.join(', ')}` : '연결한 Jenkins 작업이 없어요'}</small>
-            {syncFail('JENKINS', 'Jenkins 가 응답하지 않았어요')}
-          </div>
-          {syncChip('JENKINS')}
-        </div>
-        <p className={s.muted}>
-          하루 한 번 Vault · Jenkins 의 실제 설정과 비교해 빠진 것은 다시 만들어요. ERP 가 만든 prj- 이름만 건드려요.
-        </p>
-      </Card>
-
-      <Card>
-        <h2 className={s.h}>
-          <Users size={20} /> 역할별 기본 수준
-        </h2>
-        {(['MANAGER', 'MEMBER'] as const).map((r) => (
-          <div key={r} className={s.roleRow}>
-            <span className={s.roleName}>{r === 'MANAGER' ? '프로젝트 관리자' : '참여자'}</span>
-            <span className={s.svcLabel}>Vault</span>
-            <Select
-              value={st.roles[r].vault}
-              options={opts(VAULT)}
-              width={130}
-              label="Vault 기본 수준"
-              onChange={(v) => setSt({ ...st, roles: { ...st.roles, [r]: { ...st.roles[r], vault: v } } })}
-            />
-            <span className={s.svcLabel}>Jenkins</span>
-            <Select
-              value={st.roles[r].jenkins}
-              options={opts(JENKINS)}
-              width={130}
-              label="Jenkins 기본 수준"
-              onChange={(v) => setSt({ ...st, roles: { ...st.roles, [r]: { ...st.roles[r], jenkins: v } } })}
-            />
-          </div>
-        ))}
-      </Card>
-
-      <Card>
-        <h2 className={s.h}>
-          <List size={20} /> 구성원별
-        </h2>
-        <div className={s.table}>
-          <div className={s.thead}>
-            <span>구성원</span>
-            <span>프로젝트 역할</span>
-            <span>Vault</span>
-            <span>Jenkins</span>
-          </div>
-          {view.members.map((m) => {
-            const o: AccessOverride = st.members[m.name] ?? { vault: 'DEFAULT', jenkins: 'DEFAULT' }
-            const def = st.roles[m.role]
-            const custom = o.vault !== 'DEFAULT' || o.jenkins !== 'DEFAULT'
-            const set = (patch: Partial<AccessOverride>) => setSt({ ...st, members: { ...st.members, [m.name]: { ...o, ...patch } } })
-            return (
-              <div key={m.memberId ?? m.name} className={custom ? `${s.trow} ${s.custom}` : s.trow}>
-                <span className={s.who}>
-                  <Avatar name={m.name} size={24} /> {m.name}
-                </span>
-                <span className={s.muted}>
-                  {m.role === 'MANAGER' ? '프로젝트 관리자' : '참여자'}
-                  {m.note && ` · ${m.note}`}
-                </span>
-                <Select
-                  value={o.vault}
-                  width={130}
-                  label={`${m.name} Vault`}
-                  options={[{ value: 'DEFAULT', label: `기본값 (${VAULT[def.vault]})` }, ...opts(VAULT).map((x) => ({ ...x, label: `${x.label} (개별)` }))]}
-                  onChange={(v) => set({ vault: v })}
-                />
-                <Select
-                  value={o.jenkins}
-                  width={130}
-                  label={`${m.name} Jenkins`}
-                  options={[{ value: 'DEFAULT', label: `기본값 (${JENKINS[def.jenkins]})` }, ...opts(JENKINS).map((x) => ({ ...x, label: `${x.label} (개별)` }))]}
-                  onChange={(v) => set({ jenkins: v })}
-                />
-              </div>
-            )
-          })}
-        </div>
-      </Card>
+      <ServiceToggleCard
+        projectKey={projectKey}
+        view={view}
+        vaultOn={st.vaultOn}
+        jenkinsOn={st.jenkinsOn}
+        onVaultOn={(v) => setSt({ ...st, vaultOn: v })}
+        onJenkinsOn={(v) => setSt({ ...st, jenkinsOn: v })}
+        sync={sync}
+        onRetry={retry}
+        pending={pending}
+        pathDraft={pathDraft}
+        onPathDraft={setPathDraft}
+        onRequestPath={requestPath}
+        pathMsg={pathMsg}
+      />
+      <RoleDefaultsCard
+        roles={st.roles}
+        onChange={(r, level) => setSt({ ...st, roles: { ...st.roles, [r]: level } })}
+        customRoles={view.customRoles}
+        busy={roleBusy}
+        error={roleError}
+        onCreate={(name, vault, jenkins) =>
+          roleCall(
+            () => createCustomRole(projectKey, name, vault, jenkins),
+            (v) => ({ ...v, customRoles: [...v.customRoles, { roleId: Date.now(), name, vault, jenkins, memberCount: 0 }] }),
+          )
+        }
+        onUpdate={(roleId, patch) =>
+          void roleCall(
+            () => updateCustomRole(projectKey, roleId, patch),
+            (v) => ({ ...v, customRoles: v.customRoles.map((r) => (r.roleId === roleId ? { ...r, ...patch } : r)) }),
+          )
+        }
+        onDelete={(roleId) =>
+          void roleCall(
+            () => deleteCustomRole(projectKey, roleId),
+            (v) => ({
+              ...v,
+              customRoles: v.customRoles.filter((r) => r.roleId !== roleId),
+              members: v.members.map((m) => (m.customRoleId === roleId ? { ...m, customRoleId: null, customRoleName: null } : m)),
+            }),
+          )
+        }
+      />
+      <MemberOverridesCard
+        members={view.members}
+        customRoles={view.customRoles}
+        state={st}
+        onChange={(name, o) => setSt({ ...st, members: { ...st.members, [name]: o } })}
+      />
 
       <Note icon={Clock} tone="warning">
         {view.notice}

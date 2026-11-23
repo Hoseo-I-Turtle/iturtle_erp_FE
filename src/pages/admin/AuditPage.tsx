@@ -1,20 +1,31 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import { Button, Card, Empty, FilterSelect, Loadable } from '../../components/ui'
-import { auditLogs, type AuditCategory } from '../../mocks/adminOps'
-import { downloadAuditCsv, errorText, isLive, useAuditLogs, type AuditRow } from '../../api/admin'
+import { auditLogs } from '../../mocks/adminOps'
+import {
+  AUDIT_CATEGORIES,
+  AUDIT_TARGETS,
+  downloadAuditCsv,
+  errorText,
+  isLive,
+  useAuditLogs,
+  type AuditCategoryView,
+  type AuditRow,
+} from '../../api/admin'
 import a from './admin.module.css'
 import s from './AuditPage.module.css'
 
-const CAT_TONE: Record<AuditCategory, string> = {
+const CAT_TONE: Record<AuditCategoryView, string> = {
   권한: s.cBlue,
   프로젝트: s.cPurple,
   로그인: s.cGray,
   운영: s.cOrange,
   콘텐츠: s.cRed,
   구성원: s.cBlue,
+  가입: s.cBlue,
+  외부: s.cGray,
+  회계: s.cOrange,
 }
-const CATEGORIES: AuditCategory[] = ['구성원', '권한', '프로젝트', '콘텐츠', '운영', '로그인']
 
 /** CSV 한 칸: 쉼표 · 따옴표 · 줄바꿈이 있으면 따옴표로 감싼다 */
 const cell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v)
@@ -93,8 +104,8 @@ export function AuditPage() {
       <div className={a.toolbar}>
         <FilterSelect label="기간" value={period} options={['오늘', '최근 7일', '최근 30일', '최근 1년']} onChange={change((v) => setPeriod(v || '최근 7일'))} />
         <FilterSelect label="행위자" value={actor} options={actorOptions} onChange={change(setActor)} />
-        <FilterSelect label="사건 종류" value={cat} options={isLive() ? CATEGORIES : uniq(auditLogs.map((l) => l.category))} onChange={change(setCat)} />
-        <FilterSelect label="대상" value={target} options={['구성원', '프로젝트', '프리셋', '서비스', '자료']} onChange={change(setTarget)} />
+        <FilterSelect label="사건 종류" value={cat} options={isLive() ? AUDIT_CATEGORIES : uniq(auditLogs.map((l) => l.category))} onChange={change(setCat)} />
+        <FilterSelect label="대상" value={target} options={isLive() ? AUDIT_TARGETS : ['구성원', '프로젝트', '프리셋', '서비스', '자료']} onChange={change(setTarget)} />
         <span className={a.grow} />
         <span className={a.muted}>1년 보관 · 고치거나 지울 수 없어요</span>
         <Button variant="secondary" icon={Download} onClick={exportCsv} disabled={exporting}>

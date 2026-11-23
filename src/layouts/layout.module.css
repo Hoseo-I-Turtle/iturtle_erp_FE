@@ -5,6 +5,7 @@
 
 /* ---------- Sidebar ---------- */
 .sidebar {
+  isolation: isolate; /* 안의 장식(z-index: -1)이 바탕 위 · 메뉴 아래에 깔리게 */
   position: sticky;
   top: 0;
   height: 100vh;
@@ -14,7 +15,6 @@
   flex-direction: column;
   padding: 28px 20px;
   background: var(--grad-sidebar);
-  isolation: isolate; /* 안의 장식(z-index: -1)이 바탕 위 · 메뉴 아래에 깔리게 */
   color: var(--sidebar-text);
   overflow-y: auto;
 }
@@ -89,7 +89,9 @@
   gap: 12px;
   padding: 14px;
   border-radius: 18px;
-  background: var(--sidebar-card);
+  /* 사이드바 아래쪽 배경(brand-500)과 같은 색이라 구분이 안 됐다 — 밝은 막을 얹고 테두리를 둔다 */
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
 }
 .userText {
   flex: 1;
@@ -143,6 +145,32 @@
   color: var(--status-warning-text);
 }
 
+/* SSO 접근 거절 안내 (/?denied=<client_id>) */
+.deniedBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--status-negative-bg);
+  font-size: var(--fs-caption);
+  color: var(--status-negative);
+}
+.deniedBanner span {
+  flex: 1;
+}
+.deniedBanner a {
+  text-decoration: underline;
+}
+.deniedBanner button {
+  display: flex;
+}
+
+.adminNotice {
+  font-size: var(--fs-caption);
+  color: var(--status-negative);
+}
+
 /* ---------- Main ---------- */
 .main {
   position: relative;
@@ -174,14 +202,14 @@
   border-radius: 10px;
   font-size: var(--fs-caption);
   font-weight: 500;
-  color: var(--text-body);
+  color: var(--brand-500);
 }
 .projectTab:hover {
   background: var(--surface-sunken);
 }
 .projectTabOn,
 .projectTabOn:hover {
-  background: var(--accent);
+  background: var(--brand-500);
   color: var(--text-on-dark);
 }
 
@@ -234,7 +262,7 @@
   color: var(--text-muted);
 }
 .search:focus-within {
-  outline: 2px solid var(--accent-line);
+  outline: 2px solid var(--brand-200);
 }
 
 /* ---------- 헤더 알림 ---------- */
@@ -286,7 +314,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--brand-500);
   flex: none;
 }
 .bellItem span {

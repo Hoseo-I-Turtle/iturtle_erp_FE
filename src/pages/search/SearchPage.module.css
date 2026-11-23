@@ -1,136 +1,111 @@
-.layout {
-  display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  align-items: start;
-  gap: var(--gap);
+/* 통합 검색 (CMN-2) */
+.card {
+  padding: 22px 24px;
+  gap: 18px;
 }
-.side {
-  gap: 4px;
-  padding: 14px 12px;
-}
-.side > p {
-  padding: 2px 6px;
-  font-size: var(--fs-overline);
-  color: var(--text-muted);
-}
-.side hr {
-  width: 100%;
-  margin: 6px 0;
-  border: 0;
-  border-top: 1px solid var(--border-default);
-}
-.side > button {
+
+/* ---------- 위 검색창 ---------- */
+.box {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
-  border-radius: var(--radius-md);
-  font-size: 14px;
-  color: var(--text-body);
-  text-align: left;
+  padding: 8px 8px 8px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
 }
-.side > button:hover {
-  background: var(--surface-sunken);
+.box:focus-within {
+  border-color: var(--brand-300);
 }
-.side > button span {
+.box input {
   flex: 1;
-}
-.side > button b {
-  font-size: var(--fs-overline);
-  font-weight: 400;
-  color: var(--text-secondary);
-}
-.side .zero {
-  color: var(--text-disabled);
-}
-.side .kindOn,
-.side .kindOn:hover {
-  background: var(--surface-tint);
-  font-weight: 600;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: var(--fs-body);
   color: var(--text-primary);
 }
-.results {
+.box input::placeholder {
+  color: var(--text-muted);
+}
+.go {
+  flex: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  background: var(--brand-400);
+  color: #fff;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+}
+.go:hover {
+  background: var(--brand-500);
+}
+
+/* ---------- 종류 칩 ---------- */
+.kinds {
+  display: flex;
+  overflow-x: auto;
+}
+
+/* ---------- 종류 묶음 ---------- */
+.group {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  min-width: 0;
-}
-.group {
-  gap: 8px;
-  padding: 16px 18px;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-default);
 }
 .groupHead {
   display: flex;
   align-items: center;
   gap: 8px;
+  font-size: var(--fs-h3);
+  font-weight: 600;
   color: var(--text-primary);
 }
-.groupHead strong {
-  font-size: 15px;
-  font-weight: 600;
+.groupHead svg {
+  color: var(--brand-500);
 }
-.groupHead span {
-  flex: 1;
-  font-size: var(--fs-caption);
-  color: var(--text-secondary);
-}
-.groupHead button {
-  font-size: var(--fs-overline);
-  color: var(--text-secondary);
-}
-.groupHead button:hover {
-  text-decoration: underline;
-}
-.hit {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  background: var(--surface-soft);
-}
-.hit:hover {
-  background: var(--surface-tint);
-}
-.badge {
-  width: 92px;
-  flex: none;
-  font-size: var(--fs-overline);
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-.text {
-  flex: 1;
-  min-width: 0;
+.hits {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 8px;
 }
-.text strong {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.text mark {
-  padding: 0 2px;
-  border-radius: 4px;
-  background: var(--highlight);
-  font-weight: 600;
+.mark {
+  padding: 0 1px;
+  border-radius: 3px;
+  background: var(--status-warning-bg);
   color: inherit;
 }
-.text small {
-  font-size: var(--fs-overline);
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.more {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+  font-size: var(--fs-caption);
+  color: var(--brand-500);
 }
-
-@media (max-width: 900px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
+.more:disabled {
+  color: var(--text-muted);
+}
+.fail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--status-negative-bg);
+  color: var(--status-negative);
+  font-size: var(--fs-caption);
+}
+.fail span {
+  flex: 1;
+}
+.fail button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--brand-500);
 }

@@ -169,3 +169,8 @@
 .view:hover {
   text-decoration: underline;
 }
+.emptySections {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}

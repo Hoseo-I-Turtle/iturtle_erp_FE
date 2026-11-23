@@ -3,10 +3,21 @@
 import { api } from './client'
 import { ago, type MemberRef, type PageResponse } from './types'
 import { useResource } from './useResource'
-import { getApiBase } from '../lib/dataMode'
+import type { CommentItem } from './comments'
+import { getApiBase, getDataMode } from '../lib/dataMode'
+import { activityLine, type ActivityDto } from './projects'
 import { formatShortDay, parseYmd, WEEKDAYS } from '../lib/date'
 import { MEMBER_TYPE_NAME } from '../mocks/members'
-import { ME, notices as mockNotices, otherNotices as mockOtherNotices, type Notice, type Vote } from '../mocks/notices'
+import {
+  ME,
+  noticeDrafts as mockNoticeDrafts,
+  noticeRows as mockNoticeRows,
+  notices as mockNotices,
+  otherNotices as mockOtherNotices,
+  type Notice,
+  type NoticeRowMock,
+  type Vote,
+} from '../mocks/notices'
 import { events as mockEvents, type CalEvent, type EventKind, type EventLayer } from '../mocks/calendar'
 import { schedulePoll as mockPoll, type SchedulePoll } from '../mocks/schedulePoll'
 import {
@@ -47,7 +58,7 @@ export function kstInstant(day: string, minutes: number) {
   return new Date(Date.UTC(y, m - 1, d) + minutes * 60000 - KST_OFFSET).toISOString()
 }
 const todayKst = () => kstYmd(new Date().toISOString())
-export const addDaysYmd = (day: string, n: number) => {
+const addDaysYmd = (day: string, n: number) => {
   const [y, m, d] = day.split('-').map(Number)
   const t = new Date(Date.UTC(y, m - 1, d + n))
   return `${t.getUTCFullYear()}-${pad2(t.getUTCMonth() + 1)}-${pad2(t.getUTCDate())}`
@@ -55,26 +66,32 @@ export const addDaysYmd = (day: string, n: number) => {
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000)
 
 /** '2026-11-20' → '11/20(목)' */
-export const shortDay = (day: string) => formatShortDay(parseYmd(day))
+const shortDay = (day: string) => formatShortDay(parseYmd(day))
 /** ISO → '11/20(목) 18:00' */
-export const shortDayTime = (iso: string) => `${shortDay(kstYmd(iso))} ${kstHm(iso)}`
+const shortDayTime = (iso: string) => `${shortDay(kstYmd(iso))} ${kstHm(iso)}`
 /** 마감까지 'D-3' · 'D-day' · '마감' */
-export function dday(iso: string) {
+function dday(iso: string) {
   if (Date.parse(iso) < Date.now()) return '마감'
   const n = daysBetween(todayKst(), kstYmd(iso))
   return n <= 0 ? 'D-day' : `D-${n}`
 }
 /** 1258291 → '1.2MB' */
-export function formatBytes(n: number) {
+function formatBytes(n: number) {
   if (n < 1024) return `${n}B`
   if (n < 1024 * 1024) return `${Math.round(n / 1024)}KB`
   return `${(n / 1024 / 1024).toFixed(1)}MB`
 }
 const fileUrl = (publicId: string) => `${getApiBase().replace(/\/$/, '')}/files/${publicId}/download`
-const roleName = (m: MemberRef) => (m.status === 'ACTIVE' ? MEMBER_TYPE_NAME[m.memberType] : '졸업')
+/** 백엔드 MemberStatus 는 휴학(ON_LEAVE)도 있다 (types.ts 의 MemberRef 에는 아직 없어 문자열로 본다) */
+const roleName = (m: MemberRef) => {
+  const status: string = m.status
+  if (status === 'ACTIVE') return MEMBER_TYPE_NAME[m.memberType]
+  if (status === 'ON_LEAVE') return `${MEMBER_TYPE_NAME[m.memberType]} · 휴학`
+  return '졸업'
+}
 
-export type Me = { memberId: number; name: string; roles: string[] }
-export const fetchMe = () => api<Me>('/members/me')
+type Me = { memberId: number; name: string; roles: string[] }
+const fetchMe = () => api<Me>('/members/me')
 
 /* ================= 공지 · 투표 (N-1, N-2, N-6) ================= */
 
@@ -85,13 +102,34 @@ export type NoticeSummaryDto = {
   pinnedUntilOn: string | null
   author: MemberRef
   createdAt: string
+  /** 게시 시각 (임시 저장이면 null) */
+  publishedAt: string | null
+  draft: boolean
+  audience: NoticeAudienceDto
   editedAt: string | null
   read: boolean
   commentCount: number
   attachmentCount: number
-  poll: { closesAt: string; closed: boolean; audience: boolean; voted: boolean } | null
+  poll: { closesAt: string; closed: boolean; audience: boolean; voted: boolean; participantCount: number; audienceCount: number } | null
+  /** 필독이면 읽음 · 안 읽음 숫자 (명단은 상세에서만), 아니면 null */
+  readSummary: { readCount: number; unreadCount: number } | null
 }
 export type NoticeListDto = { pinned: NoticeSummaryDto[]; page: PageResponse<NoticeSummaryDto> }
+
+/** 공지 대상 (NoticeAudienceResponse / NoticeAudienceRequest) */
+export type NoticeAudienceType = 'ALL' | 'PROJECT' | 'MEMBER_TYPES'
+type NoticeAudienceDto = {
+  type: NoticeAudienceType
+  projectKey?: string | null
+  projectName?: string | null
+  memberTypes?: MemberRef['memberType'][] | null
+}
+/** '전체 구성원' · 'DEFME 백엔드 참여자' · '학생 · 인턴' */
+export const audienceLabel = (a: NoticeAudienceDto | null | undefined) => {
+  if (!a || a.type === 'ALL') return '전체 구성원'
+  if (a.type === 'PROJECT') return `${a.projectName ?? a.projectKey ?? '프로젝트'} 참여자`
+  return (a.memberTypes ?? []).map((t) => MEMBER_TYPE_NAME[t]).join(' · ') || '구분 선택'
+}
 
 type PollDto = {
   pollId: number
@@ -114,7 +152,7 @@ type PollDto = {
   options: { optionId: number; label: string; count?: number; ratio?: number; voters?: MemberRef[] }[]
 }
 type FileRef = { publicId: string; name: string; size: number; contentType: string }
-export type NoticeDetailDto = {
+type NoticeDetailDto = {
   noticeId: number
   title: string
   body: string
@@ -122,6 +160,9 @@ export type NoticeDetailDto = {
   pinnedUntilOn: string | null
   author: MemberRef
   createdAt: string
+  publishedAt: string | null
+  draft: boolean
+  audience: NoticeAudienceDto
   editedAt: string | null
   attachments: FileRef[]
   poll: PollDto | null
@@ -212,6 +253,8 @@ export type NoticeView = Omit<Notice, 'attachments' | 'vote' | 'comments' | 'rea
   read: { total: number; readCount: number; unread: { name: string; role: string }[] | null } | null
   canEdit: boolean
   meName: string
+  /** 게시 전 임시 저장 (작성자만 본다) */
+  draft: boolean
 }
 
 function noticeFromMock(n: Notice): NoticeView {
@@ -223,13 +266,14 @@ function noticeFromMock(n: Notice): NoticeView {
     read: n.read,
     canEdit: true,
     meName: ME,
+    draft: false,
   }
 }
 
 function noticeFromDto(d: NoticeDetailDto, me: Me): NoticeView {
   const total = d.attachments.reduce((sum, a) => sum + a.size, 0)
   const info: [string, string][] = []
-  if (d.readSummary) info.push(['대상', `전체 구성원 (${d.readSummary.readCount + d.readSummary.unreadCount}명)`])
+  info.push(['대상', audienceLabel(d.audience) + (d.readSummary ? ` (${d.readSummary.readCount + d.readSummary.unreadCount}명)` : '')])
   if (d.poll) {
     info.push([
       '투표 대상',
@@ -245,7 +289,7 @@ function noticeFromDto(d: NoticeDetailDto, me: Me): NoticeView {
     title: d.title,
     body: d.body,
     author: d.author.name,
-    createdAt: shortDayTime(d.createdAt),
+    createdAt: shortDayTime(d.publishedAt ?? d.createdAt),
     edited: !!d.editedAt,
     important: d.mustRead,
     pinnedUntil: d.pinnedUntilOn ? `${Number(d.pinnedUntilOn.slice(5, 7))}/${Number(d.pinnedUntilOn.slice(8, 10))}` : undefined,
@@ -261,6 +305,7 @@ function noticeFromDto(d: NoticeDetailDto, me: Me): NoticeView {
     info,
     canEdit: d.canEdit,
     meName: me.name,
+    draft: d.draft,
   }
 }
 
@@ -297,46 +342,311 @@ export function useOtherNotices(currentId: string | undefined) {
   )
 }
 
-/* ================= 댓글 (CM-1, CM-2) ================= */
+/* ================= 공지 목록 · 쓰기 (N-1, N-3, N-4) ================= */
 
-type CommentDto = {
-  commentId: number
-  parentId: number | null
-  author: MemberRef
-  body: string | null
-  deleted: boolean
-  createdAt: string
-  editedAt: string | null
-  replies?: CommentDto[]
+export type NoticeTab = 'all' | 'mustRead' | 'poll' | 'unread'
+export type NoticeSort = 'LATEST' | 'DEADLINE'
+export type NoticeRow = {
+  id: string
+  title: string
+  author: string
+  date: string
+  mustRead: boolean
+  /** 'M/D' (고정 기한) */
+  pinnedUntil?: string
+  read: boolean
+  commentCount: number
+  attachmentCount: number
+  /** 전체가 아니면 '학생 · 인턴' 같은 대상 이름, 전체면 null */
+  audience: string | null
+  poll: { closed: boolean; voted: boolean; audience: boolean; dday: string; participantCount: number; audienceCount: number } | null
+  /** 필독일 때 읽음 수 */
+  readSummary: { readCount: number; total: number } | null
 }
-export type CommentView = { id: string; author: string; ago: string; text: string; deleted?: boolean; reply?: boolean }
+export type NoticeListView = {
+  pinned: NoticeRow[]
+  rows: NoticeRow[]
+  page: number
+  totalPages: number
+  counts: Record<NoticeTab, number>
+  /** 나에게 남은 것 */
+  left: { unreadMustRead: number; latestMustRead: { id: string; title: string } | null; pendingPolls: number }
+  /** 진행 중인 투표 (마감 가까운 순 몇 개) */
+  openPolls: { id: string; title: string; dday: string; voted: boolean; audience: boolean; participantCount: number; audienceCount: number }[]
+}
 
-const commentFromDto = (c: CommentDto, reply = false): CommentView => ({
-  id: String(c.commentId),
-  author: c.author.name,
-  ago: ago(c.createdAt) + (c.editedAt ? ' · 수정됨' : ''),
-  text: c.deleted ? '삭제된 댓글입니다' : c.body ?? '',
-  deleted: c.deleted,
-  reply,
+/** ISO → KST 'M/DD' */
+const monthDayKst = (iso: string) => {
+  const d = kstYmd(iso)
+  return `${Number(d.slice(5, 7))}/${d.slice(8, 10)}`
+}
+const rowFromDto = (n: NoticeSummaryDto): NoticeRow => ({
+  id: String(n.noticeId),
+  title: n.title,
+  author: n.author.name,
+  date: monthDayKst(n.publishedAt ?? n.createdAt),
+  mustRead: n.mustRead,
+  pinnedUntil: n.pinnedUntilOn ? `${Number(n.pinnedUntilOn.slice(5, 7))}/${Number(n.pinnedUntilOn.slice(8, 10))}` : undefined,
+  read: n.read,
+  commentCount: n.commentCount,
+  attachmentCount: n.attachmentCount,
+  audience: !n.audience || n.audience.type === 'ALL' ? null : audienceLabel(n.audience),
+  poll: n.poll
+    ? {
+        closed: n.poll.closed,
+        voted: n.poll.voted,
+        audience: n.poll.audience,
+        dday: dday(n.poll.closesAt),
+        participantCount: n.poll.participantCount,
+        audienceCount: n.poll.audienceCount,
+      }
+    : null,
+  readSummary: n.readSummary ? { readCount: n.readSummary.readCount, total: n.readSummary.readCount + n.readSummary.unreadCount } : null,
+})
+const rowFromMock = (n: NoticeRowMock): NoticeRow => ({
+  ...n,
+  audience: n.audience ?? null,
+  poll: n.poll ? { ...n.poll, audience: true } : null,
+  readSummary: n.mustRead ? { readCount: 8, total: 11 } : null,
 })
 
-/** 공지 댓글 목록 (답글은 원 댓글 바로 아래에 펼친다) */
-export function useNoticeComments(id: string | undefined) {
-  return useResource<CommentView[]>(
-    ['notice-comments', id],
-    () => (mockNotices.find((n) => n.id === id) ?? mockNotices[0]).comments.map((c, i) => ({ id: `m${i}`, ...c })),
+export const NOTICE_PAGE_SIZE = 20
+const TAB_QUERY: Record<NoticeTab, Record<string, boolean>> = {
+  all: {},
+  mustRead: { mustRead: true },
+  poll: { hasPoll: true },
+  unread: { unreadOnly: true },
+}
+type NoticeCountsDto = { all: number; mustRead: number; poll: number; unread: number }
+
+/**
+ * 공지 목록 (N-1). 탭 · 검색어(2자 이상) · 정렬 · 페이지.
+ * 탭 숫자는 GET /notices/counts 한 번, 오른쪽 "나에게 남은 것"은 필독 · 안 읽음 1건과 열린 투표(마감 가까운 순)를 따로 받는다.
+ */
+export function useNoticeList(tab: NoticeTab, keyword: string, sort: NoticeSort, page: number) {
+  const kw = keyword.trim().length >= 2 ? keyword.trim() : undefined
+  return useResource<NoticeListView>(
+    ['notice-list', tab, kw, sort, page],
+    () => {
+      const all = mockNoticeRows.map(rowFromMock)
+      const inTab = (r: NoticeRow) =>
+        tab === 'all' || (tab === 'mustRead' ? r.mustRead : tab === 'poll' ? !!r.poll : !r.read)
+      const found = all.filter((r) => !kw || r.title.includes(kw) || r.author.includes(kw))
+      const shown = found.filter(inTab)
+      if (sort === 'DEADLINE') {
+        // 열린 투표가 마감 가까운 순으로 앞, 나머지는 그대로 (목업 D-day 숫자로 비교)
+        const left = (r: NoticeRow) => (r.poll && !r.poll.closed ? Number(r.poll.dday.replace(/\D/g, '') || 0) : Infinity)
+        shown.sort((a, b) => left(a) - left(b))
+      }
+      const unreadMust = all.filter((r) => r.mustRead && !r.read)
+      const polls = all.filter((r) => r.poll && !r.poll.closed)
+      return {
+        pinned: shown.filter((r) => r.pinnedUntil),
+        rows: shown.filter((r) => !r.pinnedUntil),
+        page: 0,
+        totalPages: 1,
+        counts: {
+          all: found.length,
+          mustRead: found.filter((r) => r.mustRead).length,
+          poll: found.filter((r) => r.poll).length,
+          unread: found.filter((r) => !r.read).length,
+        },
+        left: {
+          unreadMustRead: unreadMust.length,
+          latestMustRead: unreadMust[0] ? { id: unreadMust[0].id, title: unreadMust[0].title } : null,
+          pendingPolls: polls.filter((r) => !r.poll?.voted).length,
+        },
+        openPolls: polls.map((r) => ({
+          id: r.id,
+          title: r.title,
+          dday: r.poll?.dday ?? '',
+          voted: !!r.poll?.voted,
+          audience: true,
+          participantCount: r.poll?.participantCount ?? 0,
+          audienceCount: r.poll?.audienceCount ?? 0,
+        })),
+      }
+    },
     async () => {
-      const page = await api<PageResponse<CommentDto>>('/comments', { query: { targetType: 'NOTICE', targetId: id, size: 100 } })
-      return page.content.flatMap((c) => [commentFromDto(c), ...(c.replies ?? []).map((r) => commentFromDto(r, true))])
+      const [list, counts, mustUnread, polls] = await Promise.all([
+        api<NoticeListDto>('/notices', { query: { ...TAB_QUERY[tab], keyword: kw, sort, page, size: NOTICE_PAGE_SIZE } }),
+        api<NoticeCountsDto>('/notices/counts', { query: { keyword: kw } }),
+        api<NoticeListDto>('/notices', { query: { mustRead: true, unreadOnly: true, size: 1 } }),
+        api<NoticeListDto>('/notices', { query: { hasPoll: true, sort: 'DEADLINE', size: 20 } }),
+      ])
+      const firstMust = mustUnread.pinned[0] ?? mustUnread.page.content[0]
+      const open = [...polls.pinned, ...polls.page.content].filter((n) => n.poll && !n.poll.closed)
+      return {
+        pinned: list.pinned.map(rowFromDto),
+        rows: list.page.content.map(rowFromDto),
+        page: list.page.page,
+        totalPages: list.page.totalPages,
+        counts,
+        left: {
+          unreadMustRead: mustUnread.pinned.length + mustUnread.page.totalElements,
+          latestMustRead: firstMust ? { id: String(firstMust.noticeId), title: firstMust.title } : null,
+          pendingPolls: open.filter((n) => n.poll?.audience && !n.poll.voted).length,
+        },
+        openPolls: open
+          .sort((a, b) => Date.parse(a.poll?.closesAt ?? '') - Date.parse(b.poll?.closesAt ?? ''))
+          .slice(0, 3)
+          .map((n) => ({
+            id: String(n.noticeId),
+            title: n.title,
+            dday: n.poll ? dday(n.poll.closesAt) : '',
+            voted: !!n.poll?.voted,
+            audience: !!n.poll?.audience,
+            participantCount: n.poll?.participantCount ?? 0,
+            audienceCount: n.poll?.audienceCount ?? 0,
+          })),
+      }
     },
   )
 }
 
-/** 댓글 쓰기 (CM-2) */
-export const postNoticeComment = (noticeId: number, body: string) =>
-  api<CommentDto>('/comments', { method: 'POST', body: { targetType: 'NOTICE', targetId: noticeId, parentId: null, body, attachmentFileIds: [] } }).then(
-    (c) => commentFromDto(c),
+/** 공지 대상 요청 (NoticeAudienceRequest) */
+export type NoticeAudienceBody = { type: NoticeAudienceType; projectKey: string | null; memberTypes: MemberRef['memberType'][] | null }
+/** 투표 (만들 때 PollCreateRequest, 고칠 때 PollUpdateRequest — 선택지는 optionId 로 같은 것을 잇는다) */
+export type NoticePollBody = {
+  question: string
+  options: { optionId: number | null; label: string }[]
+  multiple: boolean
+  maxChoices: number | null
+  anonymous: boolean
+  resultVisibility: 'AFTER_VOTE' | 'AFTER_CLOSE'
+  closesAt: string
+}
+/** 쓰기 화면의 내용 (만들기 · 임시 저장 이어 쓰기 공통) */
+export type NoticeForm = {
+  title: string
+  body: string
+  mustRead: boolean
+  /** 'YYYY-MM-DD' 그날 끝까지 고정. null 이면 고정 안 함 */
+  pinnedUntilOn: string | null
+  attachmentFileIds: string[]
+  poll: NoticePollBody | null
+  audience: NoticeAudienceBody
+}
+
+const createPoll = (p: NoticePollBody) => ({
+  question: p.question,
+  options: p.options.map((o) => o.label),
+  multiple: p.multiple,
+  maxChoices: p.maxChoices,
+  anonymous: p.anonymous,
+  resultVisibility: p.resultVisibility,
+  closesAt: p.closesAt,
+})
+
+/** 공지 올리기 · 임시 저장 (POST /notices, draft=true 면 게시하지 않고 저장). 공지 id 를 돌려준다 */
+export const createNotice = (f: NoticeForm, draft: boolean) =>
+  api<NoticeDetailDto>('/notices', {
+    method: 'POST',
+    body: { ...f, poll: f.poll ? createPoll(f.poll) : null, draft },
+  }).then((d) => String(d.noticeId))
+
+/**
+ * 임시 저장한 공지 고치기 (PATCH). 고정 · 투표는 null 을 보내면 지운다.
+ * hadPoll: 저장된 공지에 이미 투표가 있었는지 (있으면 고치기, 없으면 새로 만들기 모양으로 보낸다)
+ */
+export const updateNotice = (id: string, f: NoticeForm, hadPoll: boolean) =>
+  api<NoticeDetailDto>(`/notices/${id}`, {
+    method: 'PATCH',
+    body: {
+      ...f,
+      // 고칠 때는 PollUpdateRequest 모양 (선택지 {optionId, label}). 투표가 없던 공지면 optionId 없이 새로 만든다
+      poll: f.poll ? { ...f.poll, options: f.poll.options.map((o) => ({ optionId: hadPoll ? o.optionId : null, label: o.label })) } : null,
+    },
+  }).then((d) => String(d.noticeId))
+
+/** 임시 저장 게시 (작성자만, 이미 게시면 N019) */
+export const publishNotice = (id: string) => api<NoticeDetailDto>(`/notices/${id}/publish`, { method: 'POST' }).then((d) => String(d.noticeId))
+
+/** 공지 지우기 (임시 저장 버리기에도 쓴다) */
+export const deleteNotice = (id: string) => api<void>(`/notices/${id}`, { method: 'DELETE' })
+
+export type NoticeDraftItem = { id: string; title: string; savedAt: string }
+/** 내 임시 저장 목록 (GET /notices/drafts) */
+export const fetchNoticeDrafts = () =>
+  api<NoticeSummaryDto[]>('/notices/drafts').then((list) =>
+    list.map((n) => ({ id: String(n.noticeId), title: n.title || '(제목 없음)', savedAt: ago(n.editedAt ?? n.createdAt) })),
   )
+
+export type NoticeDraft = {
+  id: string
+  form: NoticeForm
+  attachments: { publicId: string; name: string; size: number }[]
+  /** 투표 마감을 쓰기 화면 칸('YYYY-MM-DDTHH:mm', KST)으로 */
+  pollClosesLocal: string | null
+}
+/** 임시 저장 하나를 쓰기 화면 모양으로 (GET /notices/{id}) */
+export const fetchNoticeDraft = (id: string) =>
+  api<NoticeDetailDto>(`/notices/${id}`).then(
+    (d): NoticeDraft => ({
+      id: String(d.noticeId),
+      form: {
+        title: d.title,
+        body: d.body,
+        mustRead: d.mustRead,
+        pinnedUntilOn: d.pinnedUntilOn,
+        attachmentFileIds: d.attachments.map((a) => a.publicId),
+        poll: d.poll
+          ? {
+              question: d.poll.question,
+              options: d.poll.options.map((o) => ({ optionId: o.optionId, label: o.label })),
+              multiple: d.poll.multiple,
+              maxChoices: d.poll.maxChoices,
+              anonymous: d.poll.anonymous,
+              resultVisibility: d.poll.resultVisibility,
+              closesAt: d.poll.closesAt,
+            }
+          : null,
+        audience: {
+          type: d.audience?.type ?? 'ALL',
+          projectKey: d.audience?.projectKey ?? null,
+          memberTypes: d.audience?.memberTypes ?? null,
+        },
+      },
+      attachments: d.attachments.map((a) => ({ publicId: a.publicId, name: a.name, size: a.size })),
+      pollClosesLocal: d.poll ? `${kstYmd(d.poll.closesAt)}T${kstHm(d.poll.closesAt)}` : null,
+    }),
+  )
+
+/** 내 임시 저장 목록 (쓰기 모달 "이어 쓰기") */
+export function useNoticeDrafts() {
+  return useResource<NoticeDraftItem[]>('notice-drafts', () => mockNoticeDrafts, fetchNoticeDrafts)
+}
+
+/** 임시 저장 하나 불러오기. 목업 모드는 예시 글 */
+export const loadNoticeDraft = (id: string): Promise<NoticeDraft> =>
+  getDataMode() === 'live'
+    ? fetchNoticeDraft(id)
+    : Promise.resolve({
+        id,
+        form: {
+          title: '12월 장비 점검 일정',
+          body: '12월 첫 주에 서버실 장비를 점검해요.\n\n- 12/2(화) 오전: GPU 서버\n- 12/3(수) 오후: 스토리지',
+          mustRead: true,
+          pinnedUntilOn: null,
+          attachmentFileIds: [],
+          poll: null,
+          audience: { type: 'MEMBER_TYPES', projectKey: null, memberTypes: ['STUDENT', 'INTERN'] },
+        },
+        attachments: [],
+        pollClosesLocal: null,
+      })
+
+/* ================= 댓글 (CM-1, CM-2) ================= */
+
+/** 공지 댓글 목업 (목업 모드에서 공지마다 보일 댓글). 실제 목록 · 쓰기는 api/comments 의 공용 함수 */
+export function mockNoticeComments(id: string | undefined): CommentItem[] {
+  return (mockNotices.find((n) => n.id === id) ?? mockNotices[0]).comments.map((c, i) => ({
+    id: `m${i}`,
+    commentId: null,
+    parentId: null,
+    ...c,
+  }))
+}
 
 /* ================= 캘린더 (CL-1, CL-6, CL-7 + 작업 기한 · 마일스톤) ================= */
 
@@ -363,16 +673,14 @@ type OccurrenceDto = {
 }
 type OccurrencesDto = { from: string; to: string; occurrences: OccurrenceDto[] }
 
-// 명세 확인 필요: 공통코드 CALENDAR_EVENT_TYPE 의 상세 코드 목록. 예시(MEETING · SEMINAR · DEADLINE)만 명세에 있어 나머지는 추정
+// 공통코드 CALENDAR_EVENT_TYPE 의 상세 코드 (백엔드 migration V20261118_09). 관리 화면에서 더한 코드는 '행사' 로 그린다
 const EVENT_KIND: Record<string, EventKind> = {
   MEETING: 'meeting',
   SEMINAR: 'seminar',
   DEADLINE: 'deadline',
   EVENT: 'event',
   CONFERENCE: 'conference',
-  OFF: 'off',
   HOLIDAY: 'off',
-  VACATION: 'off',
 }
 const LAYER: Record<OccurrenceDto['layer'], EventLayer> = { SHARED: 'public', PERSONAL: 'personal', MEMBER_SHARED: 'member' }
 
@@ -400,14 +708,18 @@ function occToCalEvents(o: OccurrenceDto): CalEvent[] {
   return out
 }
 
-/** CL-1 일정 조회 */
-const fetchOccurrences = (from: string, to: string, layers = 'SHARED,PERSONAL,MEMBER_SHARED') =>
-  api<OccurrencesDto>('/calendar-events', { query: { from, to, layers, attendingOnly: false } }).then((r) => r.occurrences)
+/**
+ * CL-1 일정 조회 (from · to 는 'YYYY-MM-DD', 최대 92일). layers 는 쉼표 목록.
+ * attendingOnly 를 보내면 내 설정(sharedScope)보다 앞선다
+ */
+const fetchOccurrences = (from: string, to: string, layers = 'SHARED,PERSONAL,MEMBER_SHARED', attendingOnly = false) =>
+  api<OccurrencesDto>('/calendar-events', { query: { from, to, layers, attendingOnly } }).then((r) => r.occurrences)
 
 type TaskCardDto = {
   taskId: number
   taskKey: string
   projectKey: string
+  projectName: string
   title: string
   status: 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'CANCELLED'
   dueOn: string | null
@@ -490,6 +802,8 @@ type MeetingPollDto = {
   status: 'OPEN' | 'CONFIRMED' | 'CANCELLED'
   creator: MemberRef
   projectId: number | null
+  /** 볼 수 있는 프로젝트에 연결됐을 때만 */
+  project: { projectKey: string; name: string } | null
   iAmTarget: boolean
   mySlots?: string[]
   targets: { member: MemberRef; respondedAt: string | null; remindedAt: string | null }[]
@@ -581,8 +895,8 @@ function pollFromDto(p: MeetingPollDto, me: Me, busy: OccurrenceDto[]): PollView
     id: String(p.pollId),
     pollId: p.pollId,
     title: p.title,
-    // 명세 확인 필요: MP-3 에 projectId 만 있고 프로젝트 이름이 없음. 이름은 비워 두고 화면에서 칩을 숨긴다
-    project: '',
+    // 프로젝트에 연결되지 않았거나 볼 수 없으면 비워 두고 화면에서 칩을 숨긴다
+    project: p.project?.name ?? '',
     durationSlots: Math.round(p.durationMinutes / p.slotMinutes),
     slotHours,
     place: [p.location, p.onlineUrl && '온라인'].filter(Boolean).join(' / '),
@@ -615,9 +929,9 @@ export function useMeetingPoll(id: string | undefined) {
       const [p, me] = await Promise.all([api<MeetingPollDto>(`/meeting-polls/${id}`), fetchMe()])
       const from = p.candidateDates[0]
       const to = p.candidateDates[p.candidateDates.length - 1]
+      // 내 개인 일정 + 내가 참석하는 공용 일정만 겹친다 (attendingOnly=true 는 공용 층에만 걸린다).
       // 겹쳐 보기 실패는 화면 전체를 막지 않는다
-      const busy = await fetchOccurrences(from, to, 'SHARED,PERSONAL').catch(() => [] as OccurrenceDto[])
-      // 명세 확인 필요: MP 절은 layers=SHARED,PERSONAL, CL 절은 layers=PERSONAL 로 적혀 있음. 공용 일정 중 내가 참석하는 것만 겹친다
+      const busy = await fetchOccurrences(from, to, 'SHARED,PERSONAL', true).catch(() => [] as OccurrenceDto[])
       return pollFromDto(p, me, busy.filter((o) => o.layer === 'PERSONAL' || o.attending))
     },
   )
@@ -651,13 +965,19 @@ export function useHomeMustCheck() {
           kind: 'notice',
           label: '필독 공지',
           title: n.title,
-          // 명세 확인 필요: 60 은 "읽음 · 안 읽음 숫자는 응답에 있음" 이라 하지만 N-1 NoticeSummary 에 숫자 필드가 없음
-          meta: `${n.author.name} · ${ago(n.createdAt)}`,
+          meta: [
+            n.author.name,
+            ago(n.createdAt),
+            n.readSummary && `${n.readSummary.readCount}명 확인 / ${n.readSummary.unreadCount}명 미확인`,
+          ]
+            .filter(Boolean)
+            .join(' · '),
           action: '확인하기',
           to: `/notices/${n.noticeId}`,
         })),
       ),
-      // 명세 확인 필요: 투표만 거르는 파라미터가 없어 최신 공지 목록에서 화면이 거른다
+      // 백엔드 NoticeListRequest 에 투표 공지만 거르는 파라미터가 없다 (keyword · mustRead · unreadOnly 뿐).
+      // 최신 공지 20개에서 화면이 거르므로 더 오래된 진행 중 투표는 빠질 수 있다
       fetchNoticeList({ size: 20 }).then((list) =>
         list
           .filter((n) => n.poll && n.poll.audience && !n.poll.voted && !n.poll.closed)
@@ -726,37 +1046,43 @@ function taskFromDto(t: TaskCardDto): Task {
     const label = n === -1 ? '어제' : n === 0 ? '오늘' : n === 1 ? '내일' : `${Number(t.dueOn.slice(5, 7))}/${Number(t.dueOn.slice(8, 10))}`
     due = { label, tone: t.overdue ? 'danger' : n <= 3 ? 'warning' : 'muted' }
   }
-  // 명세 확인 필요: TaskCard 에 프로젝트 이름이 없어 프로젝트 키를 보여 준다
-  return { key: t.taskKey, title: t.title, project: t.projectKey, due, status: TASK_STATUS[t.status] }
-}
-
-/** 내 작업 (기한 순 10개) */
-export function useHomeMyTasks() {
-  return useResource<Task[]>('home-my-tasks', () => mockTasks, () =>
-    api<TaskListDto>('/tasks', { query: { mine: true, sort: 'dueOn', size: 10 } }).then((r) => r.page.content.map(taskFromDto)),
-  )
-}
-
-/** 검토를 기다리는 작업 (비면 칸 숨김, 목업에는 없음) */
-export function useHomeReviewTasks() {
-  return useResource<Task[]>('home-review-tasks', () => [], () =>
-    api<TaskListDto>('/tasks', { query: { awaitingMyReview: true, size: 10 } }).then((r) => r.page.content.map(taskFromDto)),
-  )
+  return { key: t.taskKey, title: t.title, project: t.projectName || t.projectKey, due, status: TASK_STATUS[t.status] }
 }
 
 type ProjectSummaryDto = {
   projectKey: string
   name: string
+  status: 'PREPARING' | 'ACTIVE' | 'ON_HOLD' | 'DONE' | 'ARCHIVED'
+  categoryCode: string
   categoryName: string
   summary: string | null
+  memberCount: number
   memberPreview: MemberRef[]
   nextMilestone: { milestoneId: number; name: string; dueOn: string | null; progress: { done: number; total: number; ratio: number } } | null
+  recentActivity: ActivityDto | null
+}
+type ProjectListDto = { categoryCounts: Record<string, number>; page: PageResponse<ProjectSummaryDto> }
+
+/** 작업 목록 (T-1). 카드에 프로젝트 이름(projectName)이 있다 */
+const fetchTaskCards = (query: Record<string, string | number | boolean>) =>
+  api<TaskListDto>('/tasks', { query }).then((r) => r.page.content.map(taskFromDto))
+
+/** 내 작업 (기한 순 10개). 상태를 비우면 완료(DONE)도 섞여 열린 상태만 받는다 */
+export function useHomeMyTasks() {
+  return useResource<Task[]>('home-my-tasks', () => mockTasks, () =>
+    fetchTaskCards({ mine: true, statuses: 'TODO,IN_PROGRESS,REVIEW', sort: 'dueOn', size: 10 }),
+  )
+}
+
+/** 검토를 기다리는 작업 (비면 칸 숨김, 목업에는 없음) */
+export function useHomeReviewTasks() {
+  return useResource<Task[]>('home-review-tasks', () => [], () => fetchTaskCards({ awaitingMyReview: true, size: 10 }))
 }
 
 /** 내 프로젝트 (진행 중) */
 export function useHomeProjects() {
   return useResource<ProjectSummary[]>('home-projects', () => mockProjects, async () => {
-    const r = await api<{ page: PageResponse<ProjectSummaryDto> }>('/projects', { query: { mine: true, status: 'ACTIVE', size: 20 } })
+    const r = await api<ProjectListDto>('/projects', { query: { mine: true, status: 'ACTIVE', size: 20 } })
     return r.page.content.map((p) => ({
       id: p.projectKey,
       category: p.categoryName,
@@ -765,8 +1091,8 @@ export function useHomeProjects() {
       milestone: p.nextMilestone?.name ?? '열린 마일스톤 없음',
       progress: Math.round((p.nextMilestone?.progress.ratio ?? 0) * 100),
       members: p.memberPreview.map((m) => m.name),
-      // 명세 확인 필요: 60 은 "최근 활동 한 줄은 응답에 있음" 이라 하지만 P-1 ProjectSummary 에 필드가 없음. 요약을 대신 보여 준다
-      activity: p.summary ?? '',
+      // 기록이 없는 새 프로젝트는 요약을 대신 보여 준다
+      activity: p.recentActivity ? activityLine(p.recentActivity) : (p.summary ?? ''),
     }))
   })
 }
@@ -784,7 +1110,7 @@ export function useHomeWeekEvents() {
         title: occTitle(o),
         meta: [when, o.location].filter(Boolean).join(' · '),
         scope: o.layer === 'SHARED' ? '공용' : '개인',
-        color: o.layer === 'SHARED' ? o.color ?? 'var(--accent-2)' : 'var(--accent-line)',
+        color: o.layer === 'SHARED' ? o.color ?? 'var(--brand-400)' : 'var(--brand-200)',
       }
     })
   })
@@ -804,13 +1130,13 @@ export function useHomeRecentNotices() {
   })
 }
 
-// 명세 확인 필요: 기존 GET /sso/apps 의 응답 모양이 명세에 없음. { name, description, url, accessible } 배열로 가정
-type SsoAppDto = { clientId?: string; name: string; description?: string | null; url?: string | null; accessible?: boolean }
-const SERVICE_ICON_OF = (name: string): Service['icon'] => {
-  const n = name.toLowerCase()
-  if (n.includes('jenkins')) return 'jenkins'
-  if (n.includes('vault')) return 'vault'
-  if (n.includes('github')) return 'github'
+/** GET /sso/apps 한 줄 (백엔드 MyAppResponse). code 는 공통코드 SSO_APP 의 상세 코드 (vault · jenkins · penpot) */
+type SsoAppDto = { code: string; name: string; description: string | null; url: string | null; accessible: boolean }
+const SERVICE_ICON_OF = (code: string): Service['icon'] => {
+  const c = code.toLowerCase()
+  if (c.includes('jenkins')) return 'jenkins'
+  if (c.includes('vault')) return 'vault'
+  if (c.includes('github')) return 'github'
   return 'penpot'
 }
 
@@ -821,9 +1147,9 @@ export function useHomeServices() {
     const github = await api<{ githubLogin: string } | null>(`/github/accounts/${me.memberId}`).catch(() => undefined)
     const list: Service[] = apps.map((a) => ({
       name: a.name,
-      desc: a.accessible === false ? '권한 없음' : a.description ?? '',
-      icon: SERVICE_ICON_OF(a.name),
-      enabled: a.accessible !== false,
+      desc: a.accessible ? a.description ?? '' : '권한 없음',
+      icon: SERVICE_ICON_OF(a.code),
+      enabled: a.accessible,
       url: a.url ?? undefined,
     }))
     if (github !== undefined) list.push({ name: 'GitHub', desc: github ? '연결됨' : '연결 안 됨', icon: 'github', enabled: true, url: github ? undefined : '/me' })
@@ -837,6 +1163,8 @@ type NotificationDto = {
   notificationId: number
   type: string
   title: string
+  /** 종 메뉴용 짧은 문구 (제목 한 줄, 80자까지) */
+  preview?: string
   body: string | null
   actorMemberId: number | null
   target: { type: string; id: string; url: string }
@@ -853,11 +1181,14 @@ export type NotiItem = Omit<Notification, 'day'> & { day: string }
 function notiType(t: string): NotiType {
   if (t === 'MENTIONED') return 'MENTION'
   if (t === 'TASK_ASSIGNED' || t === 'MINUTE_ACTION_ASSIGNED' || t === 'PROJECT_MEMBER_ADDED') return 'ASSIGN'
-  if (t === 'TASK_WATCH' || t === 'TASK_DUE' || t === 'THREAD_REPLY') return 'TASK'
+  // 정책 댓글은 프로젝트 묶음 (작업 · 스레드와 같이 거른다)
+  if (t === 'TASK_WATCH' || t === 'TASK_DUE' || t === 'THREAD_REPLY' || t === 'POLICY_COMMENT') return 'TASK'
   if (t === 'NOTICE_MUST_READ' || t === 'NOTICE_COMMENT') return 'NOTICE'
   if (t === 'POLL_OPENED' || t === 'POLL_CLOSING') return 'VOTE'
   if (t.startsWith('MEETING_POLL_') || t.startsWith('EVENT_')) return 'CALENDAR'
   if (t.startsWith('REPORT_')) return 'REPORT'
+  // 회계 장부: 먼저 낸 돈 돌려 달라는 요청 · 돌려받음 · 계좌 주인 넘겨받음
+  if (t.startsWith('LEDGER_')) return 'LEDGER'
   return 'ACCESS'
 }
 
@@ -869,18 +1200,47 @@ function notiDay(iso: string) {
   return shortDay(day)
 }
 
+/** target.url 이 이 앱 경로가 아닐 때 갈 화면 (대상 종류 → 목록 화면) */
+const NOTI_FALLBACK: Record<string, string> = {
+  NOTICE: '/',
+  MEETING_POLL: '/calendar',
+  EVENT: '/calendar',
+  PROJECT: '/projects',
+  TASK: '/projects',
+  THREAD: '/projects',
+  MINUTE: '/projects',
+  POLICY: '/projects',
+  LEDGER: '/ledger',
+  REPORT: '/reports',
+  ACCESS_REQUEST: '/admin/role-requests',
+  SIGNUP_APPLICATION: '/admin/signups',
+  MEMBER: '/members',
+  VAULT_PATH_REQUEST: '/admin',
+  JOB: '/admin',
+}
+
+/**
+ * 알림 대상 → 화면 주소. 백엔드 target.url(NotificationLinkService)이 이 앱 경로를 주므로 그대로 쓴다.
+ * 비었거나 앱 안 경로('/…')가 아니면 대상 종류의 목록 화면으로, 모르는 종류면 알림 화면으로
+ */
+function notiLink(n: NotificationDto) {
+  const { type, url } = n.target
+  if (url && url.startsWith('/') && !url.startsWith('//')) return url
+  return NOTI_FALLBACK[type] ?? '/notifications'
+}
+
 const notiFromDto = (n: NotificationDto): NotiItem => ({
   id: n.notificationId,
   type: notiType(n.type),
   title: n.title,
-  // 명세 확인 필요: 미리보기용 짧은 제목이 없어 제목을 그대로 쓴다
-  short: n.title,
+  // 종 메뉴 한 줄: 서버가 제목을 한 줄 80자로 줄인 preview (예전 서버면 제목)
+  short: n.preview || n.title,
   detail: n.body ?? '',
   ago: ago(n.updatedAt),
   day: notiDay(n.updatedAt),
   read: !!n.readAt,
   grouped: n.groupCount > 1 ? n.groupCount : undefined,
-  to: n.target.url,
+  to: notiLink(n),
 })
 
 export const mockNotiItems: NotiItem[] = mockNotifications

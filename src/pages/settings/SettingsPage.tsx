@@ -18,10 +18,10 @@ export function SettingsPage() {
     {
       title: '내 계정',
       items: [
-        { icon: User, title: '내 프로필', desc: '사진 · 소개 · 연락처 · GitHub 연결', to: '/me' },
-        { icon: Bell, title: '알림 받기', desc: '종류별로 알림을 켜고 끄기', to: '/me' },
-        { icon: KeyRound, title: '비밀번호 변경', desc: '로그인 비밀번호 바꾸기', to: '/password' },
-        { icon: Shield, title: '권한 신청', desc: '연동 서비스 권한 · 연구실 역할 신청과 내 신청 보기', to: '/access-requests' },
+        { icon: User, title: '내 프로필', desc: '사진 · 소개 · 연락처 · GitHub 연결', to: '/profile' },
+        { icon: Bell, title: '알림', desc: '받은 알림 보기', to: '/notifications' },
+        { icon: KeyRound, title: '비밀번호 변경', desc: '로그인 비밀번호 바꾸기', to: '/account/password' },
+        { icon: Shield, title: '서비스 권한', desc: '연동 서비스 권한 확인 · 신청 (내 프로필에서)', to: '/profile' },
       ],
     },
     {

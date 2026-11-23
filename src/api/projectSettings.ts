@@ -1,392 +1,303 @@
-// 프로젝트 만들기 · 설정 — docs/api/30-project.md P-2 ~ P-8, P-11 ~ P-15, P-24 ~ P-27
-import { api } from './client'
-import { ago, dotDate, type MemberRef, type PageResponse } from './types'
-import { invalidateAll, useResource } from './useResource'
-import { getProject, MOCK_ME, type TaskListResponse } from './projects'
-import { projectDetail } from '../mocks/projectDetail'
-import { projectLabels as mockLabels, type ProjectLabel } from '../mocks/projectLabels'
-import { findProject, projects as mockProjects, type ProjectCategory, type ProjectStatus } from '../mocks/projects'
-import {
-  formerMembers as mockFormer,
-  memberCandidates as mockCandidates,
-  projectLinks as mockLinks,
-  settingsMembers as mockMembers,
-  type LinkService,
-  type ProjectLinkView,
-  type SettingsMember,
-} from '../mocks/projectSettings'
-import { MEMBER_TYPE_NAME } from '../mocks/members'
+/**
+ * 프로젝트 만들기 · 프로젝트 설정 (일반 · 참여자 · 라벨 · 보관 · 삭제) — P-2 · P-4 · P-5 · P-5a~d · P-6~P-8 · P-11 · P-17 · P-24~P-27.
+ * 디자인: Penpot 06 Screens · 추가 › 프로젝트 만들기 · 프로젝트 설정.
+ */
+import { api, ApiError } from './client'
+import { useResource } from './useResource'
+import { findProject, projects as mockProjects } from '../mocks/projects'
+import { ME_ID, members as mockMembers } from '../mocks/members'
+import { mockTagsOf } from './memberTags'
+import { getProject, projectCategoryName, type ProjectDetailDto, type ProjectStatusLive } from './projects'
 
 const enc = encodeURIComponent
-const typeText = (m: MemberRef) => (m.memberType === 'STUDENT' ? '학생 · 재실' : MEMBER_TYPE_NAME[m.memberType])
 
-/* ================= 일반 · 보관 · 삭제 (P-3, P-4, P-5) ================= */
+export type ProjectRoleCode = 'MANAGER' | 'MEMBER' | 'FORMER'
+export type Visibility = 'LAB' | 'PRIVATE'
+export type CodeOption = { code: string; name: string }
+export type PickMember = { memberId: number; name: string; memberType: string; status: string }
 
-export type ProjectGeneral = {
-  projectKey: string
+// ───────────────────────── 키 확인 (P-5a) ─────────────────────────
+
+export type KeyCheck = { projectKey: string; available: boolean; reason: 'INVALID' | 'TAKEN' | null; movedTo: string | null }
+export const KEY_PATTERN = /^[A-Z][A-Z0-9]{1,9}$/
+
+export const checkProjectKey = (projectKey: string) =>
+  api<KeyCheck>('/projects/key-availability', { query: { projectKey } })
+
+/** 목업: 형식과 목업 프로젝트 키로만 본다 */
+export const mockCheckKey = (projectKey: string): KeyCheck => {
+  if (!KEY_PATTERN.test(projectKey)) return { projectKey, available: false, reason: 'INVALID', movedTo: null }
+  const taken = mockProjects.some((p) => p.projectKey === projectKey) || projectKey === 'LAB'
+  return { projectKey, available: !taken, reason: taken ? 'TAKEN' : null, movedTo: null }
+}
+
+/** 이름에서 키 제안: 영문 · 숫자만 대문자로, 없으면 PRJ */
+export function suggestKey(name: string) {
+  const ascii = name.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  const key = /^[A-Z]/.test(ascii) ? ascii.slice(0, 10) : ''
+  return key.length >= 2 ? key : ''
+}
+
+// ───────────────────────── 만들기 옵션 (종류 · 구성원) ─────────────────────────
+
+export type CreateOptions = { categories: CodeOption[]; members: PickMember[]; meId: number }
+
+type MembersPage = { page: { content: { memberId: number; name: string; memberType: string; status: string }[]; last?: boolean } }
+type MeDto = { memberId: number; name: string }
+
+export function useCreateOptions() {
+  return useResource<CreateOptions>(
+    'project-create-options',
+    () => ({
+      categories: ['DEV', 'SEMINAR', 'PAPER', 'CONTEST'].map((code) => ({ code, name: projectCategoryName(code) })),
+      members: mockMembers.filter((m) => m.status === 'ACTIVE').map((m) => ({ memberId: m.memberId, name: m.name, memberType: m.memberType, status: m.status })),
+      meId: ME_ID,
+    }),
+    async () => {
+      const [categories, members, me] = await Promise.all([
+        api<CodeOption[]>('/codes/PROJECT_CATEGORY'),
+        api<MembersPage>('/members', { query: { group: 'ACTIVE', size: 100 } }),
+        api<MeDto>('/members/me'),
+      ])
+      return { categories, members: members.page.content, meId: me.memberId }
+    },
+  )
+}
+
+// ───────────────────────── 만들기 (P-2 + 링크 P-11 + Jenkins 켜기 P-17) ─────────────────────────
+
+export type LinkDraft = { service: 'GITHUB' | 'JENKINS' | 'PENPOT' | 'OTHER'; url: string; displayName: string }
+export type ProjectDraft = {
+  categoryCode: string
   name: string
-  categoryCode: ProjectCategory
+  projectKey: string
+  description: string
   startsOn: string
   endsOn: string
+  visibility: Visibility
+  members: { memberId: number; role: 'MANAGER' | 'MEMBER' }[]
+  vault: boolean
+  jenkins: boolean
+  links: LinkDraft[]
+}
+
+export type CreateResult = { projectKey: string; warnings: string[] }
+
+/**
+ * 만들고 → 링크 잇기 → (작업을 이었으면) Jenkins 권한 켜기. 프로젝트가 만들어진 뒤의 실패는 경고로 돌려준다 (설정에서 다시 할 수 있다).
+ */
+export async function createProject(d: ProjectDraft): Promise<CreateResult> {
+  const created = await api<ProjectDetailDto>('/projects', {
+    method: 'POST',
+    body: {
+      projectKey: d.projectKey,
+      name: d.name.trim(),
+      categoryCode: d.categoryCode,
+      description: d.description.trim() || null,
+      visibility: d.visibility,
+      startsOn: d.startsOn || null,
+      endsOn: d.endsOn || null,
+      members: d.members,
+      services: d.vault ? [{ service: 'VAULT' }] : [],
+    },
+  })
+  const key = created.projectKey
+  const warnings: string[] = []
+  let jenkinsLinked = false
+  for (const l of d.links) {
+    try {
+      await api(`/projects/${enc(key)}/links`, { method: 'POST', body: { service: l.service, url: l.url.trim(), displayName: l.displayName.trim() } })
+      if (l.service === 'JENKINS') jenkinsLinked = true
+    } catch (e) {
+      warnings.push(`${l.displayName} 연결: ${e instanceof ApiError ? e.message : '실패했어요'}`)
+    }
+  }
+  if (d.jenkins && jenkinsLinked) {
+    try {
+      await api(`/projects/${enc(key)}/service-access/JENKINS`, { method: 'PATCH', body: { enabled: true } })
+    } catch (e) {
+      warnings.push(`Jenkins 권한: ${e instanceof ApiError ? e.message : '켜지 못했어요'}`)
+    }
+  }
+  return { projectKey: key, warnings }
+}
+
+// ───────────────────────── 설정 (P-3 · P-24) ─────────────────────────
+
+export type SettingsMember = {
+  memberId: number
+  name: string
+  memberType: string
+  role: ProjectRoleCode
+  joinedAt: string
+  leftAt: string | null
+  /** 맡은 일 태그 (ERP-14) */
+  tags: string[]
+  /** 프로젝트 역할 (ERP-27, 참여자만 · 없으면 null) */
+  customRoleId: number | null
+}
+export type SettingsLabel = { labelId: number; name: string; color: string; description: string | null; taskCount: number }
+export type ProjectSettings = {
+  projectKey: string
+  name: string
   description: string
-  visibility: 'LAB' | 'PRIVATE'
-  status: ProjectStatus
+  categoryCode: string
+  status: ProjectStatusLive
+  visibility: Visibility
+  startsOn: string
+  endsOn: string
+  members: SettingsMember[]
+  /** 프로젝트 역할 (ERP-27) — 참여자 역할 고르기에 쓴다 */
+  customRoles: { roleId: number; name: string }[]
+  labels: SettingsLabel[]
+  taskTotal: number
   canManage: boolean
   canDelete: boolean
-  taskCount: number
+  servicesOn: boolean
 }
-export type GeneralPatch = Pick<ProjectGeneral, 'name' | 'categoryCode' | 'startsOn' | 'endsOn' | 'description' | 'visibility'>
 
-/** 목업에서 고친 설명을 기억한다 (목업 목록에는 설명 칸이 없다) */
-const mockDescription = new Map<string, string>()
+type LabelsDto = { labels: SettingsLabel[] }
+type ServiceAccessDto = { services: { service: string; enabled: boolean }[]; roles?: { roleId: number; name: string }[] }
 
-export function useProjectGeneral(key: string | undefined) {
-  return useResource<ProjectGeneral>(
-    ['project-general', key],
+const MOCK_LABELS: SettingsLabel[] = [
+  { labelId: 1, name: '보안', color: '#E5484D', description: '인증 · 권한 · 비밀값', taskCount: 6 },
+  { labelId: 2, name: '알림', color: '#3F6593', description: null, taskCount: 4 },
+  { labelId: 3, name: '프로필', color: '#34C27A', description: '내 프로필 화면', taskCount: 2 },
+]
+
+export function useProjectSettings(key: string | undefined) {
+  return useResource<ProjectSettings>(
+    ['project-settings', key],
     () => {
       const p = findProject(key)
+      const members: SettingsMember[] = [
+        ...mockMembers.slice(0, 5).map((m, i): SettingsMember => ({
+          memberId: m.memberId,
+          name: m.name,
+          memberType: m.memberType,
+          role: i < 2 ? 'MANAGER' : 'MEMBER',
+          joinedAt: '2026-09-01',
+          leftAt: null,
+          tags: mockTagsOf(m.name),
+          customRoleId: null,
+        })),
+        ...mockMembers.slice(5, 6).map((m): SettingsMember => ({
+          memberId: m.memberId,
+          name: m.name,
+          memberType: m.memberType,
+          role: 'FORMER',
+          joinedAt: '2026-09-01',
+          leftAt: '2026-10-31',
+          tags: mockTagsOf(m.name),
+          customRoleId: null,
+        })),
+      ]
       return {
         projectKey: p.projectKey,
         name: p.name,
+        description: p.summary,
         categoryCode: p.categoryCode,
+        status: p.status,
+        visibility: p.visibility,
         startsOn: p.startsOn,
         endsOn: p.endsOn,
-        description: mockDescription.get(p.projectKey) ?? projectDetail.description,
-        visibility: p.visibility,
-        status: p.status,
+        members,
+        customRoles: [{ roleId: 1, name: '인프라' }],
+        labels: MOCK_LABELS,
+        taskTotal: 46,
         canManage: true,
         canDelete: true,
-        taskCount: projectDetail.taskTotal,
+        servicesOn: p.services.includes('VAULT') || p.services.includes('JENKINS'),
       }
     },
-    async () => {
-      const d = await getProject(key ?? '')
-      return {
-        projectKey: d.projectKey,
-        name: d.name,
-        categoryCode: d.categoryCode as ProjectCategory,
-        startsOn: d.startsOn ?? '',
-        endsOn: d.endsOn ?? '',
-        description: d.description ?? '',
-        visibility: d.visibility,
-        status: (d.status === 'ON_HOLD' ? 'PREPARING' : d.status) as ProjectStatus,
-        canManage: d.permissions.canManage,
-        canDelete: d.permissions.canDelete,
-        taskCount: d.taskCounts.total,
-      }
-    },
-  )
-}
-
-/** 설정 고치기 (P-4) */
-export async function saveProjectGeneral(key: string, patch: GeneralPatch, isLive: boolean) {
-  if (isLive)
-    await api(`/projects/${enc(key)}`, {
-      method: 'PATCH',
-      body: { ...patch, description: patch.description || null, startsOn: patch.startsOn || null, endsOn: patch.endsOn || null },
-    })
-  else {
-    const p = findProject(key)
-    Object.assign(p, { name: patch.name, categoryCode: patch.categoryCode, startsOn: patch.startsOn, endsOn: patch.endsOn, visibility: patch.visibility })
-    mockDescription.set(p.projectKey, patch.description)
-  }
-  invalidateAll()
-}
-
-/** 보관 · 보관 풀기 (P-4 status). 풀 때는 진행 중으로 되돌린다 */
-export async function setProjectArchived(key: string, archived: boolean, isLive: boolean) {
-  // 명세 확인 필요: 보관을 풀 때 돌아갈 상태가 없어(T14) 진행 중으로 보낸다
-  const status = archived ? 'ARCHIVED' : 'ACTIVE'
-  if (isLive) await api(`/projects/${enc(key)}`, { method: 'PATCH', body: { status } })
-  else findProject(key).status = status
-  invalidateAll()
-}
-
-/** 프로젝트 지우기 (P-5) */
-export async function deleteProject(key: string, isLive: boolean) {
-  if (isLive) await api(`/projects/${enc(key)}`, { method: 'DELETE' })
-  else {
-    const i = mockProjects.findIndex((p) => p.projectKey === key)
-    if (i >= 0) mockProjects.splice(i, 1)
-  }
-  invalidateAll()
-}
-
-/* ================= 참여자 (P-3, P-6, P-7, P-8) ================= */
-
-export type Candidate = { memberId: number; name: string; typeText: string }
-export type ProjectMembers = { members: SettingsMember[]; former: { memberId: number; name: string; leftOn: string }[]; candidates: Candidate[]; meId: number; canManage: boolean }
-
-export function useProjectMembers(key: string | undefined) {
-  return useResource<ProjectMembers>(
-    ['project-members', key],
-    () => ({
-      members: mockMembers,
-      former: mockFormer,
-      candidates: mockCandidates.filter((c) => !mockMembers.some((m) => m.memberId === c.memberId)),
-      meId: mockMembers.find((m) => m.name === MOCK_ME)?.memberId ?? 0,
-      canManage: true,
-    }),
-    async () => {
-      const [d, me, all] = await Promise.all([
-        getProject(key ?? ''),
-        api<MemberRef>('/members/me'),
-        api<{ page: PageResponse<MemberRef> }>('/members', { query: { group: 'ACTIVE', size: 100 } }),
-      ])
-      const current = d.members.filter((m) => m.role !== 'FORMER')
-      return {
-        members: current.map((m) => ({
-          memberId: m.member.memberId,
-          name: m.member.name,
-          // 명세 확인 필요: MemberRef 에 로그인 아이디가 없고, 구성원별 서비스 권한은 P-16 에만 있다
-          loginId: '',
-          typeText: typeText(m.member),
-          role: m.role as 'MANAGER' | 'MEMBER',
-          joinedOn: dotDate(m.joinedAt),
-          access: '',
-        })),
-        former: d.members.filter((m) => m.role === 'FORMER').map((m) => ({ memberId: m.member.memberId, name: m.member.name, leftOn: dotDate(m.leftAt) })),
-        candidates: all.page.content.filter((m) => !current.some((c) => c.member.memberId === m.memberId)).map((m) => ({ memberId: m.memberId, name: m.name, typeText: typeText(m) })),
-        meId: me.memberId,
-        canManage: d.permissions.canManage,
-      }
-    },
-  )
-}
-
-export async function addProjectMember(key: string, c: Candidate, role: 'MANAGER' | 'MEMBER', isLive: boolean) {
-  if (isLive) await api(`/projects/${enc(key)}/members`, { method: 'POST', body: { memberId: c.memberId, role } })
-  else {
-    const today = new Date()
-    mockMembers.push({ memberId: c.memberId, name: c.name, loginId: '', typeText: c.typeText, role, joinedOn: `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`, access: '기본' })
-    const i = mockFormer.findIndex((f) => f.memberId === c.memberId)
-    if (i >= 0) mockFormer.splice(i, 1)
-  }
-  invalidateAll()
-}
-
-export async function changeMemberRole(key: string, m: SettingsMember, role: 'MANAGER' | 'MEMBER', isLive: boolean) {
-  if (isLive) await api(`/projects/${enc(key)}/members/${m.memberId}`, { method: 'PATCH', body: { role } })
-  else m.role = role
-  invalidateAll()
-}
-
-/** 참여자 빼기 (P-8). 그 사람이 맡은 끝나지 않은 작업은 담당자 없음으로 넘긴다 */
-export async function removeProjectMember(key: string, m: SettingsMember, isLive: boolean) {
-  if (isLive) {
-    const open = await api<TaskListResponse>('/tasks', { query: { projectKey: key, assigneeId: m.memberId, statuses: 'TODO,IN_PROGRESS,REVIEW', size: 100 } })
-    await api(`/projects/${enc(key)}/members/${m.memberId}/remove`, {
-      method: 'POST',
-      body: { taskReassignments: open.page.content.map((t) => ({ taskKey: t.taskKey, assigneeMemberId: null })) },
-    })
-  } else {
-    const i = mockMembers.indexOf(m)
-    if (i >= 0) mockMembers.splice(i, 1)
-    mockFormer.unshift({ memberId: m.memberId, name: m.name, leftOn: '오늘' })
-  }
-  invalidateAll()
-}
-
-/* ================= 라벨 (P-24 ~ P-27) ================= */
-
-export function useProjectLabels(key: string | undefined) {
-  return useResource<{ labels: ProjectLabel[]; canManage: boolean }>(
-    ['project-labels', key],
-    () => ({ labels: mockLabels, canManage: true }),
-    async () => {
-      const [r, d] = await Promise.all([
-        api<{ labels: { labelId: number; name: string; color: string; taskCount: number }[] }>(`/projects/${enc(key ?? '')}/labels`),
-        getProject(key ?? ''),
-      ])
-      // 명세 확인 필요: 디자인의 라벨 "설명"은 P-24 ~ P-26 에 없다 (이름 · 색만)
-      return { labels: r.labels.map((l) => ({ ...l, description: '' })), canManage: d.permissions.canManage }
-    },
-  )
-}
-
-export async function saveLabel(key: string, label: { labelId?: number; name: string; color: string; description: string }, isLive: boolean) {
-  if (isLive) {
-    const body = { name: label.name, color: label.color.toUpperCase() }
-    if (label.labelId) await api(`/projects/${enc(key)}/labels/${label.labelId}`, { method: 'PATCH', body })
-    else await api(`/projects/${enc(key)}/labels`, { method: 'POST', body })
-  } else {
-    const old = mockLabels.find((l) => l.labelId === label.labelId)
-    if (old) Object.assign(old, { name: label.name, color: label.color, description: label.description })
-    else mockLabels.push({ labelId: Math.max(0, ...mockLabels.map((l) => l.labelId)) + 1, name: label.name, color: label.color, description: label.description, taskCount: 0 })
-  }
-  invalidateAll()
-}
-
-export async function deleteLabel(key: string, labelId: number, isLive: boolean) {
-  if (isLive) await api(`/projects/${enc(key)}/labels/${labelId}`, { method: 'DELETE' })
-  else {
-    const i = mockLabels.findIndex((l) => l.labelId === labelId)
-    if (i >= 0) mockLabels.splice(i, 1)
-  }
-  invalidateAll()
-}
-
-/* ================= 연동 서비스 (P-11 ~ P-15) ================= */
-
-type LinkDto = {
-  linkId: number
-  service: LinkService
-  url: string
-  displayName: string
-  description: string | null
-  externalRef: string | null
-  github: { defaultBranch: string; locExcludePatterns: string } | null
-}
-type LinkStatusDto = {
-  linkId: number
-  status: 'OK' | 'UNAVAILABLE' | 'NOT_SUPPORTED'
-  jenkins: { branch: string | null; lastBuild: { number: number; result: string; startedAt: string; durationMs: number } | null } | null
-  penpot: { fileCount: number } | null
-  github: { weekCommitCount: number; openPullRequestCount: number } | null
-}
-const BUILD: Record<string, string> = { SUCCESS: '성공', FAILURE: '실패', UNSTABLE: '불안정', ABORTED: '중단', IN_PROGRESS: '진행 중' }
-
-function statusText(st: LinkStatusDto | undefined) {
-  if (!st || st.status === 'NOT_SUPPORTED') return ''
-  if (st.status === 'UNAVAILABLE') return '바로 가기는 그대로 열려요'
-  if (st.jenkins?.lastBuild) {
-    const b = st.jenkins.lastBuild
-    const sec = Math.round(b.durationMs / 1000)
-    return `빌드 #${b.number} ${BUILD[b.result] ?? b.result} · ${st.jenkins.branch ?? ''} · ${Math.floor(sec / 60)}분 ${sec % 60}초 · ${ago(b.startedAt)}`
-  }
-  if (st.github) return `이번 주 커밋 ${st.github.weekCommitCount} · 열린 PR ${st.github.openPullRequestCount}`
-  if (st.penpot) return `파일 ${st.penpot.fileCount}개`
-  return ''
-}
-
-export function useProjectLinks(key: string | undefined) {
-  return useResource<{ links: ProjectLinkView[]; canManage: boolean }>(
-    ['project-links', key],
-    () => ({ links: mockLinks, canManage: true }),
     async () => {
       const k = enc(key ?? '')
-      const [r, st, d] = await Promise.all([
-        api<{ links: LinkDto[] }>(`/projects/${k}/links`),
-        api<{ statuses: LinkStatusDto[] }>(`/projects/${k}/links/status`).catch(() => ({ statuses: [] as LinkStatusDto[] })),
+      const [d, labels, access] = await Promise.all([
         getProject(key ?? ''),
+        api<LabelsDto>(`/projects/${k}/labels`),
+        api<ServiceAccessDto>(`/projects/${k}/service-access`).catch((): ServiceAccessDto => ({ services: [] })),
       ])
       return {
-        links: r.links.map((l) => {
-          const s = st.statuses.find((x) => x.linkId === l.linkId)
-          return {
-            linkId: l.linkId,
-            service: l.service,
-            displayName: l.displayName,
-            url: l.url,
-            externalRef: [l.externalRef ?? l.url, l.github?.defaultBranch].filter(Boolean).join(' · '),
-            description: l.description ?? '',
-            status: s?.status ?? 'NOT_SUPPORTED',
-            statusText: statusText(s),
-            locExcludePatterns: l.github?.locExcludePatterns,
-          }
-        }),
+        projectKey: d.projectKey,
+        name: d.name,
+        description: d.description ?? '',
+        categoryCode: d.categoryCode,
+        status: d.status,
+        visibility: d.visibility,
+        startsOn: d.startsOn ?? '',
+        endsOn: d.endsOn ?? '',
+        members: d.members.map((m) => ({
+          memberId: m.member.memberId,
+          name: m.member.name,
+          memberType: m.member.memberType,
+          role: m.role,
+          joinedAt: m.joinedAt?.slice(0, 10) ?? '',
+          leftAt: m.leftAt?.slice(0, 10) ?? null,
+          tags: m.tags ?? [],
+          customRoleId: m.customRoleId ?? null,
+        })),
+        customRoles: (access.roles ?? []).map((r) => ({ roleId: r.roleId, name: r.name })),
+        labels: labels.labels,
+        taskTotal: d.taskCounts.total,
         canManage: d.permissions.canManage,
+        canDelete: d.permissions.canDelete,
+        servicesOn: access.services.some((s) => s.enabled),
       }
     },
   )
 }
 
-export type LinkDraft = { service: LinkService; url: string; displayName: string; description: string }
+// ───────────────────────── 일반 · 보관 (P-4) · 키 (P-5b) ─────────────────────────
 
-export async function createLink(key: string, d: LinkDraft, isLive: boolean) {
-  if (isLive) await api(`/projects/${enc(key)}/links`, { method: 'POST', body: { ...d, description: d.description || undefined } })
-  else
-    mockLinks.push({
-      linkId: Math.max(0, ...mockLinks.map((l) => l.linkId)) + 1,
-      service: d.service,
-      displayName: d.displayName,
-      url: d.url,
-      externalRef: d.url.replace(/^https?:\/\/[^/]+\//, '').replace(/\/$/, '') || d.url,
-      description: d.description,
-      status: 'NOT_SUPPORTED',
-      statusText: '',
-      locExcludePatterns: d.service === 'GITHUB' ? 'package-lock.json\npnpm-lock.yaml\nyarn.lock\n*.min.js\nbuild/\ndist/' : undefined,
-    })
-  invalidateAll()
+export type GeneralPatch = {
+  name?: string
+  categoryCode?: string
+  description?: string | null
+  visibility?: Visibility
+  startsOn?: string | null
+  endsOn?: string | null
+  status?: ProjectStatusLive
 }
+export const updateProject = (key: string, patch: GeneralPatch) =>
+  api<ProjectDetailDto>(`/projects/${enc(key)}`, { method: 'PATCH', body: patch })
 
-export async function updateLink(key: string, l: ProjectLinkView, patch: Partial<Pick<ProjectLinkView, 'displayName' | 'description' | 'url' | 'locExcludePatterns'>>, isLive: boolean) {
-  if (isLive) await api(`/projects/${enc(key)}/links/${l.linkId}`, { method: 'PATCH', body: patch })
-  else Object.assign(l, patch)
-  invalidateAll()
+export const changeProjectKey = (key: string, projectKey: string) =>
+  api<ProjectDetailDto>(`/projects/${enc(key)}/key`, { method: 'POST', body: { projectKey } })
+
+// ───────────────────────── 참여자 (P-6 · P-7 · P-8) ─────────────────────────
+
+export const addProjectMember = (key: string, memberId: number, role: 'MANAGER' | 'MEMBER') =>
+  api(`/projects/${enc(key)}/members`, { method: 'POST', body: { memberId, role } })
+
+/** P-7 역할 바꾸기. customRoleId 는 참여자(MEMBER)에게만 (ERP-27), 빼면 기본 참여자 */
+export const changeMemberRole = (key: string, memberId: number, role: 'MANAGER' | 'MEMBER', customRoleId: number | null = null) =>
+  api(`/projects/${enc(key)}/members/${memberId}`, { method: 'PATCH', body: { role, customRoleId } })
+
+// ───────────────────────── 라벨 (P-25 ~ P-27) ─────────────────────────
+
+export type LabelInput = { name: string; color: string; description: string }
+export const createLabel = (key: string, l: LabelInput) =>
+  api<SettingsLabel>(`/projects/${enc(key)}/labels`, { method: 'POST', body: { name: l.name.trim(), color: l.color, description: l.description.trim() || null } })
+export const updateLabel = (key: string, labelId: number, l: LabelInput) =>
+  api<SettingsLabel>(`/projects/${enc(key)}/labels/${labelId}`, { method: 'PATCH', body: { name: l.name.trim(), color: l.color, description: l.description.trim() } })
+export const deleteLabel = (key: string, labelId: number) => api(`/projects/${enc(key)}/labels/${labelId}`, { method: 'DELETE' })
+
+// ───────────────────────── 삭제 · 되돌리기 (P-5 · P-5c · P-5d) ─────────────────────────
+
+export type ServiceResources = 'KEEP' | 'REMOVE'
+export const deleteProject = (key: string, serviceResources: ServiceResources) =>
+  api(`/projects/${enc(key)}`, { method: 'DELETE', query: { serviceResources } })
+
+export type DeletedProject = { projectKey: string; name: string; deletedAt: string; deletedBy: string | null; restorableUntil: string }
+
+export function useDeletedProjects(enabled: boolean) {
+  return useResource<DeletedProject[]>(
+    ['projects-deleted', enabled],
+    () => (enabled ? [{ projectKey: 'OLD', name: '예전 비품 관리', deletedAt: '2026-11-10T03:00:00Z', deletedBy: 'admin', restorableUntil: '2026-12-10T03:00:00Z' }] : []),
+    async () => (enabled ? api<DeletedProject[]>('/projects/deleted') : []),
+  )
 }
+export const restoreProject = (key: string) => api<ProjectDetailDto>(`/projects/${enc(key)}/restore`, { method: 'POST' })
 
-export async function deleteLink(key: string, linkId: number, isLive: boolean) {
-  if (isLive) await api(`/projects/${enc(key)}/links/${linkId}`, { method: 'DELETE' })
-  else {
-    const i = mockLinks.findIndex((l) => l.linkId === linkId)
-    if (i >= 0) mockLinks.splice(i, 1)
-  }
-  invalidateAll()
-}
-
-/* ================= 프로젝트 만들기 (P-2 + P-12 + P-17) ================= */
-
-export type ProjectDraft = {
-  categoryCode: ProjectCategory
-  name: string
-  projectKey: string
-  startsOn: string
-  endsOn: string
-  description: string
-  visibility: 'LAB' | 'PRIVATE'
-  members: { memberId: number; name: string; role: 'MANAGER' | 'MEMBER' }[]
-  /** 연동 서비스: 주소를 적은 것만 연결한다 */
-  githubUrl: string
-  jenkinsUrl: string
-  penpotUrl: string
-  vault: boolean
-}
-
-/** 프로젝트를 만들고(P-2) 연동 서비스를 연결한다(P-12, P-17). 연결이 실패해도 프로젝트는 남으므로 실패한 서비스 이름을 돌려준다 */
-export async function createProject(d: ProjectDraft, isLive: boolean): Promise<string[]> {
-  const failed: string[] = []
-  if (isLive) {
-    await api('/projects', {
-      method: 'POST',
-      body: {
-        projectKey: d.projectKey,
-        name: d.name,
-        categoryCode: d.categoryCode,
-        description: d.description || undefined,
-        visibility: d.visibility,
-        startsOn: d.startsOn || undefined,
-        endsOn: d.endsOn || undefined,
-        members: d.members.map((m) => ({ memberId: m.memberId, role: m.role })),
-      },
-    })
-    const k = enc(d.projectKey)
-    const link = (service: LinkService, url: string, label: string) =>
-      url.trim() ? api(`/projects/${k}/links`, { method: 'POST', body: { service, url: url.trim(), displayName: d.name.slice(0, 50) } }).catch(() => void failed.push(label)) : Promise.resolve()
-    await link('GITHUB', d.githubUrl, 'GitHub')
-    await link('JENKINS', d.jenkinsUrl, 'Jenkins')
-    await link('PENPOT', d.penpotUrl, 'Penpot')
-    // 명세 확인 필요: P-17 본문의 켜기 필드 이름 (enabled 로 보낸다)
-    if (d.vault) await api(`/projects/${k}/service-access/VAULT`, { method: 'PATCH', body: { enabled: true } }).catch(() => void failed.push('Vault'))
-  } else {
-    mockProjects.unshift({
-      projectKey: d.projectKey,
-      name: d.name,
-      status: 'PREPARING',
-      visibility: d.visibility,
-      categoryCode: d.categoryCode,
-      summary: d.description.split('\n')[0].slice(0, 60),
-      startsOn: d.startsOn,
-      endsOn: d.endsOn,
-      myRole: 'MANAGER',
-      memberPreview: [MOCK_ME, ...d.members.map((m) => m.name)].slice(0, 3),
-      services: [d.githubUrl && 'GITHUB', d.jenkinsUrl && 'JENKINS', d.vault && 'VAULT', d.penpotUrl && 'PENPOT'].filter(Boolean) as ('GITHUB' | 'JENKINS' | 'VAULT' | 'PENPOT')[],
-      nextMilestone: null,
-    })
-  }
-  invalidateAll()
-  return failed
-}
-
-/** 이미 쓰는 키인지 (목업은 목록에서, 실서버는 만들 때 409 로 알려 준다) */
-export const mockKeyTaken = (key: string) => mockProjects.some((p) => p.projectKey === key)
+/** 서버 오류 → 사용자 문구 */
+export const errText = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback)

@@ -1,21 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Check, Clock, Info, Kanban, MapPin, TriangleAlert, Users } from 'lucide-react'
-import { Avatar, Breadcrumb, Button, Card, Chip, Columns, KeyValue, Loadable, SectionHead } from '../../components/ui'
+import { Clock, Kanban, MapPin, TriangleAlert } from 'lucide-react'
+import { Breadcrumb, Card, Chip, Columns, Loadable } from '../../components/ui'
 import { PageHeader } from '../../layouts/PageHeader'
 import { ApiError } from '../../api/client'
 import { getDataMode } from '../../lib/dataMode'
 import { whenLive } from '../../api/useResource'
 import { confirmPoll, remindPoll, saveMyPollResponse, slotKeyToIso, useMeetingPoll, type PollView } from '../../api/communication'
+import { MyAvailabilityGrid } from './poll/MyAvailabilityGrid'
+import { PendingCard, PollInfoCard, PollLegend, RecommendCard } from './poll/PollSideCards'
+import { ResultGrid } from './poll/ResultGrid'
+import { pad, type PollWindow } from './poll/time'
 import s from './SchedulePollPage.module.css'
 
-/** 시간 단위 숫자 → 'HH:mm' (10.5 → 10:30) */
-const pad = (h: number) => `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`
 const errText = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback)
 /** 칠한 뒤 이만큼 손을 떼면 저장한다 */
 const SAVE_DELAY = 800
-
-type Window = { day: number; start: number; keys: string[]; count: number; missing: string[] }
 
 export function SchedulePollPage() {
   const { id } = useParams()
@@ -34,7 +34,7 @@ function PollBody({ poll, reload }: { poll: PollView; reload: () => void }) {
   const ME = poll.meName
   const [mine, setMine] = useState(() => new Set(poll.myAvailability))
   const [pick, setPick] = useState(0)
-  const [confirmed, setConfirmed] = useState<Window | null>(null)
+  const [confirmed, setConfirmed] = useState<PollWindow | null>(null)
   const [reminded, setReminded] = useState<Set<string>>(() => new Set())
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [error, setError] = useState('')
@@ -95,10 +95,9 @@ function PollBody({ poll, reload }: { poll: PollView; reload: () => void }) {
   )
   const respondents = people.length
   const total = poll.targetCount ?? poll.others.length + 1 + poll.pending.length
-  const countAt = (key: string) => people.filter((p) => p.set.has(key)).length
 
   const windows = useMemo(() => {
-    const out: Window[] = []
+    const out: PollWindow[] = []
     poll.days.forEach((_, d) => {
       for (let i = 0; i + poll.durationSlots <= poll.hours.length; i++) {
         const keys = poll.hours.slice(i, i + poll.durationSlots).map((h) => `${d}-${h}`)
@@ -152,10 +151,6 @@ function PollBody({ poll, reload }: { poll: PollView; reload: () => void }) {
     }
   }
 
-  const first = poll.days[0]
-  const last = poll.days[poll.days.length - 1]
-  const range = (k: string) => `${Number(k.slice(5, 7))}/${Number(k.slice(8, 10))}`
-
   return (
     <Columns
       sideWidth={380}
@@ -191,193 +186,34 @@ function PollBody({ poll, reload }: { poll: PollView; reload: () => void }) {
           <div className={s.grids}>
             {/* 내 응답 */}
             {poll.iAmTarget && (
-              <div className={s.gridBlock}>
-                <div className={s.gridHead}>
-                  <h3>내 응답</h3>
-                  <span>
-                    {!canRespond ? '응답을 바꿀 수 없어요' : saveState === 'saving' ? '저장 중…' : saveState === 'saved' ? '저장됨' : '끌어서 칠하기'}
-                  </span>
-                </div>
-                <div className={s.table} onPointerLeave={() => (paintMode.current = null)}>
-                  <DateRow days={poll.days} />
-                  {poll.hours.map((h) => (
-                    <div key={h} className={s.row}>
-                      <span className={s.time}>{pad(h)}</span>
-                      {poll.days.map((_, d) => {
-                        const key = `${d}-${h}`
-                        if (key in poll.myBusy)
-                          return (
-                            <span key={key} className={`${s.cell} ${s.busy}`} title="내 개인 일정 (나만 보임)">
-                              {poll.myBusy[key]}
-                            </span>
-                          )
-                        const on = mine.has(key)
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            aria-pressed={on}
-                            aria-label={`${poll.days[d].label} ${pad(h)}`}
-                            className={`${s.cell} ${on ? s.mineOn : s.mineOff}`}
-                            disabled={!canRespond}
-                            onPointerDown={(e) => {
-                              e.currentTarget.releasePointerCapture(e.pointerId)
-                              paintMode.current = !on
-                              paint(key, !on)
-                            }}
-                            onPointerEnter={() => paintMode.current !== null && paint(key, paintMode.current)}
-                            onKeyDown={(e) => (e.key === ' ' || e.key === 'Enter') && paint(key, !on)}
-                          />
-                        )
-                      })}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <MyAvailabilityGrid poll={poll} mine={mine} canRespond={canRespond} saveState={saveState} paintModeRef={paintMode} paint={paint} />
             )}
 
             {/* 전체 결과 */}
-            <div className={s.gridBlock}>
-              <div className={s.gridHead}>
-                <h3>전체 결과</h3>
-                <span>
-                  {total}명 중 {respondents}명 응답
-                </span>
-              </div>
-              <div className={s.table}>
-                <DateRow days={poll.days} />
-                {poll.hours.map((h) => (
-                  <div key={h} className={s.row}>
-                    <span className={s.time}>{pad(h)}</span>
-                    {poll.days.map((_, d) => {
-                      const key = `${d}-${h}`
-                      const n = countAt(key)
-                      const alpha = Math.max(0.06, respondents ? n / respondents : 0)
-                      return (
-                        <span
-                          key={key}
-                          className={`${s.cell} ${s.heat} ${highlighted.has(key) ? s.recommended : ''}`}
-                          style={{
-                            background: `rgba(63, 101, 147, ${alpha})`,
-                            color: alpha >= 0.6 ? 'var(--text-on-dark)' : 'var(--accent)',
-                          }}
-                          title={people
-                            .filter((p) => p.set.has(key))
-                            .map((p) => p.name)
-                            .join(', ')}
-                        >
-                          {n}
-                        </span>
-                      )
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ResultGrid poll={poll} people={people} respondents={respondents} total={total} highlighted={highlighted} />
           </div>
 
-          <div className={s.legend}>
-            <span>
-              <i className={s.swMine} />
-              내가 가능
-            </span>
-            <span>
-              <i className={s.swBusy} />내 개인 일정 (나만 보임)
-            </span>
-            <span>
-              <i className={s.swHeat} />
-              가능 인원 (진할수록 많음)
-            </span>
-            <span>
-              <i className={s.swRec} />
-              추천 시간대
-            </span>
-          </div>
+          <PollLegend />
         </Card>
       }
       side={
         <>
-          <Card>
-            <SectionHead icon={Check} title={`추천 시간대 (${durationHours}시간)`} />
-            {windows.map((w, i) => (
-              <button key={w.keys[0]} type="button" className={i === pick ? `${s.rec} ${s.recOn}` : s.rec} onClick={() => setPick(i)}>
-                <span className={s.rank}>{i + 1}</span>
-                <span className={s.recText}>
-                  <strong>
-                    {poll.days[w.day].long} {pad(w.start)} – {pad(w.start + durationHours)}
-                  </strong>
-                  <small>{w.missing.length === 0 ? '응답한 모두 가능' : `${w.missing.join(', ')} 불가`}</small>
-                </span>
-                <span className={s.recCount}>
-                  {w.count}/{respondents}명
-                </span>
-              </button>
-            ))}
-            {confirmedLabel ? (
-              <p className={s.confirmed}>
-                <Check size={16} /> {confirmedLabel}으로 확정했어요
-              </p>
-            ) : (
-              // 확정은 만든 사람만 (MP-6)
-              poll.isCreator &&
-              poll.status === 'OPEN' && (
-                <Button icon={Check} className={s.confirmBtn} onClick={confirmTime}>
-                  {pick + 1}번 시간으로 확정
-                </Button>
-              )
-            )}
-            <p className={s.note}>확정하면 공용 캘린더에 일정이 생기고 참여 대상 {total}명이 참석자가 돼요.</p>
-          </Card>
-
-          <Card>
-            <SectionHead icon={Users} title={`아직 응답하지 않음 ${poll.pending.length}명`} />
-            <ul className={s.pending}>
-              {poll.pending.map((p) => (
-                <li key={p.name}>
-                  <Avatar name={p.name} size={28} />
-                  <span>
-                    {p.name} · {p.role}
-                  </span>
-                  {/* 알림 다시 보내기는 만든 사람만 (MP-5) */}
-                  {poll.isCreator && poll.status === 'OPEN' && (
-                    <button type="button" onClick={() => remind(p)} disabled={reminded.has(p.name)}>
-                      {reminded.has(p.name) ? '보냈어요' : '알림 다시 보내기'}
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </Card>
-
-          <Card>
-            <SectionHead icon={Info} title="정보" />
-            <KeyValue
-              items={[
-                ['만든 사람', poll.creator],
-                ['참여 대상', poll.audience],
-                [
-                  '후보',
-                  `${range(first.key)} – ${range(last.key)} · ${pad(poll.hours[0])} – ${pad(poll.hours.at(-1)! + poll.slotHours)} · ${slotLabel}`,
-                ],
-                ['마감', `${poll.deadline} · ${poll.dday}`],
-              ]}
-            />
-          </Card>
+          <RecommendCard
+            poll={poll}
+            windows={windows}
+            pick={pick}
+            onPick={setPick}
+            durationHours={durationHours}
+            respondents={respondents}
+            total={total}
+            confirmedLabel={confirmedLabel}
+            canConfirm={poll.isCreator && poll.status === 'OPEN'}
+            onConfirm={confirmTime}
+          />
+          <PendingCard pending={poll.pending} canRemind={poll.isCreator && poll.status === 'OPEN'} reminded={reminded} onRemind={remind} />
+          <PollInfoCard poll={poll} slotLabel={slotLabel} />
         </>
       }
     />
-  )
-}
-
-function DateRow({ days }: { days: PollView['days'] }) {
-  return (
-    <div className={s.row}>
-      <span className={s.time} />
-      {days.map((d) => (
-        <span key={d.key} className={s.date}>
-          {d.label}
-        </span>
-      ))}
-    </div>
   )
 }

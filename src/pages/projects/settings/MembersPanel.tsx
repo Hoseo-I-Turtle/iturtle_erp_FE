@@ -1,0 +1,237 @@
+import { useState } from 'react'
+import { ChevronDown, ChevronRight, Plus, UserMinus } from 'lucide-react'
+import { Avatar, Button, Card, Empty } from '../../../components/ui'
+import { whenLive } from '../../../api/useResource'
+import {
+  addProjectMember,
+  changeMemberRole,
+  errText,
+  useCreateOptions,
+  type ProjectSettings,
+  type SettingsMember,
+} from '../../../api/projectSettings'
+import { removeMemberWithHandover } from '../../../api/projectLinks'
+import { setMemberTags, setMockTags, useTagSuggestions } from '../../../api/memberTags'
+import { TagEditor } from '../common'
+import { MEMBER_TYPE_NAME, type MemberType } from '../../../mocks/members'
+import { RemoveMemberDialog } from './RemoveMemberDialog'
+import s from './panels.module.css'
+
+type Props = { settings: ProjectSettings; onChange: (p: Partial<ProjectSettings>) => void; onReload: () => void }
+
+const ROLE_NAME = { MANAGER: '프로젝트 관리자', MEMBER: '참여자', FORMER: '이전 참여자' } as const
+const typeName = (t: string) => MEMBER_TYPE_NAME[t as MemberType] ?? t
+
+/** 설정 › 참여자 (P-6 더하기 · P-7 역할 · P-8 빼기 · P-8a 맡은 일 태그). 관리자는 최소 1명 (P010) */
+export function MembersPanel({ settings, onChange, onReload }: Props) {
+  const options = useCreateOptions()
+  const [adding, setAdding] = useState(false)
+  const [q, setQ] = useState('')
+  const [showFormer, setShowFormer] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState<number | null>(null)
+  const [removing, setRemoving] = useState<SettingsMember | null>(null)
+  const active = settings.members.filter((m) => m.role !== 'FORMER')
+  const former = settings.members.filter((m) => m.role === 'FORMER')
+  const readOnly = settings.status === 'ARCHIVED' || !settings.canManage
+  const managers = active.filter((m) => m.role === 'MANAGER').length
+  const suggestions = useTagSuggestions(settings.projectKey)
+  const meId = options.data?.meId
+  // 맡은 일 태그는 권한과 상관없다: 본인은 자기 것을, 프로젝트 관리자는 누구 것이든 고친다
+  const canTag = (m: SettingsMember) => settings.status !== 'ARCHIVED' && (settings.canManage || m.memberId === meId)
+
+  const activeIds = new Set(active.map((m) => m.memberId))
+  const candidates = (options.data?.members ?? []).filter((m) => !activeIds.has(m.memberId) && (!q || m.name.includes(q))).slice(0, 10)
+
+  const patchMember = (memberId: number, p: Partial<SettingsMember>) =>
+    onChange({ members: settings.members.map((m) => (m.memberId === memberId ? { ...m, ...p } : m)) })
+
+  const run = (memberId: number, call: () => Promise<unknown>, local: () => void) => {
+    setBusy(memberId)
+    setError(null)
+    whenLive(call)
+      .then((r) => (r === undefined ? local() : onReload()))
+      .catch((e: unknown) => setError(errText(e, '바꾸지 못했어요.')))
+      .finally(() => setBusy(null))
+  }
+
+  /** 고른 값: MANAGER · MEMBER, 또는 프로젝트 역할 'R<id>' (참여자 + 그 역할, ERP-27) */
+  const role = (m: SettingsMember, value: string) => {
+    const customRoleId = value.startsWith('R') ? Number(value.slice(1)) : null
+    const r = value === 'MANAGER' ? 'MANAGER' : 'MEMBER'
+    run(m.memberId, () => changeMemberRole(settings.projectKey, m.memberId, r, customRoleId), () => patchMember(m.memberId, { role: r, customRoleId }))
+  }
+  const roleValue = (m: SettingsMember) => (m.role === 'MEMBER' && m.customRoleId !== null ? `R${m.customRoleId}` : m.role)
+  const roleName = (m: SettingsMember) =>
+    settings.customRoles.find((r) => m.role === 'MEMBER' && r.roleId === m.customRoleId)?.name ?? ROLE_NAME[m.role]
+  /** 확인 창에서 고른 사람에게 끝나지 않은 담당 작업을 넘기고 뺀다 (없으면 담당 없음) */
+  const remove = (m: SettingsMember, tasks: { taskKey: string; title: string; status: string }[], handoverTo: number | null) =>
+    run(
+      m.memberId,
+      () => removeMemberWithHandover(settings.projectKey, m.memberId, tasks, handoverTo).then((r) => (setRemoving(null), r)),
+      () => {
+        setRemoving(null)
+        patchMember(m.memberId, { role: 'FORMER', leftAt: new Date().toISOString().slice(0, 10) })
+      },
+    )
+  const tag = (m: SettingsMember, tags: string[]) =>
+    run(
+      m.memberId,
+      // 실서버: 저장한 뒤 참여자 · 자동 완성을 새로 불러온다 (서버가 정리한 태그로)
+      () => setMemberTags(settings.projectKey, m.memberId, tags).then((r) => (suggestions.reload(), r)),
+      () => {
+        setMockTags(m.name, tags)
+        patchMember(m.memberId, { tags })
+      },
+    )
+  const add = (memberId: number, name: string, memberType: string) =>
+    run(memberId, () => addProjectMember(settings.projectKey, memberId, 'MEMBER'), () =>
+      onChange({
+        members: [
+          ...settings.members.filter((m) => m.memberId !== memberId),
+          { memberId, name, memberType, role: 'MEMBER', joinedAt: new Date().toISOString().slice(0, 10), leftAt: null, tags: [], customRoleId: null },
+        ],
+      }),
+    )
+
+  return (
+    <Card className={s.card}>
+      <header className={s.headRow}>
+        <div className={s.head}>
+          <h2>참여자 {active.length}명</h2>
+          <p>역할을 바꾸거나 뺄 수 있어요. 프로젝트 관리자는 최소 1명 있어야 해요. 맡은 일 태그는 권한과 상관없이 본인 · 관리자가 달아요.</p>
+        </div>
+        {!readOnly && (
+          <Button icon={Plus} onClick={() => setAdding(!adding)}>
+            참여자 추가
+          </Button>
+        )}
+      </header>
+
+      {adding && (
+        <div className={s.addBox}>
+          <span className={s.input}>
+            <input value={q} placeholder="이름으로 찾기" onChange={(e) => setQ(e.target.value)} autoFocus />
+          </span>
+          <div className={s.chips}>
+            {candidates.map((m) => (
+              <button key={m.memberId} type="button" className={s.candidate} disabled={busy === m.memberId} onClick={() => add(m.memberId, m.name, m.memberType)}>
+                <Plus size={14} /> {m.name} <small>{typeName(m.memberType)}</small>
+              </button>
+            ))}
+            {candidates.length === 0 && <span className={s.hint}>더할 수 있는 재실 구성원이 없어요</span>}
+          </div>
+        </div>
+      )}
+
+      {error && <p className={s.failText}>{error}</p>}
+
+      <table className={s.table}>
+        <thead>
+          <tr>
+            <th>이름</th>
+            <th>구분</th>
+            <th>역할</th>
+            <th>맡은 일</th>
+            <th>참여일</th>
+            <th aria-label="메뉴" />
+          </tr>
+        </thead>
+        <tbody>
+          {active.map((m) => {
+            const lastManager = m.role === 'MANAGER' && managers <= 1
+            return (
+              <tr key={m.memberId}>
+                <td>
+                  <span className={s.who}>
+                    <Avatar name={m.name} size={28} /> {m.name}
+                  </span>
+                </td>
+                <td className={s.muted}>{typeName(m.memberType)}</td>
+                <td>
+                  {readOnly ? (
+                    roleName(m)
+                  ) : (
+                    <select
+                      className={s.select}
+                      value={roleValue(m)}
+                      disabled={busy === m.memberId || lastManager}
+                      title={lastManager ? '마지막 프로젝트 관리자예요' : '프로젝트 역할은 설정 › 서비스 권한에서 만들어요'}
+                      onChange={(e) => role(m, e.target.value)}
+                      aria-label={`${m.name} 역할`}
+                    >
+                      <option value="MANAGER">프로젝트 관리자</option>
+                      <option value="MEMBER">참여자</option>
+                      {settings.customRoles.length > 0 && (
+                        <optgroup label="프로젝트 역할 (참여자)">
+                          {settings.customRoles.map((r) => (
+                            <option key={r.roleId} value={`R${r.roleId}`}>
+                              {r.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+                  )}
+                </td>
+                <td>
+                  <TagEditor
+                    tags={m.tags}
+                    suggestions={(suggestions.data ?? []).map((t) => t.tag)}
+                    disabled={!canTag(m) || busy === m.memberId}
+                    onSave={(tags) => tag(m, tags)}
+                  />
+                </td>
+                <td className={s.muted}>{m.joinedAt.replace(/-/g, '.')}</td>
+                <td className={s.right}>
+                  {!readOnly && (
+                    <button type="button" className={s.iconBtn} disabled={busy === m.memberId || lastManager} onClick={() => setRemoving(m)} aria-label={`${m.name} 빼기`} title="빼기 — 끝나지 않은 담당 작업은 고른 사람에게 넘겨요">
+                      <UserMinus size={16} />
+                    </button>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      {active.length === 0 && <Empty>참여자가 없어요.</Empty>}
+
+      {removing && (
+        <RemoveMemberDialog
+          projectKey={settings.projectKey}
+          member={removing}
+          active={active.map((m) => ({ memberId: m.memberId, name: m.name }))}
+          busy={busy === removing.memberId}
+          onCancel={() => setRemoving(null)}
+          onConfirm={(p, to) => remove(removing, p.openTasks, to)}
+        />
+      )}
+
+      {former.length > 0 && (
+        <div className={s.former}>
+          <button type="button" className={s.fold} onClick={() => setShowFormer(!showFormer)}>
+            {showFormer ? <ChevronDown size={16} /> : <ChevronRight size={16} />} 나간 참여자 {former.length}명
+          </button>
+          {showFormer && (
+            <ul className={s.formerList}>
+              {former.map((m) => (
+                <li key={m.memberId}>
+                  <Avatar name={m.name} size={24} /> {m.name}
+                  <span className={s.muted}>
+                    {typeName(m.memberType)} · {m.joinedAt.replace(/-/g, '.')} – {(m.leftAt ?? '').replace(/-/g, '.')}
+                  </span>
+                  {!readOnly && (
+                    <Button variant="ghost" onClick={() => add(m.memberId, m.name, m.memberType)} disabled={busy === m.memberId}>
+                      다시 참여
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </Card>
+  )
+}

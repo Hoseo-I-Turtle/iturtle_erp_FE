@@ -1,40 +1,35 @@
-import type { ReactNode } from 'react'
-import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import type { KeyboardEvent, ReactNode } from 'react'
 import { Search } from 'lucide-react'
 import { BellMenu } from './BellMenu'
 import { NewMenu } from './NewMenu'
+import { useGoSearch } from '../pages/search/useGoSearch'
 import s from './layout.module.css'
 
 type Props = {
   title: string
   subtitle?: string
-  /** 오른쪽 버튼 교체. null이면 버튼 없음 */
+  /** 오른쪽 버튼 교체. 없으면 "새로 만들기" 메뉴, null 이면 버튼 없음 */
   action?: ReactNode
 }
 
 export function PageHeader({ title, subtitle, action }: Props) {
-  const navigate = useNavigate()
-  const [params] = useSearchParams()
-  // 검색 결과 화면에서는 지금 찾은 말을 그대로 보여 준다
-  const [q, setQ] = useState(params.get('q') ?? '')
+  const goSearch = useGoSearch()
+  // 한글 조합 중의 Enter 는 글자를 확정하는 것이라 검색하지 않는다
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter' || e.nativeEvent.isComposing) return
+    e.preventDefault()
+    void goSearch(e.currentTarget.value)
+  }
   return (
     <header className={s.header}>
       <div className={s.headerTitle}>
         <h1>{title}</h1>
         {subtitle && <p>{subtitle}</p>}
       </div>
-      <form
-        className={s.search}
-        role="search"
-        onSubmit={(e) => {
-          e.preventDefault()
-          if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`)
-        }}
-      >
+      <label className={s.search}>
         <Search size={18} strokeWidth={2} />
-        <input type="search" placeholder="공지, 작업, 자료, 구성원 검색" value={q} onChange={(e) => setQ(e.target.value)} aria-label="통합 검색" />
-      </form>
+        <input type="search" placeholder="공지, 작업, 자료, 구성원 검색" aria-label="통합 검색" enterKeyHint="search" onKeyDown={onKeyDown} />
+      </label>
       <BellMenu />
       {action === undefined ? <NewMenu /> : action}
     </header>

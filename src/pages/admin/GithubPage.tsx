@@ -3,6 +3,7 @@ import { Check, Clock, GitBranch, RefreshCw, TriangleAlert, Users, X } from 'luc
 import { Avatar, Button, Card, Loadable } from '../../components/ui'
 import { whenLive } from '../../api/useResource'
 import { errorText, isLive, removeFromOrg, sendLinkReminder, useGithubAdmin, type CleanupItem, type GithubAdminData } from '../../api/admin'
+import { StateBadge } from './StateBadge'
 import a from './admin.module.css'
 import s from './GithubPage.module.css'
 
@@ -92,15 +93,15 @@ function GithubView({ data }: { data: GithubAdminData }) {
               <span>{m.team}</span>
               <span>
                 {m.state === 'MEMBER' ? (
-                  <span className={`${a.state} ${a.ok}`}>
+                  <StateBadge tone="ok">
                     <Check size={12} /> 조직 소속
-                  </span>
+                  </StateBadge>
                 ) : m.state === 'INVITED' ? (
-                  <span className={`${a.state} ${a.warn}`}>
+                  <StateBadge tone="warn">
                     <Clock size={12} /> 초대 보냄 · 수락 대기
-                  </span>
+                  </StateBadge>
                 ) : (
-                  <span className={`${a.state} ${a.off}`}>연결 안 함</span>
+                  <StateBadge tone="off">연결 안 함</StateBadge>
                 )}
               </span>
               <span>
