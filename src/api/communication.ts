@@ -95,7 +95,7 @@ const fetchMe = () => api<Me>('/members/me')
 
 /* ================= 공지 · 투표 (N-1, N-2, N-6) ================= */
 
-type NoticeSummaryDto = {
+export type NoticeSummaryDto = {
   noticeId: number
   title: string
   mustRead: boolean
@@ -114,7 +114,7 @@ type NoticeSummaryDto = {
   /** 필독이면 읽음 · 안 읽음 숫자 (명단은 상세에서만), 아니면 null */
   readSummary: { readCount: number; unreadCount: number } | null
 }
-type NoticeListDto = { pinned: NoticeSummaryDto[]; page: PageResponse<NoticeSummaryDto> }
+export type NoticeListDto = { pinned: NoticeSummaryDto[]; page: PageResponse<NoticeSummaryDto> }
 
 /** 공지 대상 (NoticeAudienceResponse / NoticeAudienceRequest) */
 export type NoticeAudienceType = 'ALL' | 'PROJECT' | 'MEMBER_TYPES'

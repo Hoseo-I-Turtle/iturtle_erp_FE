@@ -126,7 +126,7 @@ export async function uploadFile(file: File, purpose: 'ATTACHMENT' | 'INLINE_IMA
  * ==================================================================== */
 
 /** ThreadItemResponse */
-type ThreadItem = {
+export type ThreadItem = {
   threadId: number
   title: string | null
   body: string
@@ -1003,7 +1003,7 @@ export async function refreshGithubActivity() {
  * ==================================================================== */
 
 /** document 모듈 DocumentSummaryResponse */
-type DocumentItem = {
+export type DocumentItem = {
   documentId: number
   categoryCode: string
   categoryName: string | null
@@ -1027,7 +1027,7 @@ type DocumentItem = {
  * - pinned: 같은 거르기 조건에 맞는 고정 자료 (첫 페이지에서만). page 에는 고정 안 된 자료만 온다
  * - categoryCounts: 공통코드 DOCUMENT_CATEGORY 전부(표시 순서, 0 포함). ALL 은 없다
  */
-type DocumentListResponse = {
+export type DocumentListResponse = {
   pinned: DocumentItem[]
   categoryCounts: Record<string, number>
   page: PageResponse<DocumentItem>

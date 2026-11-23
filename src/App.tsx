@@ -31,6 +31,7 @@ import { MinuteWritePage } from './pages/projects/MinuteWritePage'
 import { ProjectSettingsPage } from './pages/projects/ProjectSettingsPage'
 import { WeeklyReportPage } from './pages/reports/WeeklyReportPage'
 import { LedgerPage } from './pages/ledger/LedgerPage'
+import { SearchPage } from './pages/search/SearchPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { TaskListPage } from './pages/projects/TaskListPage'
 import { SchedulePage } from './pages/projects/SchedulePage'
@@ -112,6 +113,8 @@ const router = createBrowserRouter([
       { path: '/library', element: <LibraryPage /> },
       { path: '/library/:id', element: <DocumentDetailPage /> },
       { path: '/members', element: <MembersPage /> },
+      // 통합 검색 (CMN-2). 상단 검색창 Enter → /search?q=
+      { path: '/search', element: <SearchPage /> },
       {
         path: '/admin',
         element: <AdminLayout />,

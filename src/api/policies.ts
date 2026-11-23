@@ -133,7 +133,7 @@ const mockPolicy = (key: string, no: number, title: string, rule: string, catego
       : [],
 })
 
-const mockList = (key: string): Policy[] => [
+export const mockPolicies = (key: string): Policy[] => [
   mockPolicy(key, 3, '서버 SSH 는 관리자가 고른 구성원만', 'Gateway 규칙 lab_server_ssh 에는 SSH 허용 목록의 구성원만 넣는다', 'OPERATION'),
   mockPolicy(key, 2, '제출한 주간 보고의 작업 목록은 제출 때 그대로', '작성 중이 아니면 제출 때 저장한 목록을 쓴다', 'DESIGN', 'REVIEW_NEEDED'),
   mockPolicy(key, 1, 'ERP 작업은 지금 열린 마일스톤에', '작업을 만들 때 열린 마일스톤(v1.0.0)에 넣는다', 'WORKFLOW'),
@@ -156,7 +156,7 @@ export function usePolicies(key: string | undefined, filter: PolicyFilter) {
       const live = (p: Policy) => (filter.statuses?.length ? filter.statuses.includes(p.status) : !['RETIRED', 'SUPERSEDED'].includes(p.status))
       return {
         canWrite: true,
-        policies: mockList(key ?? 'ERP').filter(
+        policies: mockPolicies(key ?? 'ERP').filter(
           (p) => live(p) && (!filter.categories?.length || filter.categories.includes(p.category)) && (!q || `${p.key} ${p.title} ${p.rule}`.toLowerCase().includes(q)),
         ),
       }
@@ -169,7 +169,7 @@ export function usePolicy(key: string | undefined, policyKey: string | undefined
   return useResource<PolicyDetail>(
     ['policy', key, policyKey],
     () => {
-      const found = mockList(key ?? 'ERP').find((p) => p.key.toUpperCase() === (policyKey ?? '').toUpperCase()) ?? mockList(key ?? 'ERP')[0]
+      const found = mockPolicies(key ?? 'ERP').find((p) => p.key.toUpperCase() === (policyKey ?? '').toUpperCase()) ?? mockPolicies(key ?? 'ERP')[0]
       return { policy: found, commits: [], versions: [], canWrite: true, canComment: true }
     },
     () => api<PolicyDetail>(`${path(key ?? '')}/${encodeURIComponent(policyKey ?? '')}`),

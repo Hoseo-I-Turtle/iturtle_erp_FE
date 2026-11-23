@@ -30,7 +30,7 @@ type ProjectRef = { projectKey: string; name: string }
 type TaskRefDto = { taskId?: number; taskKey: string; title: string; status: string }
 
 /** MinuteSummaryResponse (MM-1) */
-type MinuteSummaryDto = {
+export type MinuteSummaryDto = {
   minuteId: number
   title: string
   startsAt: string

@@ -86,7 +86,7 @@ const fileSize = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)}MB` 
 // ───────────────────────── P-1 프로젝트 목록 ─────────────────────────
 
 /** ProjectSummaryResponse */
-type ProjectSummaryDto = {
+export type ProjectSummaryDto = {
   projectKey: string
   name: string
   status: ProjectStatusLive
@@ -106,7 +106,7 @@ type ProjectSummaryDto = {
   linkedServices: ServiceCode[]
 }
 /** ProjectListResponse — categoryCounts 는 ALL + 프로젝트가 있는 카테고리만 (공통코드 표시 순서) */
-type ProjectListResponse = { categoryCounts: Record<string, number>; page: PageResponse<ProjectSummaryDto> }
+export type ProjectListResponse = { categoryCounts: Record<string, number>; page: PageResponse<ProjectSummaryDto> }
 
 const rememberCategory = (code: string, name: string | null | undefined) => {
   if (name) seenCategoryNames.set(code, name)

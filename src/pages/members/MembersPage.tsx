@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Calendar, GitBranch, Info, Kanban, Lock, Mail, User } from 'lucide-react'
 import { Avatar, Card, Chip, Columns, Empty, ListItem, Loadable, Note, Segmented, SectionHead } from '../../components/ui'
 import { PageHeader } from '../../layouts/PageHeader'
@@ -16,21 +17,25 @@ const TYPE_FILTERS: { value: TypeFilter; label: string }[] = [
 
 export function MembersPage() {
   const dir = useMemberDirectory()
+  // 통합 검색 결과에서 오면 /members?member=3 — 그 사람을 골라 둔다
+  const [params] = useSearchParams()
+  const linked = Number(params.get('member')) || null
   return (
     <>
       <PageHeader title="구성원" subtitle="함께하는 사람들과 졸업생" action={null} />
       <Loadable resource={dir} label="구성원 목록">
-        {(d) => <MembersView dir={d} />}
+        {(d) => <MembersView key={linked ?? 'me'} dir={d} linkedId={linked} />}
       </Loadable>
     </>
   )
 }
 
-function MembersView({ dir }: { dir: MemberDirectory }) {
+function MembersView({ dir, linkedId }: { dir: MemberDirectory; linkedId: number | null }) {
   const { members } = dir
-  const [status, setStatus] = useState<Status>('ACTIVE')
+  const linked = members.find((m) => m.memberId === linkedId)
+  const [status, setStatus] = useState<Status>(linked?.status === 'GRADUATED' ? 'GRADUATED' : 'ACTIVE')
   const [type, setType] = useState<TypeFilter>('ALL')
-  const [selectedId, setSelectedId] = useState(dir.meId)
+  const [selectedId, setSelectedId] = useState(linked?.memberId ?? dir.meId)
 
   const shown = members.filter((m) => m.status === status && (type === 'ALL' || m.memberType === type))
   const base = members.find((m) => m.memberId === selectedId) ?? members[0]
