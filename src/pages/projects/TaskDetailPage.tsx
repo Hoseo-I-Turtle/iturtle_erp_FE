@@ -63,6 +63,14 @@ function toPatch(next: Partial<TaskFields>): TaskPatch {
   return p
 }
 
+/** 낱말 뒤에 붙일 조사 '로' / '으로' (받침이 없거나 ㄹ 이면 '로': 검토로 · 할 일로, 그 밖의 받침이면 '으로': 진행 중으로) */
+function ro(word: string) {
+  const code = word.charCodeAt(word.length - 1) - 0xac00
+  if (code < 0 || code > 11171) return '로'
+  const final = code % 28
+  return final === 0 || final === 8 ? '로' : '으로'
+}
+
 export function TaskDetailPage() {
   const { key, taskKey } = useParams()
   const detail = useTaskDetail(key, taskKey)
@@ -304,7 +312,7 @@ function TaskDetailView({ d, projectKey, reload, moreActivity }: { d: TaskDetail
             )}
             {next && (
               <Button icon={Check} onClick={advance}>
-                {cancelled ? '할 일로 되돌리기' : `${STATUS_NAME[next]}로 옮기기`}
+                {cancelled ? '할 일로 되돌리기' : `${STATUS_NAME[next]}${ro(STATUS_NAME[next])} 옮기기`}
               </Button>
             )}
           </div>
