@@ -438,3 +438,20 @@
     white-space: nowrap;
   }
 }
+
+/* ---------- 관리 화면 묶음 ---------- */
+/* 자리를 차지하지 않는 묶음: 안의 화면은 본문 바로 아래에 놓인 것처럼 배치된다 */
+.adminBody {
+  display: contents;
+}
+/* 본문 바로 아래 요소와 같은 규칙 (맨 위 장식 위에 놓이게) */
+:where(.adminBody) > :where(*) {
+  position: relative;
+}
+@media (max-width: 720px) {
+  /* 관리 화면의 표 · 긴 줄은 화면을 밀지 않고 카드 안에서 옆으로 민다 */
+  .adminBody section {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}

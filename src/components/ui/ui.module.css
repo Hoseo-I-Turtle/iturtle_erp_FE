@@ -684,4 +684,18 @@
     flex: none;
     white-space: nowrap;
   }
+  /* 창: 좁은 화면을 넓게 쓴다. 옆으로 옮긴 값(offsetX)은 쓰지 않고 가운데에 둔다 */
+  .backdrop {
+    padding: 10px;
+  }
+  .modal {
+    max-height: calc(100dvh - 20px);
+    padding: 18px 14px 16px 16px;
+    border-radius: var(--radius-xl);
+    translate: none !important;
+  }
+  .modalBody {
+    padding-right: 6px; /* 스크롤 막대가 입력 칸에 붙지 않게 */
+    scrollbar-width: thin;
+  }
 }

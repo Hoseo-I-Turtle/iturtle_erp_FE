@@ -59,7 +59,8 @@
   .layout,
   .layoutList,
   .layoutNarrow {
-    grid-template-columns: 1fr;
+    /* minmax(0, …): 넓은 표가 칸을 화면 밖으로 밀지 않게 */
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 .col {

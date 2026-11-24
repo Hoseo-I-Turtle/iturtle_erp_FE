@@ -93,3 +93,10 @@
   background: var(--accent);
   color: var(--text-on-dark);
 }
+
+/* ---------- 휴대폰 (720px 이하): 표는 카드 안에서 옆으로 민다 (좁아져 글자가 세로로 쌓이지 않게) ---------- */
+@media (max-width: 720px) {
+  .row {
+    min-width: 860px;
+  }
+}
