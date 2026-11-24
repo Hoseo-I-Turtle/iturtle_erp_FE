@@ -23,7 +23,8 @@ export function SectionComments({
   canWrite: boolean
 }) {
   const prefix = sectionCommentPrefix(projectKey)
-  const comments = useComments('WEEKLY_REPORT', reportId, () => [])
+  // 칸마다 머리말로 걸러 보여 주므로 보고의 댓글을 모두 받는다
+  const comments = useComments('WEEKLY_REPORT', reportId, () => [], true)
   const [text, setText] = useState('')
   const [error, setError] = useState('')
   const mine = (comments.data ?? []).filter((c) => !c.reply && c.text.startsWith(prefix))

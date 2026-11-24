@@ -106,3 +106,22 @@
   color: var(--status-negative);
   font-size: var(--fs-caption);
 }
+
+/* 더 오래된 댓글을 불러오는 줄 (목록 맨 위) */
+.earlier {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.earlier button {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-tint);
+  color: var(--text-body);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+}
+.earlier button:disabled {
+  opacity: 0.6;
+}
