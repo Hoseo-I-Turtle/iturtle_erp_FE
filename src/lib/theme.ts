@@ -26,6 +26,8 @@ export type ThemeInfo = {
   hidden?: boolean
   /** 화면 바탕이 짙어서, 카드 밖에 놓인 제목을 밝은 글자로 써야 하는지 */
   darkPage?: boolean
+  /** 이 테마에서 쓸 로고 그림 (public 아래 주소). 없으면 기본 거북이 */
+  logoMark?: string
   /** 고르기 화면의 미리보기 색: 사이드바 · 화면 바탕 · 카드 · 강조 · 글자 */
   preview: { sidebar: string; page: string; card: string; accent: string; text: string }
 }
@@ -50,6 +52,7 @@ export const THEMES: ThemeInfo[] = [
     objectSets: ['지구 · 성운 · 은하 · 혜성 · 로켓 · 망원경 · 거북이 · 반짝이는 별'],
     hasEffects: true,
     darkPage: true,
+    logoMark: '/brand/iturtle-mark-space.png', // 헬멧을 쓴 우주 거북이
     preview: { sidebar: '#060509', page: '#07060c', card: '#0d0b14', accent: '#8b5cf6', text: '#ffffff' },
   },
   { id: 'dark', name: '다크', desc: '짙은 남색 바탕 · 꾸밈 없이 깔끔하게', objectSets: [], hasEffects: false, preview: { sidebar: '#070e18', page: '#0b1522', card: '#132235', accent: '#3b6ea8', text: '#eef4fb' } },
