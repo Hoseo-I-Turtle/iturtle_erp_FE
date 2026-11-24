@@ -135,7 +135,7 @@ export function NoticeWriteModal({ onClose, onCreated }: { onClose: () => void; 
   const navigate = useNavigate()
   const live = getDataMode() === 'live'
   const drafts = useNoticeDrafts()
-  const projects = useProjectList({ category: 'ALL', mine: true, activeOnly: true, archived: false })
+  const projects = useProjectList({ category: 'ALL', mine: true, activeOnly: true, archived: false }, 100)
   const [d, setD] = useState<Form>(emptyForm)
   /** 이어 쓰는 임시 저장 공지 id (없으면 새 글) */
   const [draftId, setDraftId] = useState<string | null>(null)

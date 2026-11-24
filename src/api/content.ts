@@ -812,10 +812,17 @@ export function useWeekSubmissions(weekStartOn: string) {
     ['report-submissions', weekStartOn],
     () => submissions,
     async () => {
-      const res = await api<ReportListResponse>('/weekly-reports', { query: { weekStartOn, size: 100 } })
+      // 제출 현황은 한 화면에 모두 있어야 한다(미제출 명단과 맞춰 본다) → 페이지를 끝까지 돌며 받는다 (정책 ERP-P32 의 예외)
+      const res = await api<ReportListResponse>('/weekly-reports', { query: { weekStartOn, page: 0, size: 100 } })
+      const reports = [...res.page.content]
+      for (let page = 1, more = res.page.hasNext; more && page < 10; page++) {
+        const next = await api<ReportListResponse>('/weekly-reports', { query: { weekStartOn, page, size: 100 } })
+        reports.push(...next.page.content)
+        more = next.page.hasNext
+      }
       const missing = res.missingMembers ?? []
       const missingIds = new Set(missing.map((m) => m.memberId))
-      const done: Submission[] = res.page.content
+      const done: Submission[] = reports
         // 작성 중(DRAFT)은 본인 것만 오고, 미제출 명단에도 들어 있다
         .filter((r) => r.status !== 'DRAFT' && !missingIds.has(r.member.memberId))
         .map((r) => ({

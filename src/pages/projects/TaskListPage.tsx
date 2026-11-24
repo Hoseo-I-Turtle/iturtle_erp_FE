@@ -2,9 +2,12 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ChevronDown, Clock, MessageCircle, Search } from 'lucide-react'
 import { Avatar, Card, Checkbox, Empty, Loadable } from '../../components/ui'
+import { LoadMore } from '../../components/ui/LoadMore'
 import { ApiError } from '../../api/client'
+import { useLoadMore, type LoadMoreState } from '../../api/useLoadMore'
 import {
   bulkUpdateTasks,
+  fetchMoreTasks,
   notifyTasksChanged,
   useTaskFormOptions,
   useTaskList,
@@ -88,6 +91,8 @@ function TaskTable({ projectKey, o }: { projectKey: string; o: TaskFormOptions }
   )
   const list = useTaskList(projectKey, filter)
   useTasksChanged(list.reload)
+  // 목록 끝에 닿으면 같은 조건의 다음 페이지를 이어 붙인다
+  const more = useLoadMore(list, list.data?.hasNext, (d) => fetchMoreTasks(projectKey, filter, d))
 
   return (
     <>
@@ -113,7 +118,7 @@ function TaskTable({ projectKey, o }: { projectKey: string; o: TaskFormOptions }
         </label>
       </div>
       <Loadable resource={list} label="작업">
-        {(d) => <Rows d={d} o={o} projectKey={projectKey} showDone={showDone} setShowDone={setShowDone} reload={list.reload} />}
+        {(d) => <Rows d={d} o={o} projectKey={projectKey} showDone={showDone} setShowDone={setShowDone} reload={list.reload} more={more} />}
       </Loadable>
     </>
   )
@@ -126,6 +131,7 @@ function Rows({
   showDone,
   setShowDone,
   reload,
+  more,
 }: {
   d: TaskListData
   o: TaskFormOptions
@@ -133,6 +139,8 @@ function Rows({
   showDone: boolean
   setShowDone: (v: boolean) => void
   reload: () => void
+  /** 무한 스크롤: 목록 끝의 다음 페이지 */
+  more: LoadMoreState
 }) {
   const [picked, setPicked] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
@@ -275,9 +283,11 @@ function Rows({
         </div>
       )}
 
+      <LoadMore more={more} />
+
       <footer className={s.foot}>
         <span>
-          {d.rows.length}개{!showDone && d.doneHidden > 0 ? ` · 완료 ${d.doneHidden}개는 숨김` : ''}
+          {d.hasNext ? `${d.total}개 중 ${d.rows.length}` : d.rows.length}개{!showDone && d.doneHidden > 0 ? ` · 완료 ${d.doneHidden}개는 숨김` : ''}
         </span>
         <button type="button" className={s.toggle} onClick={() => setShowDone(!showDone)}>
           {showDone ? '완료 숨기기' : '완료 보기'}

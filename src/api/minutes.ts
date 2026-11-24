@@ -3,6 +3,7 @@
 import { api } from './client'
 import { ago, type MemberRef, type PageResponse } from './types'
 import { useResource, whenLive } from './useResource'
+import { appendUnique, mergeNext, NOT_PAGED, pagedOf, type Paged } from './useLoadMore'
 import { getProject, toMembers } from './projects'
 import { projectDetail } from '../mocks/projectDetail'
 import { minuteRows, myMinuteActions, type MinuteRow, type MyMinuteAction } from '../mocks/minuteList'
@@ -115,8 +116,30 @@ type OccurrenceDto = { eventId: number; title?: string; busyOnly: boolean; allDa
 /* ---------------- 목록 (MM-1) ---------------- */
 
 export type MinutePeriod = 'm3' | 'm6' | 'all'
-export type MinuteFilter = { keyword: string; period: MinutePeriod; attendeeId: number | null; size: number }
-export type MinuteRowsData = { rows: MinuteRow[]; total: number }
+export type MinuteFilter = { keyword: string; period: MinutePeriod; attendeeId: number | null }
+export type MinuteRowsData = { rows: MinuteRow[]; total: number } & Paged
+
+/** 회의록 목록 한 페이지 크기 (정책 ERP-P32 의 기본값) */
+const MINUTE_PAGE_SIZE = 20
+
+const minuteListQuery = (projectKey: string, f: MinuteFilter, page: number) => {
+  const days = PERIOD_DAYS[f.period]
+  const kw = f.keyword.trim()
+  return {
+    projectKey,
+    keyword: kw.length >= 2 ? kw : undefined,
+    from: days === null ? undefined : kstDay(-days),
+    attendeeId: f.attendeeId ?? undefined,
+    page,
+    size: MINUTE_PAGE_SIZE,
+  }
+}
+
+/** 회의록 목록의 다음 페이지 (useLoadMore 에 넘긴다) */
+export const fetchMoreMinutes = (projectKey: string, f: MinuteFilter, d: MinuteRowsData) =>
+  api<PageResponse<MinuteSummaryDto>>('/meeting-minutes', { query: minuteListQuery(projectKey, f, d.page + 1) }).then((p) =>
+    mergeNext(d, (cur) => ({ ...cur, rows: appendUnique(cur.rows, p.content.map(toRow), (r) => r.minuteId), total: p.totalElements, ...pagedOf(p) })),
+  )
 
 const PERIOD_DAYS: Record<MinutePeriod, number | null> = { m3: 92, m6: 183, all: null }
 
@@ -145,28 +168,18 @@ function toRow(m: MinuteSummaryDto): MinuteRow {
   }
 }
 
-/** 이 프로젝트 회의록 목록 — 검색 · 기간 · 참석자, 목록 끝의 "더 보기" 는 size 를 늘린다 */
+/** 이 프로젝트 회의록 목록 — 검색 · 기간 · 참석자. 첫 페이지만 받고, 목록 끝에 닿으면 fetchMoreMinutes 가 이어 붙인다 */
 export function useMinuteRows(projectKey: string, f: MinuteFilter) {
   return useResource<MinuteRowsData>(
     ['minute-rows', projectKey, f],
     () => {
       const kw = f.keyword.trim()
       const rows = minuteRows.filter((r) => !kw || r.title.includes(kw) || r.attendees.some((a) => a.includes(kw)))
-      return { rows: rows.slice(0, f.size), total: rows.length }
+      return { rows, total: rows.length, ...NOT_PAGED }
     },
     async () => {
-      const days = PERIOD_DAYS[f.period]
-      const kw = f.keyword.trim()
-      const page = await api<PageResponse<MinuteSummaryDto>>('/meeting-minutes', {
-        query: {
-          projectKey,
-          keyword: kw.length >= 2 ? kw : undefined,
-          from: days === null ? undefined : kstDay(-days),
-          attendeeId: f.attendeeId ?? undefined,
-          size: f.size,
-        },
-      })
-      return { rows: page.content.map(toRow), total: page.totalElements }
+      const page = await api<PageResponse<MinuteSummaryDto>>('/meeting-minutes', { query: minuteListQuery(projectKey, f, 0) })
+      return { rows: page.content.map(toRow), total: page.totalElements, ...pagedOf(page) }
     },
   )
 }

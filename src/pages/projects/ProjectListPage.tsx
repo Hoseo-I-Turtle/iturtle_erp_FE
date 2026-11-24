@@ -4,7 +4,9 @@ import { Check, Clock, FlaskConical, Lock, Plus } from 'lucide-react'
 import { AvatarStack, Button, Chip, Empty, Loadable, Progress } from '../../components/ui'
 import { PageHeader } from '../../layouts/PageHeader'
 import { MY_ROLE_NAME, PROJECT_CATEGORY_NAME } from '../../mocks/projects'
-import { projectCategoryName, useProjectList, type ProjectCard as Project } from '../../api/projects'
+import { LoadMore } from '../../components/ui/LoadMore'
+import { useLoadMore } from '../../api/useLoadMore'
+import { fetchMoreProjects, projectCategoryName, useProjectList, type ProjectCard as Project, type ProjectListFilter } from '../../api/projects'
 import { useMe } from '../../api/members'
 import { ServiceIcon, StatusChip } from './common'
 import { DeletedProjects } from './create/DeletedProjects'
@@ -37,7 +39,10 @@ export function ProjectListPage() {
   const canRestore = roles == null || roles.includes('project-manage')
 
   // 실서버는 조건을 서버가 거르고 탭 숫자(categoryCounts)도 서버가 센다. 목업은 화면이 거른다.
-  const res = useProjectList({ category: cat, mine, activeOnly, archived })
+  const listFilter: ProjectListFilter = { category: cat, mine, activeOnly, archived }
+  const res = useProjectList(listFilter)
+  // 목록 끝에 닿으면 같은 조건의 다음 페이지를 이어 붙인다
+  const more = useLoadMore(res, res.data?.hasNext, (d) => fetchMoreProjects(listFilter, d))
   // 다시 불러오는 동안에도 탭 숫자는 앞의 값을 보여 준다
   const count = (c: Cat) => res.data?.counts[c] ?? 0
   const filter = (all: Project[]) =>
@@ -99,14 +104,19 @@ export function ProjectListPage() {
       <Loadable resource={res} label="프로젝트 목록">
         {(d) => {
           const list = filter(d.projects)
-          return list.length === 0 ? (
-            <Empty>조건에 맞는 프로젝트가 없어요.</Empty>
-          ) : (
-            <div className={s.grid}>
-              {list.map((p) => (
-                <ProjectCard key={p.projectKey} p={p} />
-              ))}
-            </div>
+          return (
+            <>
+              {list.length === 0 && !d.hasNext ? (
+                <Empty>조건에 맞는 프로젝트가 없어요.</Empty>
+              ) : (
+                <div className={s.grid}>
+                  {list.map((p) => (
+                    <ProjectCard key={p.projectKey} p={p} />
+                  ))}
+                </div>
+              )}
+              <LoadMore more={more} />
+            </>
           )
         }}
       </Loadable>

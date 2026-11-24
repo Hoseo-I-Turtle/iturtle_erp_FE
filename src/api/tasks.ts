@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { api } from './client'
 import type { MemberRef } from './types'
 import { useResource } from './useResource'
+import { appendUnique, mergeNext, NOT_PAGED, pagedOf, type Paged } from './useLoadMore'
 import { getDataMode } from '../lib/dataMode'
 import { getProject, toMembers, toTask, type BoardTask, type TaskCardDto, type TaskListResponse } from './projects'
 import { projectDetail } from '../mocks/projectDetail'
@@ -169,7 +170,41 @@ export type TaskListFilter = {
 }
 
 export type TaskRow = BoardTask
-export type TaskListData = { rows: TaskRow[]; doneHidden: number; total: number }
+export type TaskListData = { rows: TaskRow[]; doneHidden: number; total: number } & Paged
+
+/** 작업 목록 한 페이지 크기 (정책 ERP-P32 의 기본값) */
+const TASK_PAGE_SIZE = 20
+
+/** 작업 목록 조건 → GET /tasks 쿼리 (첫 페이지와 다음 페이지가 같은 조건을 쓴다) */
+const taskListQuery = (key: string | undefined, f: TaskListFilter, page: number) => {
+  const statuses = f.statuses.length ? f.statuses : OPEN_STATUSES
+  return {
+    projectKey: key ?? '',
+    statuses: (f.showDone ? [...statuses, 'DONE'] : statuses).join(','),
+    assigneeId: f.assigneeId ?? undefined,
+    labelIds: f.labelId ?? undefined,
+    milestoneId: f.milestoneId ?? undefined,
+    priorities: f.priorities.length ? f.priorities.join(',') : undefined,
+    typeCodes: f.typeCodes.length ? f.typeCodes.join(',') : undefined,
+    // 서버는 검색어 2자 이상만 받는다
+    keyword: f.keyword.trim().length >= 2 ? f.keyword.trim() : undefined,
+    doneWithinDays: f.showDone ? 365 : undefined,
+    sort: f.sort === 'dueOn' ? undefined : f.sort,
+    page,
+    size: TASK_PAGE_SIZE,
+  }
+}
+
+/** 작업 목록의 다음 페이지 (useLoadMore 에 넘긴다) */
+export const fetchMoreTasks = (key: string | undefined, f: TaskListFilter, d: TaskListData) =>
+  api<TaskListResponse>('/tasks', { query: taskListQuery(key, f, d.page + 1) }).then((list) =>
+    mergeNext(d, (cur) => ({
+      ...cur,
+      rows: appendUnique(cur.rows, list.page.content.map(toTask), (t) => t.taskKey),
+      total: list.page.totalElements,
+      ...pagedOf(list.page),
+    })),
+  )
 
 const OPEN_STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'REVIEW']
 
@@ -201,26 +236,12 @@ export function useTaskList(key: string | undefined, f: TaskListFilter) {
       else if (f.sort === 'taskNo,desc') rows = [...rows].sort((a, b) => b.taskKey.localeCompare(a.taskKey, undefined, { numeric: true }))
       else if (f.sort === 'dueOn') rows = [...rows].sort((a, b) => mockDueKey(a.dueOn) - mockDueKey(b.dueOn))
       const doneHidden = f.showDone ? 0 : mockTasks.filter((t) => t.status === 'DONE').length
-      return { rows, doneHidden, total: rows.length }
+      return { rows, doneHidden, total: rows.length, ...NOT_PAGED }
     },
     async () => {
-      const statuses = f.statuses.length ? f.statuses : OPEN_STATUSES
-      const query = {
-        projectKey: key ?? '',
-        statuses: (f.showDone ? [...statuses, 'DONE'] : statuses).join(','),
-        assigneeId: f.assigneeId ?? undefined,
-        labelIds: f.labelId ?? undefined,
-        milestoneId: f.milestoneId ?? undefined,
-        priorities: f.priorities.length ? f.priorities.join(',') : undefined,
-        typeCodes: f.typeCodes.length ? f.typeCodes.join(',') : undefined,
-        // 서버는 검색어 2자 이상만 받는다
-        keyword: f.keyword.trim().length >= 2 ? f.keyword.trim() : undefined,
-        doneWithinDays: f.showDone ? 365 : undefined,
-        sort: f.sort === 'dueOn' ? undefined : f.sort,
-        size: 100,
-      }
+      // 첫 페이지만. 다음 페이지는 fetchMoreTasks 가 이어 붙인다
       const [list, done] = await Promise.all([
-        api<TaskListResponse>('/tasks', { query }),
+        api<TaskListResponse>('/tasks', { query: taskListQuery(key, f, 0) }),
         f.showDone
           ? Promise.resolve(null)
           : api<TaskListResponse>('/tasks', { query: { projectKey: key ?? '', statuses: 'DONE', doneWithinDays: 365, size: 1 } }),
@@ -229,6 +250,7 @@ export function useTaskList(key: string | undefined, f: TaskListFilter) {
         rows: list.page.content.map(toTask),
         doneHidden: done?.page.totalElements ?? 0,
         total: list.page.totalElements,
+        ...pagedOf(list.page),
       }
     },
   )
