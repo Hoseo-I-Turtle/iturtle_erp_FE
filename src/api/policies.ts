@@ -1,8 +1,9 @@
 // 프로젝트 정책 (ERP-40 · 41) — docs/api/30-project.md 정책 (PL-1 ~ PL-5)
 // 정책 = 정한 규칙 하나와 그 이유. 키는 프로젝트마다 ERP-P12, 연구실 전체 정책은 LAB 프로젝트.
 import { api } from './client'
-import type { MemberRef } from './types'
+import type { MemberRef, PageResponse } from './types'
 import { useResource } from './useResource'
+import { appendUnique, mergeNext, NOT_PAGED, pagedOf, type Paged } from './useLoadMore'
 
 export type PolicyCategory = 'OPERATION' | 'DESIGN' | 'WORKFLOW' | 'AI_GUIDE'
 export type PolicyStatus = 'ACTIVE' | 'REVIEW_NEEDED' | 'BROKEN' | 'RETIRED' | 'SUPERSEDED'
@@ -146,7 +147,17 @@ export type PolicyDetail = {
   canComment: boolean
 }
 
-export type PolicyList = { policies: Policy[]; canWrite: boolean }
+export type PolicyList = { policies: Policy[]; canWrite: boolean } & Paged
+/**
+ * PL-1 응답. 백엔드가 2026-11-24 에 { canWrite, page: PageResponse } 로 바꿨다 (정책 ERP-P32).
+ * 그 전 모양 { policies, canWrite } 도 그대로 읽는다 (서버가 되돌아가도 화면이 죽지 않게).
+ */
+type PolicyListDto = { canWrite: boolean; page?: PageResponse<Policy>; policies?: Policy[] }
+const toPolicyList = (d: PolicyListDto): PolicyList => ({
+  policies: d.page?.content ?? d.policies ?? [],
+  canWrite: d.canWrite,
+  ...(d.page ? pagedOf(d.page) : NOT_PAGED),
+})
 
 export type PolicyFilter = { query?: string; categories?: PolicyCategory[]; statuses?: PolicyStatus[] }
 
@@ -353,12 +364,24 @@ const mockVersions = (p: Policy): PolicyVersion[] =>
 
 const path = (key: string) => `/projects/${encodeURIComponent(key)}/policies`
 
-const queryOf = (f: PolicyFilter) => ({
+/** 정책 목록 한 페이지 크기 (정책 ERP-P32 의 기본값) */
+const POLICY_PAGE_SIZE = 20
+const queryOf = (f: PolicyFilter, page: number) => ({
   query: f.query?.trim() || undefined,
   categories: f.categories?.length ? f.categories.join(',') : undefined,
   statuses: f.statuses?.length ? f.statuses.join(',') : undefined,
-  limit: 200,
+  page,
+  size: POLICY_PAGE_SIZE,
 })
+
+/** 정책 목록의 다음 페이지 (useLoadMore 에 넘긴다) */
+export const fetchMorePolicies = (key: string, filter: PolicyFilter, d: PolicyList) =>
+  api<PolicyListDto>(path(key), { query: queryOf(filter, d.page + 1) }).then((r) =>
+    mergeNext(d, (cur) => {
+      const next = toPolicyList(r)
+      return { ...cur, policies: appendUnique(cur.policies, next.policies, (p) => p.key), page: next.page, hasNext: next.hasNext }
+    }),
+  )
 
 export function usePolicies(key: string | undefined, filter: PolicyFilter) {
   return useResource<PolicyList>(
@@ -368,12 +391,13 @@ export function usePolicies(key: string | undefined, filter: PolicyFilter) {
       const live = (p: Policy) => (filter.statuses?.length ? filter.statuses.includes(p.status) : !['RETIRED', 'SUPERSEDED'].includes(p.status))
       return {
         canWrite: true,
+        ...NOT_PAGED,
         policies: mockPolicies(key ?? 'ERP').filter(
           (p) => live(p) && (!filter.categories?.length || filter.categories.includes(p.category)) && (!q || `${p.key} ${p.title} ${p.rule}`.toLowerCase().includes(q)),
         ),
       }
     },
-    () => api<PolicyList>(path(key ?? ''), { query: queryOf(filter) }),
+    () => api<PolicyListDto>(path(key ?? ''), { query: queryOf(filter, 0) }).then(toPolicyList),
   )
 }
 

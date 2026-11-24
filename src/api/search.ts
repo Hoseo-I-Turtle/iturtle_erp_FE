@@ -116,13 +116,17 @@ const LIVE: Record<SearchKind, Fetcher> = {
   // PL-0. page 가 없고 size 만 있어 "더 보기"는 더 크게 받아 뒷부분만 쓴다
   POLICY: async (keyword, page) => {
     const size = (page + 1) * SEARCH_SIZE
-    const r = await api<{ policies: { projectKey: string; projectName: string; policy: Policy }[]; totalElements: number }>('/projects/policies', {
+    type Hit = { projectKey: string; projectName: string; policy: Policy }
+    // 응답 모양이 { policies, totalElements } 에서 { page: PageResponse } 로 바뀌어도 읽는다 (정책 목록 PL-1 이 그렇게 바뀌었다)
+    const r = await api<{ policies?: Hit[]; totalElements?: number; page?: { content: Hit[]; totalElements: number } }>('/projects/policies', {
       query: { keyword, size },
     })
+    const all = r.policies ?? r.page?.content ?? []
+    const total = r.totalElements ?? r.page?.totalElements ?? all.length
     return {
-      hits: r.policies.slice(page * SEARCH_SIZE).map((x) => policyHit(x.projectKey, x.projectName, x.policy)),
-      total: r.totalElements,
-      hasMore: r.totalElements > size,
+      hits: all.slice(page * SEARCH_SIZE).map((x) => policyHit(x.projectKey, x.projectName, x.policy)),
+      total,
+      hasMore: total > size,
     }
   },
   // P-1

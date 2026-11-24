@@ -29,6 +29,8 @@ import {
 } from 'lucide-react'
 import { Avatar, Button, Card, Chip, Empty, KeyValue, Loadable, Note, PillTabs, SectionHead, type ChipTone } from '../../components/ui'
 import { CommentThread } from '../../components/comments/CommentThread'
+import { LoadMore } from '../../components/ui/LoadMore'
+import { useLoadMore } from '../../api/useLoadMore'
 import { whenLive } from '../../api/useResource'
 import { errorText } from '../../api/content'
 import { ago } from '../../api/types'
@@ -44,6 +46,7 @@ import {
   isSpecEmpty,
   specOf,
   updatePolicy,
+  fetchMorePolicies,
   usePolicies,
   usePolicy,
   type EvidenceKind,
@@ -108,11 +111,10 @@ function PolicyListView({ projectKey }: { projectKey: string }) {
   const [view, setView] = useState<View>('live')
   const [query, setQuery] = useState('')
   const [applied, setApplied] = useState('')
-  const list = usePolicies(projectKey, {
-    query: applied,
-    categories: category === 'ALL' ? undefined : [category],
-    statuses: VIEW_STATUSES[view],
-  })
+  const filter = { query: applied, categories: category === 'ALL' ? undefined : [category], statuses: VIEW_STATUSES[view] }
+  const list = usePolicies(projectKey, filter)
+  // 목록 끝에 닿으면 같은 조건의 다음 페이지를 이어 붙인다
+  const more = useLoadMore(list, list.data?.hasNext, (d) => fetchMorePolicies(projectKey, filter, d))
 
   return (
     <Card className={s.main}>
@@ -160,11 +162,14 @@ function PolicyListView({ projectKey }: { projectKey: string }) {
           d.policies.length === 0 ? (
             <Empty>{applied || category !== 'ALL' || view !== 'live' ? '조건에 맞는 정책이 없어요.' : '아직 남긴 정책이 없어요.'}</Empty>
           ) : (
-            <ul className={s.list}>
-              {d.policies.map((p) => (
-                <PolicyRow key={p.key} projectKey={projectKey} policy={p} />
-              ))}
-            </ul>
+            <>
+              <ul className={s.list}>
+                {d.policies.map((p) => (
+                  <PolicyRow key={p.key} projectKey={projectKey} policy={p} />
+                ))}
+              </ul>
+              <LoadMore more={more} />
+            </>
           )
         }
       </Loadable>
