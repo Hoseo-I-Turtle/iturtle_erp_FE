@@ -26,7 +26,7 @@ function spawn(theme: ThemeId, x: number, y: number): Particle[] {
     ]
   if (theme === 'space')
     return Math.random() < 0.6
-      ? [{ x: x + rnd(-20, 20), y: y + rnd(-20, 20), vx: rnd(-0.15, 0.15), vy: rnd(-0.15, 0.15), r: rnd(2.5, 6), life: 0, max: rnd(24, 44), kind: 'spark', hue: Math.random() < 0.5 ? '#c9c2ff' : '#ffffff' }]
+      ? [{ x: x + rnd(-20, 20), y: y + rnd(-20, 20), vx: rnd(-0.15, 0.15), vy: rnd(-0.15, 0.15), r: rnd(2.5, 6), life: 0, max: rnd(24, 44), kind: 'spark', hue: Math.random() < 0.5 ? '#c4b5fd' : '#ffffff' }]
       : []
   return []
 }
