@@ -69,3 +69,14 @@
   font-size: 11px;
   font-weight: 500;
 }
+
+/* ---------- 휴대폰 (720px 이하): 표는 카드 안에서 옆으로 민다 ---------- */
+@media (max-width: 720px) {
+  .tableCard {
+    overflow-x: auto;
+  }
+  .thead,
+  .row {
+    min-width: 640px;
+  }
+}

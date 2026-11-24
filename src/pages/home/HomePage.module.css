@@ -269,3 +269,26 @@
 .tasksCard {
   isolation: isolate;
 }
+
+/* ---------- 휴대폰 (720px 이하) ---------- */
+@media (max-width: 720px) {
+  .mustCheck {
+    padding: 18px 14px;
+  }
+  /* 꼭 확인할 것: 아이콘 · 칩 · 버튼을 윗줄에, 제목 · 설명은 아랫줄에 넓게 */
+  .mustItem {
+    flex-wrap: wrap;
+    row-gap: 8px;
+    padding: 12px;
+  }
+  .mustItem .rowText {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .mustAction {
+    margin-left: auto;
+  }
+  .tasksCard {
+    padding: 16px 14px;
+  }
+}

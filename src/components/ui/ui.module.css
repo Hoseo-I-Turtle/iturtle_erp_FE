@@ -671,3 +671,17 @@
   border-radius: 4px;
   background: var(--accent-2);
 }
+
+/* ---------- 휴대폰 (720px 이하) ---------- */
+@media (max-width: 720px) {
+  /* 고르기 줄(Segmented)이 화면보다 길면 화면을 밀지 않고 줄 안에서 옆으로 민다 */
+  .segmented {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .segment {
+    flex: none;
+    white-space: nowrap;
+  }
+}

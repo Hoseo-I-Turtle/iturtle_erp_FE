@@ -90,3 +90,11 @@
   font-size: var(--fs-caption);
   color: var(--text-muted);
 }
+
+/* ---------- 휴대폰 (720px 이하): 거르기와 "모두 읽음" 이 줄을 나눈다 ---------- */
+@media (max-width: 720px) {
+  .top {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

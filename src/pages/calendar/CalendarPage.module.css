@@ -193,3 +193,20 @@
 .minutesBtn {
   align-self: flex-start;
 }
+
+/* ---------- 휴대폰 (720px 이하) ---------- */
+@media (max-width: 720px) {
+  .calendar {
+    padding: 14px 10px;
+  }
+  .toolbar {
+    flex-wrap: wrap;
+  }
+  .month {
+    min-width: 0;
+    font-size: var(--fs-h3);
+  }
+  .weekdays > div {
+    padding: 0 4px;
+  }
+}

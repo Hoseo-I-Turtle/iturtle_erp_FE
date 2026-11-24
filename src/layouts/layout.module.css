@@ -398,6 +398,7 @@
     transform: translateX(-100%);
     visibility: hidden;
     transition: transform 0.2s ease, visibility 0s 0.2s;
+    scrollbar-width: none; /* 서랍 옆에 스크롤 막대가 흰 줄로 보이지 않게 (스크롤은 된다) */
   }
   .sidebarOpen {
     transform: none;
@@ -411,5 +412,29 @@
     inset: 0;
     z-index: 49;
     background: var(--surface-overlay);
+  }
+}
+
+/* ---------- 휴대폰 (720px 이하) ---------- */
+@media (max-width: 720px) {
+  .headerTitle h1 {
+    font-size: 26px;
+    line-height: 34px;
+  }
+  /* 검색 · 알림 · 버튼이 한 줄에 들어가게 검색창이 남는 자리를 쓴다 */
+  .search {
+    flex: 1 1 120px;
+    min-width: 120px;
+  }
+  /* 프로젝트 탭: 여러 줄로 접히지 않고 한 줄에서 옆으로 민다 */
+  .projectTabs {
+    align-self: stretch;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .projectTab {
+    flex: none;
+    white-space: nowrap;
   }
 }
