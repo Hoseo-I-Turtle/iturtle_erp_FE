@@ -85,3 +85,57 @@
     left: 0;
   }
 }
+
+/* ---------- 우주: 배경 잔별 ---------- */
+/* 작은 점을 타일처럼 깔고, 세 겹이 서로 다른 박자로 은은하게 깜빡인다 */
+.stars {
+  position: absolute;
+  inset: 0;
+  animation: starsTwinkle 4s ease-in-out infinite alternate;
+}
+.starsA {
+  background-image:
+    radial-gradient(1.2px 1.2px at 24px 36px, #fff 55%, transparent 60%),
+    radial-gradient(1px 1px at 92px 148px, #e9e5f5 55%, transparent 60%),
+    radial-gradient(1.4px 1.4px at 168px 64px, #fff 55%, transparent 60%),
+    radial-gradient(1px 1px at 206px 190px, #c4b5fd 55%, transparent 60%),
+    radial-gradient(1px 1px at 58px 212px, #fff 55%, transparent 60%);
+  background-size: 240px 240px;
+  animation-duration: 3.4s;
+}
+.starsB {
+  background-image:
+    radial-gradient(1px 1px at 40px 120px, #fff 55%, transparent 60%),
+    radial-gradient(1.6px 1.6px at 150px 30px, #e9e5f5 55%, transparent 60%),
+    radial-gradient(1px 1px at 250px 210px, #fff 55%, transparent 60%),
+    radial-gradient(1.2px 1.2px at 300px 96px, #c4b5fd 55%, transparent 60%),
+    radial-gradient(1px 1px at 118px 290px, #fff 55%, transparent 60%);
+  background-size: 340px 340px;
+  animation-duration: 5.2s;
+  animation-delay: -2.1s;
+}
+.starsC {
+  background-image:
+    radial-gradient(0.9px 0.9px at 16px 80px, #fff 55%, transparent 60%),
+    radial-gradient(0.9px 0.9px at 74px 22px, #fff 55%, transparent 60%),
+    radial-gradient(0.9px 0.9px at 132px 118px, #e9e5f5 55%, transparent 60%),
+    radial-gradient(0.9px 0.9px at 100px 166px, #fff 55%, transparent 60%);
+  background-size: 180px 180px;
+  animation-duration: 7.3s;
+  animation-delay: -4s;
+}
+@keyframes starsTwinkle {
+  from { opacity: 0.12; }
+  to { opacity: 0.7; }
+}
+/* 움직임을 끈 경우: 깜빡이지 않고 옅게 떠 있다 */
+:global([data-effects='off']) .stars {
+  animation: none;
+  opacity: 0.4;
+}
+@media (prefers-reduced-motion: reduce) {
+  .stars {
+    animation: none;
+    opacity: 0.4;
+  }
+}

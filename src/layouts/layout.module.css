@@ -49,7 +49,7 @@
   font-size: var(--fs-overline);
   font-weight: 500;
   letter-spacing: 0.06em;
-  color: var(--text-muted);
+  color: var(--sidebar-section-text);
 }
 .navItem {
   display: flex;
@@ -90,8 +90,13 @@
   padding: 14px;
   border-radius: 18px;
   /* 사이드바 아래쪽 배경(brand-500)과 같은 색이라 구분이 안 됐다 — 밝은 막을 얹고 테두리를 둔다 */
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: var(--sidebar-user-bg);
+  border: 1px solid var(--sidebar-user-border);
+}
+/* 우주: 내 정보 칸의 아바타만 연보라 (아바타 색은 컴포넌트가 직접 칠해서 여기서 덮는다) */
+:global([data-theme='space']) .user > :first-child {
+  background: var(--sidebar-avatar-bg) !important;
+  color: var(--sidebar-avatar-text);
 }
 .userText {
   flex: 1;
@@ -249,7 +254,7 @@
   padding: 0 16px;
   background: var(--surface-card);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-control);
   color: var(--text-muted);
   cursor: text;
 }

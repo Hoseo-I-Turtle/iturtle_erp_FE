@@ -47,6 +47,9 @@
 
 /* ---------- 꼭 확인할 것 ---------- */
 .mustCheck {
+  /* 카드 안 종류 칩(Chip brand)의 색을 이 카드만 따로 준다 */
+  --accent-soft: var(--hero-chip-bg);
+  --text-body: var(--hero-chip-text);
   background: var(--grad-hero);
   border-radius: var(--radius-2xl);
   box-shadow: var(--shadow-card);
@@ -83,8 +86,8 @@
   flex: none;
   padding: 8px 14px;
   border-radius: var(--radius-sm);
-  background: var(--surface-card);
-  color: var(--text-body);
+  background: var(--hero-action-bg);
+  color: var(--hero-action-text);
   font-size: var(--fs-caption);
   font-weight: 500;
   transition: background-color 0.15s;
@@ -97,7 +100,7 @@
   text-align: center;
 }
 .mustAction:hover {
-  background: var(--accent-soft);
+  background: var(--hero-action-hover);
 }
 
 /* ---------- 내 작업 ---------- */
