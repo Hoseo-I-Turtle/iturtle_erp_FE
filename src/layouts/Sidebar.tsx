@@ -13,7 +13,8 @@ import s from './layout.module.css'
 
 const STATUS_NAME: Record<MemberStatusCode, string> = { ACTIVE: '재실', ON_LEAVE: '휴학', GRADUATED: '졸업', LEFT: '퇴실' }
 
-export function Sidebar({ mode }: { mode: DataMode }) {
+/** open · onClose 는 좁은 화면에서만 쓰인다: 사이드바가 옆에서 밀려 나오는 서랍이 된다 */
+export function Sidebar({ mode, open, onClose }: { mode: DataMode; open: boolean; onClose: () => void }) {
   const navigate = useNavigate()
   const me = useMe().data
 
@@ -23,7 +24,8 @@ export function Sidebar({ mode }: { mode: DataMode }) {
   }
 
   return (
-    <aside className={s.sidebar}>
+    // 메뉴(링크)를 누르면 서랍을 닫는다
+    <aside className={open ? `${s.sidebar} ${s.sidebarOpen}` : s.sidebar} onClick={(e) => (e.target as HTMLElement).closest('a') && onClose()}>
       <ThemeDecor area="sidebar" />
       <ThemeObjects slot="sidebar" />
       <NavLink to="/" className={`${s.logo} ${s.brand}`} aria-label="iturtle 홈">
