@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, Outlet, useSearchParams } from 'react-router-dom'
-import { Info, Lock, X } from 'lucide-react'
+import { Info, Lock, Menu, X } from 'lucide-react'
 import { Sidebar } from './Sidebar'
+import { BrandLogo } from '../components/ui'
 import { ThemeDecor } from '../components/theme/ThemeDecor'
 import { ThemeObjects } from '../components/theme/ThemeObjects'
 import { MouseEffects } from '../components/theme/MouseEffects'
@@ -46,6 +47,14 @@ function DeniedBanner({ clientId, live, onClose }: { clientId: string; live: boo
 export function AppLayout() {
   const mode = getDataMode()
   const [params, setParams] = useSearchParams()
+  // 좁은 화면: 사이드바를 접어 두고 메뉴 버튼으로 연다
+  const [navOpen, setNavOpen] = useState(false)
+  useEffect(() => {
+    if (!navOpen) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setNavOpen(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [navOpen])
   // 목업 / 실서버를 아직 고르지 않았으면 선택 화면으로 (개발 서버만 — 운영 빌드는 늘 실서버)
   if (!mode) return <Navigate to="/start" replace />
 
@@ -56,9 +65,17 @@ export function AppLayout() {
       <ThemeDecor area="page" />
       <ThemeObjects slot="page" />
       <MouseEffects />
-      <Sidebar mode={mode} />
+      <Sidebar mode={mode} open={navOpen} onClose={() => setNavOpen(false)} />
+      {navOpen && <button type="button" className={s.scrim} aria-label="메뉴 닫기" onClick={() => setNavOpen(false)} />}
       <main className={s.main}>
         <ThemeObjects slot="header" />
+        {/* 좁은 화면에서만 보이는 위쪽 막대 */}
+        <div className={s.mobileBar}>
+          <button type="button" aria-label="메뉴 열기" aria-expanded={navOpen} onClick={() => setNavOpen(true)}>
+            <Menu size={24} />
+          </button>
+          <BrandLogo height={28} gap={10} />
+        </div>
         {denied && (
           <DeniedBanner
             clientId={denied}

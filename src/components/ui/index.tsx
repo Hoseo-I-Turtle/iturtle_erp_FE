@@ -346,8 +346,10 @@ type ModalProps = {
   footer?: ReactNode
   width?: number
   children: ReactNode
+  /** 창을 가운데에서 옆으로 옮길 거리(px). 양수면 오른쪽 */
+  offsetX?: number
 }
-export function Modal({ title, badge, onClose, footer, width = 1120, children }: ModalProps) {
+export function Modal({ title, badge, onClose, footer, width = 1120, offsetX, children }: ModalProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
@@ -355,7 +357,7 @@ export function Modal({ title, badge, onClose, footer, width = 1120, children }:
   }, [onClose])
   return (
     <div className={s.backdrop} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={s.modal} style={{ maxWidth: width }} role="dialog" aria-modal="true">
+      <div className={s.modal} style={{ maxWidth: width, translate: offsetX ? `${offsetX}px 0` : undefined }} role="dialog" aria-modal="true">
         <header className={s.modalHead}>
           <h2>{title}</h2>
           {badge}

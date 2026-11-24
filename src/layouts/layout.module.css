@@ -216,13 +216,15 @@
 /* ---------- PageHeader ---------- */
 .header {
   display: flex;
+  flex-wrap: wrap; /* 좁으면 제목이 한 줄을 차지하고, 검색 · 알림 · 버튼은 다음 줄로 내려간다 */
   align-items: center;
   gap: 16px;
   min-height: 72px;
 }
 .headerTitle {
-  flex: 1;
+  flex: 1 1 240px; /* 이보다 좁아지면 글자가 세로로 쪼개지는 대신 줄을 바꾼다 */
   min-width: 0;
+  word-break: keep-all;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -238,7 +240,8 @@
 }
 
 .search {
-  width: 340px;
+  flex: 0 1 340px; /* 자리가 모자라면 줄어든다 */
+  min-width: 180px;
   height: 48px;
   display: flex;
   align-items: center;
@@ -346,4 +349,62 @@
  */
 :where(.main) > :where(:not([data-theme-objects])) {
   position: relative;
+}
+
+/* ---------- 좁은 화면 (900px 이하): 사이드바를 접고 메뉴 버튼으로 연다 ---------- */
+.mobileBar,
+.scrim {
+  display: none;
+}
+@media (max-width: 900px) {
+  .app {
+    --page-padding: 16px;
+  }
+  /* 위쪽 막대: 본문과 같이 있다가 스크롤하면 위에 붙는다. 창(z-index 40)보다는 아래 */
+  .mobileBar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 56px;
+    margin: calc(var(--page-padding) * -1) calc(var(--page-padding) * -1) 0;
+    padding: 0 8px;
+    background: var(--grad-sidebar);
+    color: var(--sidebar-text-strong);
+  }
+  .mobileBar button {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    color: inherit;
+  }
+  /* 사이드바는 왼쪽 밖에 숨어 있다가 밀려 나온다. 닫혀 있을 때는 탭 키로도 닿지 않게 숨긴다 */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 50;
+    width: min(var(--sidebar-width), 84vw);
+    height: 100dvh;
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 0.2s ease, visibility 0s 0.2s;
+  }
+  .sidebarOpen {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.2s ease;
+    box-shadow: var(--shadow-floating);
+  }
+  .scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 49;
+    background: var(--surface-overlay);
+  }
 }
