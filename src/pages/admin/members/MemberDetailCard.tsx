@@ -126,7 +126,7 @@ export function MemberDetailCard({
         {presets.length > 0 && (
           <Select value={presetPick} width={140} label="적용할 프리셋" options={presets.map((p) => ({ value: p.id, label: p.name }))} onChange={onPresetPick} />
         )}
-        <Button variant="tint" icon={Shield} onClick={onApplyPreset} disabled={presets.length === 0}>
+        <Button variant="tint" icon={Shield} onClick={onApplyPreset} disabled={presets.length === 0} title="역할을 이 프리셋 역할로 바꿔요 (프리셋에 없는 역할은 빠져요)">
           프리셋 적용
         </Button>
         <Button onClick={onSaveRoles} disabled={!dirty || violated.length > 0}>

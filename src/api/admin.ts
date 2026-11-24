@@ -297,7 +297,7 @@ export const saveMemberRoles = (memberId: number, roleCodes: string[]) =>
   api<{ roles: MemberRole[] }>(`/members/${memberId}/roles`, { method: 'PUT', body: { roleCodes } }).then((r) => r.roles.map((x) => x.code))
 
 /**
- * 3-5 프리셋 추가 적용 (role-manage). 프리셋 역할 중 없는 것만 더하고, 이미 가진 역할은 그대로 둔다.
+ * 3-5 프리셋 적용 (role-manage). 역할을 프리셋의 역할로 덮어쓴다 — 프리셋에 없는 역할은 빠진다 (ERP-51).
  * 같은 프리셋을 다시 적용해도 된다 (빠진 역할 채우기). → 더한 역할 · 저장 뒤 역할 코드
  */
 export const applyPreset = (memberId: number, presetId: number) =>
