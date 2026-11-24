@@ -52,8 +52,8 @@ function ledgeRects(ledges: Map<Element | null, Ledge>, w: number, h: number) {
 function settle(hs: number[]) {
   for (let i = 0; i < hs.length - 1; i++) {
     const d = (hs[i] ?? 0) - (hs[i + 1] ?? 0)
-    if (Math.abs(d) > 2) {
-      const m = d * 0.25
+    if (Math.abs(d) > 4) {
+      const m = d * 0.2
       hs[i] = (hs[i] ?? 0) - m
       hs[i + 1] = (hs[i + 1] ?? 0) + m
     }
@@ -79,6 +79,25 @@ function spawn(theme: ThemeId, x: number, y: number): Particle[] {
       ? [{ x: x + rnd(-20, 20), y: y + rnd(-20, 20), vx: rnd(-0.15, 0.15), vy: rnd(-0.15, 0.15), r: rnd(2.5, 6), life: 0, max: rnd(24, 44), kind: 'spark', hue: Math.random() < 0.5 ? '#c4b5fd' : '#ffffff' }]
       : []
   return []
+}
+
+/**
+ * 눈덩이가 지나간 자리의 눈을 깎는다: 바닥에 닿는 너비(반지름의 0.7배 양쪽) 안의 칸마다, 움직인 거리만큼 눈을 걷어 낸다.
+ * 걷어 낸 눈만큼 눈덩이가 커진다 (넓이로 더해서 크기가 너무 빨리 늘지 않게). 돌려준 값 = 새 반지름
+ */
+function eatSnow(hs: number[], x: number, r: number, dist: number) {
+  const from = Math.floor((x - r * 0.7) / BIN)
+  const to = Math.floor((x + r * 0.7) / BIN)
+  const bite = Math.min(1, 0.12 + Math.abs(dist) * 0.18) // 이번에 걷어 낼 비율
+  let took = 0
+  for (let i = from; i <= to; i++) {
+    const v = hs[i] ?? 0
+    if (v <= 0) continue
+    const t = v * bite
+    hs[i] = v - t
+    took += t
+  }
+  return r >= BALL_MAX_R ? r : Math.min(BALL_MAX_R, Math.sqrt(r * r + took * BIN * 0.9))
 }
 
 /** 눈덩이: 흰 원 + 아래쪽 그늘 + 굴린 결(회전) */
@@ -232,18 +251,7 @@ export function MouseEffects() {
         if (!r) return
         grab.x = Math.max(grab.r, Math.min(r.width - grab.r, e.clientX - r.left))
         grab.spin += dx / Math.max(grab.r, 1)
-        const from = Math.floor((grab.x - grab.r) / BIN)
-        const to = Math.floor((grab.x + grab.r) / BIN)
-        let took = 0
-        for (let i = from; i <= to; i++) {
-          const v = grab.ledge.h[i] ?? 0
-          const t = Math.min(v, Math.abs(dx) * 0.08 + 0.05)
-          if (t > 0) {
-            grab.ledge.h[i] = v - t
-            took += t
-          }
-        }
-        if (grab.r < BALL_MAX_R) grab.r = Math.min(BALL_MAX_R, Math.sqrt(grab.r * grab.r + took * BIN * 1.6))
+        if (dx !== 0) grab.r = eatSnow(grab.ledge.h, grab.x, grab.r, dx)
       } else {
         grab.hx = e.clientX
         grab.hy = e.clientY
@@ -450,14 +458,8 @@ export function MouseEffects() {
               if (b.vx !== 0) {
                 b.x += b.vx
                 b.spin += b.vx / Math.max(b.r, 1)
-                // 구른 자리의 눈을 먹는다
-                const i = Math.floor(b.x / BIN)
-                const v = hs[i] ?? 0
-                const t = Math.min(v, Math.abs(b.vx) * 0.06)
-                if (t > 0) {
-                  hs[i] = v - t
-                  if (b.r < BALL_MAX_R) b.r = Math.min(BALL_MAX_R, Math.sqrt(b.r * b.r + t * BIN * 1.6))
-                }
+                // 구른 자리의 눈을 먹는다 (지나간 자리는 눈이 줄어든다)
+                b.r = eatSnow(hs, b.x, b.r, b.vx)
                 moving = true
                 if (b.x < 0 || b.x > r.width) {
                   // 가장자리를 넘었다: 떨어진다
