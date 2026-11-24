@@ -25,7 +25,10 @@ export function MustCheckSection({ mustCheck }: { mustCheck: Resource<MustCheck[
         onDark
       />
       <Loadable resource={mustCheck} label="꼭 확인할 것">
-        {(items) => (
+        {(items) =>
+          items.length === 0 ? (
+            <p className={s.mustEmpty}>지금 꼭 확인할 것이 없어요.</p>
+          ) : (
           <ul className={s.list}>
             {items.map((m) => {
               const Icon = KIND_ICON[m.kind]
@@ -44,7 +47,8 @@ export function MustCheckSection({ mustCheck }: { mustCheck: Resource<MustCheck[
               )
             })}
           </ul>
-        )}
+          )
+        }
       </Loadable>
     </section>
   )

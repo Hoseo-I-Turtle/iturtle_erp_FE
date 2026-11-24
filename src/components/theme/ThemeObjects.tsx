@@ -137,9 +137,57 @@ const OCEAN: Placement[] = [
   { set: 0, slot: 'sidebar', src: o('seaweed_bottom_right'), style: { right: 0, bottom: 0, width: 56 } },
 ]
 
+/* ---------- 우주: 그림 파일 (Penpot "14 Theme · 우주" 의 홈 화면 두 장의 자리를 따름) ---------- */
+// 오브젝트 1 = "오브젝트 A + 거북이", 오브젝트 2 = "오브젝트 B (귀여운 그림)". 같은 자리의 다른 그림이라 한 번에 하나만 그린다.
+// 카드 안 자리는 Penpot 의 카드 너비(900 · 360px) 기준으로 잰 값이다.
+const SP = import.meta.glob<string>('../../assets/themes/space/**/*.png', { eager: true, import: 'default' })
+const sp = (name: string) => SP[`../../assets/themes/space/${name}.png`]
+
+const SPACE: Placement[] = [
+  // ===== 오브젝트 1 =====
+  // --- 본문 맨 위: 성운 · 지구 · 위성 (카드 뒤)
+  { set: 0, slot: 'header', src: sp('nebula'), style: { left: 376, top: -40, width: 560 } },
+  { set: 0, slot: 'header', src: sp('earth'), style: { left: 436, top: -150, width: 250 } },
+  { set: 0, slot: 'header', src: sp('satellite'), style: { left: 276, top: 22, width: 130 }, wideOnly: true },
+  // --- 화면 아래: 은하 (본문 뒤)
+  { set: 0, slot: 'page', src: sp('galaxy'), style: { left: 36, bottom: -18, width: 330 } },
+  // --- "꼭 확인할 것" 카드: 혜성
+  { set: 0, slot: 'hero', src: sp('comet'), style: { right: '16.9%', top: 15, width: 190 }, wideOnly: true },
+  // --- "내 작업" 카드: 로켓
+  { set: 0, slot: 'tasks', src: sp('rocket'), style: { right: '24.9%', top: 48, width: 105 }, wideOnly: true },
+  // --- "이번 주 일정" 카드: 반짝이
+  { set: 0, slot: 'schedule', src: sp('sparkles'), style: { right: 106, bottom: 4, width: 46 } },
+  // --- "최근 공지" 카드: 잠든 거북이
+  { set: 0, slot: 'notices', src: sp('turtle_sleep_glow'), style: { right: 21, bottom: 0, width: 124 } },
+  // --- 사이드바: 망원경 · 인사하는 거북이 · 반짝이
+  { set: 0, slot: 'sidebar', src: sp('telescope'), style: { left: 112, bottom: 128, width: 130 }, tallOnly: true },
+  { set: 0, slot: 'sidebar', src: sp('turtle_hello_glow'), style: { left: 12, bottom: 120, width: 104 }, tallOnly: true },
+  { set: 0, slot: 'sidebar', src: sp('sparkles'), style: { left: 196, bottom: 460, width: 44 }, tallOnly: true },
+
+  // ===== 오브젝트 2 (귀여운 그림) =====
+  { set: 1, slot: 'header', src: sp('cute/nebula'), style: { left: 356, top: 6, width: 290 } },
+  { set: 1, slot: 'header', src: sp('cute/moon'), style: { left: 496, top: -120, width: 230 } },
+  { set: 1, slot: 'header', src: sp('cute/satellite'), style: { left: 256, top: 16, width: 140 }, wideOnly: true },
+  { set: 1, slot: 'page', src: sp('cute/galaxy'), style: { left: 46, bottom: 4, width: 250 } },
+  // --- "꼭 확인할 것" 카드: 혜성 · 반짝이 · 인사하는 거북이
+  { set: 1, slot: 'hero', src: sp('cute/comet'), style: { right: '24.7%', top: 12, width: 170 }, wideOnly: true },
+  { set: 1, slot: 'hero', src: sp('cute/sparkles'), style: { right: '14%', top: 30, width: 56 }, wideOnly: true },
+  { set: 1, slot: 'hero', src: sp('cute/turtle_hello'), style: { right: '18%', bottom: 8, width: 150 }, wideOnly: true },
+  // --- "내 작업" 카드: 토성 · 깃발 꽂은 달
+  { set: 1, slot: 'tasks', src: sp('cute/saturn'), style: { right: '22.4%', top: 51, width: 110 }, wideOnly: true },
+  { set: 1, slot: 'tasks', src: sp('cute/moon_flag'), style: { right: '20.2%', bottom: 0, width: 250 }, wideOnly: true },
+  { set: 1, slot: 'schedule', src: sp('cute/sparkles'), style: { right: 106, bottom: 2, width: 44 } },
+  { set: 1, slot: 'notices', src: sp('cute/turtle_sleep'), style: { right: 14, bottom: 0, width: 150 } },
+  // --- 사이드바: 망원경 · 로켓 · 소행성
+  { set: 1, slot: 'sidebar', src: sp('cute/telescope'), style: { left: 66, bottom: 128, width: 120 }, tallOnly: true },
+  { set: 1, slot: 'sidebar', src: sp('cute/rocket'), style: { left: 160, bottom: 329, width: 78 }, tallOnly: true },
+  { set: 1, slot: 'sidebar', src: sp('cute/asteroid'), style: { left: 196, bottom: 461, width: 44 }, tallOnly: true },
+]
+
 const SETS: Partial<Record<ThemeId, ThemeObjectSet>> = {
   christmas: { pixel: true, items: CHRISTMAS },
   ocean: { items: OCEAN },
+  space: { items: SPACE },
 }
 
 /**
@@ -196,9 +244,9 @@ function CardWaves({ light }: { light?: boolean }) {
 
 /** 그 자리에 놓을 오브젝트를 그린다 (켜진 묶음만) */
 export function ThemeObjects({ slot }: { slot: ObjectSlot }) {
-  const { active, objects, effects } = useTheme()
+  const { active, shownObjects, effects } = useTheme()
   const set = SETS[active]
-  const items = (set?.items ?? []).filter((p) => p.slot === slot && objects[p.set])
+  const items = (set?.items ?? []).filter((p) => p.slot === slot && shownObjects[p.set])
   if (items.length === 0) return null
   return (
     <>

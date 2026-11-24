@@ -1,6 +1,7 @@
 // 마우스에 반응하는 효과 — 화면 맨 위에 눌리지 않는 캔버스 한 장을 깔고 테마마다 다른 것을 그린다.
 //   바다       : 마우스가 지나간 자리에서 방울이 떠오른다
 //   크리스마스 : 마우스 주변에서 눈과 반짝이가 흩날린다
+//   우주       : 마우스 주변에서 별빛이 반짝인다
 //   다크       : 없음 (깔끔하게 쓰는 테마)
 // 설정 › 테마의 "마우스 효과" 스위치로 끈다. 기기의 "움직임 줄이기"가 켜져 있으면 그리지 않는다.
 // 틀의 색 · 장식 오브젝트와는 따로 돈다 (lib/theme.ts 의 data-effects).
@@ -23,6 +24,10 @@ function spawn(theme: ThemeId, x: number, y: number): Particle[] {
         ? [{ x: x + rnd(-18, 18), y: y + rnd(-18, 18), vx: 0, vy: 0, r: rnd(3, 6), life: 0, max: rnd(20, 34), kind: 'spark' as const, hue: Math.random() < 0.5 ? '#ffd24d' : '#ffffff' }]
         : []),
     ]
+  if (theme === 'space')
+    return Math.random() < 0.6
+      ? [{ x: x + rnd(-20, 20), y: y + rnd(-20, 20), vx: rnd(-0.15, 0.15), vy: rnd(-0.15, 0.15), r: rnd(2.5, 6), life: 0, max: rnd(24, 44), kind: 'spark', hue: Math.random() < 0.5 ? '#c9c2ff' : '#ffffff' }]
+      : []
   return []
 }
 

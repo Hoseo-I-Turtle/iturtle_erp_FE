@@ -139,6 +139,73 @@
   --card-frame: repeating-linear-gradient(-45deg, #e3262e 0 9px, #fff6ec 9px 18px);
 }
 
+/* ================= 우주 ================= */
+/* 임시 색: Penpot "14 Theme · 우주" 의 값을 아직 옮기지 못해 밤하늘 느낌으로 잡아 둔 것. Penpot 값이 확인되면 바꾼다 */
+[data-theme='space'] {
+  --accent-deep: #0a0820;
+  --accent: #6a5ae0; /* 헤더 버튼 · 주 버튼 (보라) */
+  --accent-2: #8d7ff5;
+  --accent-3: #5a4fb8;
+  --accent-line: #7a6ee0;
+  --accent-soft: #2c2766; /* 칩 */
+
+  --surface-page: #0d0b2b;
+  --page-bg: radial-gradient(1200px 700px at 70% -10%, #2a1f6b 0%, transparent 60%), linear-gradient(180deg, #0a0822 0%, #120f38 100%);
+  --surface-card: #1a1842;
+  --surface-soft: #211e52;
+  --surface-sunken: #1e1b4a;
+  --surface-tint: #2b2768;
+  --surface-unread: #262260;
+  --surface-disabled: #1c1a3a;
+  --surface-overlay: rgba(4, 3, 18, 0.66);
+
+  --border-default: #34307a;
+  --border-soft: #262358;
+  --focus-ring: rgba(141, 127, 245, 0.4);
+
+  --text-primary: #f1efff;
+  --text-body: #dcd8fb;
+  --text-secondary: #b6b0ec;
+  --text-muted: #8d87c8;
+  --text-faint: #68639f;
+  --text-disabled: #5a567f;
+  --text-on-dark-muted: #b6b0ec;
+  --page-title: #ffffff;
+  --page-subtitle: #b6b0ec;
+
+  --status-positive: #3ecf87;
+  --status-positive-text: #6fdca4;
+  --status-positive-bg: #153a35;
+  --status-negative: #ff6b70;
+  --status-negative-bg: #3d1c33;
+  --status-negative-bg-soft: #2c1a36;
+  --status-negative-border: #6b2f4a;
+  --status-warning-text: #f0b45a;
+  --status-warning-bg: #3a2b2a;
+  --status-review: #b98a3a;
+  --status-review-text: #1a1206;
+  --highlight: #6b5410;
+
+  --sidebar-from: #070618;
+  --sidebar-to: #14113a;
+  --sidebar-text: #8d87c8;
+  --sidebar-text-strong: #ffffff;
+  --sidebar-hover: rgba(141, 127, 245, 0.12);
+  --sidebar-active: #4a3fb0;
+  --sidebar-active-text: #ffffff;
+  --sidebar-card: #1e1b4a;
+  --sidebar-badge: #6a5ae0;
+  --sidebar-badge-text: #ffffff;
+
+  --hero-from: #3a2f9c;
+  --hero-to: #1a1556;
+
+  --shadow-card: 0 0 0 1px #2a2666, 0 8px 24px rgba(3, 2, 16, 0.45);
+  --shadow-floating: 0 14px 36px rgba(3, 2, 16, 0.6), 0 0 0 1px #34307a;
+
+  color-scheme: dark;
+}
+
 /* ================= 다크 ================= */
 [data-theme='dark'] {
   --accent-deep: #0a1524;

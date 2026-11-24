@@ -29,8 +29,7 @@ export function HomePage() {
   const recentNotices = useHomeRecentNotices()
   const services = useHomeServices()
 
-  // 꼭 확인할 것 · 검토 대기는 비면 칸을 숨긴다
-  const showMustCheck = !(mustCheck.data && mustCheck.data.length === 0)
+  // 꼭 확인할 것은 비어도 늘 맨 위에 둔다. 검토 대기는 비면 칸을 숨긴다
   const showReview = !!reviewTasks.data?.length || !!reviewTasks.error
 
   return (
@@ -39,10 +38,8 @@ export function HomePage() {
 
       <div className={s.body}>
         <div className={s.left}>
-          {/* 꼭 확인할 것 */}
-          {showMustCheck && (
-            <MustCheckSection mustCheck={mustCheck} />
-          )}
+          {/* 꼭 확인할 것 (비어도 늘 맨 위) */}
+          <MustCheckSection mustCheck={mustCheck} />
 
           {/* 내 작업 */}
           <Card className={s.tasksCard}>
