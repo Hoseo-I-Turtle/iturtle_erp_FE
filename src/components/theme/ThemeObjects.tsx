@@ -2,13 +2,12 @@
 // 틀(카드 · 사이드바)의 색과는 따로이고, 묶음(오브젝트 1 · 오브젝트 2)마다 켜고 끌 수 있다 (lib/theme.ts).
 //
 //   <ThemeObjects slot="hero" />  처럼 그 자리의 부모 안에 넣는다. 부모는 position: relative 여야 한다.
-//   모두 눌리지 않는다 (pointer-events: none). 만지면 반응하는 것(우주 Playful · 바다 Swimmer)은 창에 단 듣개로 마우스 자리를 직접 본다.
+//   모두 눌리지 않는다 (pointer-events: none). 만지면 반응하는 것(우주 Playful)은 창에 단 듣개로 마우스 자리를 직접 본다.
 //
 // 새 묶음을 더할 때: 그림을 src/assets/themes/<테마>/ 에 넣고, 아래 PLACEMENTS 에 set 번호와 자리를 적는다.
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { prefersReducedMotion, useTheme, type ThemeId } from '../../lib/theme'
 import { Playful, type PlayKind } from './Playful'
-import { Swimmer, type SwimKind } from './SeaLife'
 import s from './ThemeObjects.module.css'
 
 export type ObjectSlot =
@@ -40,11 +39,6 @@ type Placement = {
   drift?: boolean
   /** 우주: 만지면 반응한다 (Playful.tsx) */
   play?: PlayKind
-  /** 바다: 자리 안을 헤엄쳐 다닌다 (SeaLife.tsx). roam = 원래 자리에서 벗어나는 최대 거리(px) — 카드 글자 위에 놓인 것은 좁게 */
-  swim?: SwimKind
-  roam?: number
-  /** 바다: 아랫부분을 축으로 물결에 흔들린다 (해초) · 둥실 오르내린다 (방울) */
-  idle?: 'seaweed' | 'bubble'
 }
 /** 끈 — x: 장식 그림 안에서 끈이 붙는 가로 위치(px), top: 끈 윗끝의 y(px, 장식 그림 윗변은 40) */
 type Rope = { x: number; top: number }
@@ -128,35 +122,34 @@ const O = import.meta.glob<string>('../../assets/themes/ocean/**/*.png', { eager
 const o = (name: string) => O[`../../assets/themes/ocean/${name}.png`]
 
 const OCEAN: Placement[] = [
-  // --- 본문 맨 위: 고래 · 물고기 떼 · 방울 (고래 · 물고기 떼는 머리글 너비를 오가며 헤엄친다)
-  { set: 0, slot: 'header', src: o('whale'), style: { left: '20.4%', top: 4, width: 211 }, swim: 'whale' },
-  // 물고기 떼 그림 왼쪽 끝에 같이 잘린 물풀 조각은 가린다 (헤엄치면 따라다녀서)
-  { set: 0, slot: 'header', src: o('fish/fish_school_top'), style: { left: '37%', top: 52, width: 150, clipPath: 'inset(0 0 0 6%)' }, wideOnly: true, swim: 'school' },
-  { set: 0, slot: 'header', src: o('bubbles/bubble_top_1'), style: { left: '34.6%', top: 36, width: 26 }, idle: 'bubble' },
-  { set: 0, slot: 'header', src: o('bubbles/bubble_top_2'), style: { left: '20.2%', top: 70, width: 18 }, idle: 'bubble' },
+  // --- 본문 맨 위: 고래 · 물고기 떼 · 방울
+  { set: 0, slot: 'header', src: o('whale'), style: { left: '20.4%', top: 4, width: 211 } },
+  { set: 0, slot: 'header', src: o('fish/fish_school_top'), style: { left: '37%', top: 52, width: 150 }, wideOnly: true },
+  { set: 0, slot: 'header', src: o('bubbles/bubble_top_1'), style: { left: '34.6%', top: 36, width: 26 } },
+  { set: 0, slot: 'header', src: o('bubbles/bubble_top_2'), style: { left: '20.2%', top: 70, width: 18 } },
 
   // --- "꼭 확인할 것" 카드: 해파리 · 산호 · 방울
-  { set: 0, slot: 'hero', src: o('jellyfish'), style: { right: '12%', top: 10, width: 34 }, wideOnly: true, swim: 'jelly' },
+  { set: 0, slot: 'hero', src: o('jellyfish'), style: { right: '12%', top: 10, width: 34 }, wideOnly: true },
   { set: 0, slot: 'hero', src: o('coral_card_blue'), style: { right: '15%', bottom: 4, width: 80 }, wideOnly: true },
-  { set: 0, slot: 'hero', src: o('bubbles/bubble_card_1'), style: { right: '24.5%', bottom: 26, width: 18 }, wideOnly: true, idle: 'bubble' },
+  { set: 0, slot: 'hero', src: o('bubbles/bubble_card_1'), style: { right: '24.5%', bottom: 26, width: 18 }, wideOnly: true },
 
   // --- "내 작업" 카드: 거북이 · 작은 물고기
-  { set: 0, slot: 'tasks', src: o('sea_turtle'), style: { right: '22.4%', top: 56, width: 110 }, wideOnly: true, swim: 'turtle', roam: 80 },
-  { set: 0, slot: 'tasks', src: o('fish/fish_card_small'), style: { right: '34%', bottom: 26, width: 48 }, wideOnly: true, swim: 'fish', roam: 120 },
+  { set: 0, slot: 'tasks', src: o('sea_turtle'), style: { right: '22.4%', top: 56, width: 110 }, wideOnly: true },
+  { set: 0, slot: 'tasks', src: o('fish/fish_card_small'), style: { right: '34%', bottom: 26, width: 48 }, wideOnly: true },
 
   // --- "최근 공지" 카드: 오른쪽 아래 산호와 불가사리
   { set: 0, slot: 'notices', src: o('coral_bottom_right'), style: { right: 0, bottom: 0, width: 114 } },
-  { set: 0, slot: 'notices', src: o('starfish'), style: { right: 56, bottom: 2, width: 62 }, swim: 'star' },
+  { set: 0, slot: 'notices', src: o('starfish'), style: { right: 56, bottom: 2, width: 62 } },
 
-  // --- 사이드바: 메뉴 옆 물고기 (사이드바 너비를 오간다), 아래쪽 해초 · 산호
-  { set: 0, slot: 'sidebar', src: o('fish/fish_sidebar_1'), style: { right: 56, top: 236, width: 64 }, swim: 'fish' },
-  { set: 0, slot: 'sidebar', src: o('fish/fish_sidebar_2'), style: { right: 46, top: 492, width: 64 }, swim: 'fish' },
+  // --- 사이드바: 메뉴 옆 물고기, 아래쪽 해초 · 산호
+  { set: 0, slot: 'sidebar', src: o('fish/fish_sidebar_1'), style: { right: 56, top: 236, width: 64 } },
+  { set: 0, slot: 'sidebar', src: o('fish/fish_sidebar_2'), style: { right: 46, top: 492, width: 64 } },
   // 이 조각은 위쪽에 메뉴 글자가 같이 잘려 있어 아래 60% 만 보여 준다
-  { set: 0, slot: 'sidebar', src: o('seaweed_sidebar_left'), style: { left: 0, bottom: 150, width: 120, clipPath: 'inset(40% 0 0 0)' }, tallOnly: true, idle: 'seaweed' },
-  { set: 0, slot: 'sidebar', src: o('seaweed_sidebar_right'), style: { right: 0, bottom: 176, width: 52 }, tallOnly: true, idle: 'seaweed' },
+  { set: 0, slot: 'sidebar', src: o('seaweed_sidebar_left'), style: { left: 0, bottom: 150, width: 120, clipPath: 'inset(40% 0 0 0)' }, tallOnly: true },
+  { set: 0, slot: 'sidebar', src: o('seaweed_sidebar_right'), style: { right: 0, bottom: 176, width: 52 }, tallOnly: true },
   { set: 0, slot: 'sidebar', src: o('coral_pink_sidebar'), style: { right: 40, bottom: 150, width: 74 }, tallOnly: true },
-  { set: 0, slot: 'sidebar', src: o('seaweed_bottom_left'), style: { left: 0, bottom: 0, width: 70 }, idle: 'seaweed' },
-  { set: 0, slot: 'sidebar', src: o('seaweed_bottom_right'), style: { right: 0, bottom: 0, width: 56 }, idle: 'seaweed' },
+  { set: 0, slot: 'sidebar', src: o('seaweed_bottom_left'), style: { left: 0, bottom: 0, width: 70 } },
+  { set: 0, slot: 'sidebar', src: o('seaweed_bottom_right'), style: { right: 0, bottom: 0, width: 56 } },
 ]
 
 /* ---------- 우주: 그림 파일 (Penpot "14 Theme · 우주" 의 "Screen · 홈 · 오브젝트 A + 거북이" 자리를 따름) ---------- */
@@ -475,7 +468,7 @@ function CardWaves({ light }: { light?: boolean }) {
 /** 그 자리에 놓을 오브젝트를 그린다 (켜진 묶음만) */
 export function ThemeObjects({ slot }: { slot: ObjectSlot }) {
   const { active, objects, effects } = useTheme()
-  // 만지면 반응하는 것 · 헤엄치는 것은 마우스 효과가 켜져 있고 움직임 줄이기가 꺼져 있을 때만
+  // 만지면 반응하는 것은 마우스 효과가 켜져 있고 움직임 줄이기가 꺼져 있을 때만
   const live = effects && !prefersReducedMotion()
   const set = SETS[active]
   const items = (set?.items ?? []).filter((p) => p.slot === slot && objects[p.set])
@@ -488,8 +481,6 @@ export function ThemeObjects({ slot }: { slot: ObjectSlot }) {
         const size = `${p.wideOnly ? s.wideOnly : ''} ${p.tallOnly ? s.tallOnly : ''}`
         return p.play && live ? (
           <Playful key={i} src={p.src} kind={p.play} className={size} style={p.style} />
-        ) : p.swim && live ? (
-          <Swimmer key={i} src={p.src} kind={p.swim} seed={i} roam={p.roam} className={size} style={p.style} />
         ) : p.spin ? (
           <span key={i} className={`${s.spinOuter} ${p.wideOnly ? s.wideOnly : ''}`} style={{ ...p.style, transformOrigin: p.spin.origin, '--tilt': `${p.spin.tilt}deg`, '--squash': p.spin.squash } as CSSProperties}>
             <img src={p.src} alt="" draggable={false} className={effects ? s.spinInner : undefined} style={{ transformOrigin: p.spin.origin, animationDuration: `${p.spin.period}s` }} />
@@ -501,7 +492,7 @@ export function ThemeObjects({ slot }: { slot: ObjectSlot }) {
         ) : p.sway && effects ? (
           <Swaying key={i} p={p} />
         ) : (
-          <img key={i} src={p.src} alt="" draggable={false} className={`${size} ${p.idle && effects ? s[p.idle] : ''}`} style={p.style} />
+          <img key={i} src={p.src} alt="" draggable={false} className={size} style={p.style} />
         )
       })}
       {/* 우주: 깜빡이는 별 */}
