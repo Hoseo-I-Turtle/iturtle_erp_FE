@@ -27,7 +27,7 @@ const NAME_MAX = 50
 export function ProjectCreateModal({ onClose }: { onClose: () => void }) {
   const options = useCreateOptions()
   return (
-    <Modal title="새 프로젝트" onClose={onClose} width={760}>
+    <Modal title="새 프로젝트" onClose={onClose} width={760} offsetX={10}>
       <Loadable resource={options} label="프로젝트 만들기">
         {(o) => <CreateForm o={o} onClose={onClose} />}
       </Loadable>
