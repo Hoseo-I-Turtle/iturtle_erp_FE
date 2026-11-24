@@ -43,6 +43,7 @@ export const THEMES: ThemeInfo[] = [
     objectSets: ['전구 줄 · 리본 · 선물 · 눈 · 반짝이'],
     hasEffects: true,
     darkPage: true,
+    logoMark: '/brand/iturtle-mark-christmas.png', // 산타 모자를 쓴 거북이
     preview: { sidebar: '#022c1f', page: '#750d11', card: '#fdefe0', accent: '#0a5a3a', text: '#1f120d' },
   },
   {
