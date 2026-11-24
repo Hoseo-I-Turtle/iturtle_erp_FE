@@ -507,19 +507,34 @@ export function useLedgerEntries(bookId: number, filter: EntryFilter) {
   return useResource<LedgerEntryList>(
     ['ledger-entries', bookId, filter],
     () => mockEntries(bookId, filter),
-    () =>
-      api<LedgerEntryList>(`${BASE}/books/${bookId}/entries`, {
-        query: {
-          from: filter.from || undefined,
-          to: filter.to || undefined,
-          kind: filter.kind,
-          category: filter.category || undefined,
-          memberId: filter.memberId,
-          pendingOnly: filter.pendingOnly || undefined,
-          query: filter.query?.trim() || undefined,
-          includeDeleted: filter.includeDeleted || undefined,
-        },
-      }),
+    async () => {
+      // 백엔드가 목록을 페이지로 주게 바꾸는 중이다 (정책 ERP-P32): 거래가 entries 로 오든 page 로 오든 읽는다.
+      // 잔액 · 합계와 맞춰 보는 화면이라 page 로 오면 끝까지 돌며 모두 받는다
+      type Dto = Omit<LedgerEntryList, 'entries'> & { entries?: LedgerEntry[]; page?: { content: LedgerEntry[]; hasNext: boolean } }
+      const get = (page: number) =>
+        api<Dto>(`${BASE}/books/${bookId}/entries`, {
+          query: {
+            from: filter.from || undefined,
+            to: filter.to || undefined,
+            kind: filter.kind,
+            category: filter.category || undefined,
+            memberId: filter.memberId,
+            pendingOnly: filter.pendingOnly || undefined,
+            query: filter.query?.trim() || undefined,
+            includeDeleted: filter.includeDeleted || undefined,
+            page,
+            size: 100,
+          },
+        })
+      const first = await get(0)
+      const entries = [...(first.entries ?? first.page?.content ?? [])]
+      for (let page = 1, more = first.page?.hasNext ?? false; more && page < 10; page++) {
+        const next = await get(page)
+        entries.push(...(next.page?.content ?? []))
+        more = next.page?.hasNext ?? false
+      }
+      return { ...first, entries }
+    },
   )
 }
 
