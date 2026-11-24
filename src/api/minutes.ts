@@ -202,9 +202,22 @@ function toMyAction(a: MyMinuteActionDto): MyMinuteAction {
 }
 
 export function useMyMinuteActions() {
-  return useResource<MyMinuteAction[]>(['my-minute-actions'], () => myMinuteActions, async () =>
-    (await api<MyMinuteActionDto[]>('/meeting-minutes/actions/mine')).map(toMyAction),
-  )
+  return useResource<MyMinuteAction[]>(['my-minute-actions'], () => myMinuteActions, async () => {
+    // MM-11 은 배열이었다가 PageResponse 로 바뀌었다 (백엔드 ERP-49). 두 모양을 모두 읽고,
+    // 옆 칸에 내 할 일을 다 보여 줘야 해서 페이지로 오면 끝까지 돌며 받는다
+    const get = (page: number) =>
+      api<MyMinuteActionDto[] | PageResponse<MyMinuteActionDto>>('/meeting-minutes/actions/mine', { query: { page, size: 100 } })
+    const first = await get(0)
+    if (Array.isArray(first)) return first.map(toMyAction)
+    const all = [...first.content]
+    for (let page = 1, more = first.hasNext; more && page < 10; page++) {
+      const next = await get(page)
+      if (Array.isArray(next)) break
+      all.push(...next.content)
+      more = next.hasNext
+    }
+    return all.map(toMyAction)
+  })
 }
 
 /** MM-9 연구실 회의 할 일 체크 (프로젝트 회의 할 일은 작업으로 관리 — P214) */
