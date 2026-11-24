@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from 'react'
+import { useLayoutEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Clock, ListChecks, MessageCircle, Plus, Search, SquareCheck, TriangleAlert, User } from 'lucide-react'
 import { Avatar, FilterSelect, Loadable } from '../../components/ui'
@@ -208,6 +208,7 @@ function BoardView({ d, board }: { d: BoardData; board: Resource<BoardData> }) {
               </header>
               {COLUMN_NOTE[col] && <p className={s.colNote}>{COLUMN_NOTE[col]}</p>}
 
+              <ColumnBody>
               {groups.map((g) => (
                 <div key={g ?? 'all'} className={s.lane}>
                   {g && <div className={s.laneHead}>{g}</div>}
@@ -229,6 +230,7 @@ function BoardView({ d, board }: { d: BoardData; board: Resource<BoardData> }) {
                     ))}
                 </div>
               ))}
+              </ColumnBody>
 
               {error?.col === col && (
                 <div className={s.error} role="alert">
@@ -241,6 +243,35 @@ function BoardView({ d, board }: { d: BoardData; board: Resource<BoardData> }) {
         })}
       </div>
     </>
+  )
+}
+
+/** 한 칸에 한 번에 보여 줄 카드 수. 넘으면 칸 안에서 스크롤한다 */
+const VISIBLE_CARDS = 10
+
+/**
+ * 칸의 카드 자리: 카드가 10개를 넘으면 10번째 카드 아래까지만 보이고 칸 안에서 스크롤한다.
+ * 카드 높이가 제각각이라 10번째 카드의 실제 위치를 재서 높이를 정한다 (창 크기가 바뀌면 다시 잰다).
+ */
+function ColumnBody({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const fit = () => {
+      const cards = el.querySelectorAll<HTMLElement>('[data-task-card]')
+      const last = cards[VISIBLE_CARDS - 1]
+      // 아래 여백 4px: 마지막 카드의 그림자가 잘리지 않게
+      el.style.maxHeight = cards.length > VISIBLE_CARDS && last ? `${Math.ceil(last.getBoundingClientRect().bottom - el.getBoundingClientRect().top + el.scrollTop) + 4}px` : ''
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  })
+  return (
+    <div ref={ref} className={s.colBody}>
+      {children}
+    </div>
   )
 }
 
@@ -259,6 +290,7 @@ function TaskCard({ task: x, projectKey, dragging, onDragStart, onDragEnd, onDro
     <Link
       to={`/projects/${projectKey}/tasks/${x.taskKey}`}
       className={dragging ? `${s.card} ${s.dragging}` : s.card}
+      data-task-card
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}

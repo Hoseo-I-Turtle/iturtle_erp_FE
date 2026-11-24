@@ -105,6 +105,19 @@
   font-size: var(--fs-caption);
   color: var(--text-secondary);
 }
+/* 칸의 카드 자리: 카드가 10개를 넘으면 이 안에서 스크롤한다 (높이는 BoardPage.tsx 의 ColumnBody 가 잰다) */
+.colBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  /* 카드 그림자 · 고른 카드의 테두리가 잘리지 않게 안쪽 여백을 주고, 그만큼 바깥으로 넓힌다 */
+  margin: -2px -6px;
+  padding: 2px 6px;
+}
 .lane {
   display: flex;
   flex-direction: column;
