@@ -113,3 +113,10 @@
   font-size: var(--fs-caption);
   color: var(--text-muted);
 }
+
+/* ---------- 휴대폰 (720px 이하): 도구 줄이 줄을 바꾼다 ---------- */
+@media (max-width: 720px) {
+  .toolbar {
+    flex-wrap: wrap;
+  }
+}

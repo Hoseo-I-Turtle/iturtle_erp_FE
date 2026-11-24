@@ -4,7 +4,7 @@
 // - docs/api/20-communication.md NT-4 · 5 (알림 설정), 40-document-file.md F-1 · 2 (사진 올리기)
 // 응답을 화면이 쓰는 mocks/admin.ts · adminOps.ts 의 모양으로 바꾼다.
 import { api, ApiError, serverRoot } from './client'
-import { ago, dotDate, type MemberRef, type PageResponse } from './types'
+import { ago, dotDate, fetchEveryPage, type MemberRef, type PageResponse } from './types'
 import { useResource } from './useResource'
 import { getApiBase, getDataMode } from '../lib/dataMode'
 import { MEMBER_TYPE_NAME, ME_ID, members as mockMembers, type MemberType } from '../mocks/members'
@@ -241,14 +241,14 @@ export function useAdminMembers() {
     'admin-members',
     () => ({ members: adminMembers.map((m) => ({ ...m, roleCount: m.roles.length })), graduatedTotal: 24, roles: ROLES, presets: mockPresets }),
     async () => {
-      // 한 번에 최대 100명 (README 1.3). 연구실 규모라 재실 + 졸업생을 한 번에 받는다
-      const [res, roles, presets] = await Promise.all([
-        api<MembersResponse>('/members', { query: { group: 'ALL', size: 100 } }),
+      // 한 번에 최대 100명 (README 1.3). 관리 표는 전체를 놓고 거르므로 페이지를 끝까지 돌며 재실 + 졸업생을 모두 받는다
+      const [{ first: res, content: rows }, roles, presets] = await Promise.all([
+        fetchEveryPage((page) => api<MembersResponse>('/members', { query: { group: 'ALL', page, size: 100 } }), (r) => r.page),
         fetchRoles(),
         // 5-1 은 role-manage · member-manage 만. 권한이 없으면 프리셋 고르기 칸만 비운다
         fetchPresets(false).catch((): PresetView[] => []),
       ])
-      return { members: res.page.content.map(toAdminRow), graduatedTotal: res.counts.alumni, roles, presets }
+      return { members: rows.map(toAdminRow), graduatedTotal: res.counts.alumni, roles, presets }
     },
   )
 }
@@ -434,10 +434,13 @@ export function usePresetMembers(preset: PresetView) {
       }),
     async () => {
       if (!/^\d+$/.test(preset.id)) return []
-      const res = await api<MembersResponse>('/members', { query: { presetId: Number(preset.id), group: 'ACTIVE', size: 100 } })
+      const { content: presetMembers } = await fetchEveryPage(
+        (page) => api<MembersResponse>('/members', { query: { presetId: Number(preset.id), group: 'ACTIVE', page, size: 100 } }),
+        (r) => r.page,
+      )
       // 백엔드 2-1 목록(MemberSummaryResponse)에는 역할 코드 없이 roleCount 만 있어 구성원 상세(2-2)를 한 명씩 부른다.
       // presetId 거르기는 role-manage 만 쓸 수 있다
-      const details = await Promise.all(res.page.content.map((m) => api<MemberDetailDto>(`/members/${m.memberId}`)))
+      const details = await Promise.all(presetMembers.map((m) => api<MemberDetailDto>(`/members/${m.memberId}`)))
       return details.map((d) => ({ memberId: d.memberId, name: d.name, roles: (d.roles ?? []).map((r) => r.code) }))
     },
   )
@@ -524,11 +527,16 @@ export function useSignups() {
     }),
     async () => {
       const [lists, presets] = await Promise.all([
-        Promise.all(SIGNUP_STATUSES.map((status) => api<SignupsResponse>('/signup-applications', { query: { status, size: 100 } }))),
+        // 상태 탭마다 페이지를 끝까지 돌며 모두 받는다
+        Promise.all(
+          SIGNUP_STATUSES.map((status) =>
+            fetchEveryPage((page) => api<SignupsResponse>('/signup-applications', { query: { status, page, size: 100 } }), (r) => r.page),
+          ),
+        ),
         fetchPresets(false),
       ])
-      const counts = lists[0].counts
-      const requests = lists.flatMap((l) => l.page.content.map(toSignup))
+      const counts = lists[0].first.counts
+      const requests = lists.flatMap((l) => l.content.map(toSignup))
       const extra = Object.fromEntries(
         SIGNUP_STATUSES.map((s) => [s, Math.max(0, (counts[s] ?? 0) - requests.filter((r) => r.status === s).length)]),
       ) as Record<SignupStatus, number>
@@ -639,14 +647,18 @@ export function useRoleRequests() {
       ) as Record<RoleRequest['status'], number>,
     }),
     async () => {
-      const [res, me] = await Promise.all([
-        api<{ counts: Record<AccessStatus, number>; page: PageResponse<AccessRequestDto> }>('/auth/access-requests', {
-          query: { scope: 'REVIEW', size: 100 },
-        }),
+      const [{ first: res, content: all }, me] = await Promise.all([
+        fetchEveryPage(
+          (page) =>
+            api<{ counts: Record<AccessStatus, number>; page: PageResponse<AccessRequestDto> }>('/auth/access-requests', {
+              query: { scope: 'REVIEW', page, size: 100 },
+            }),
+          (r) => r.page,
+        ),
         api<{ memberId: number }>('/members/me'),
       ])
       // 취소한 신청은 이 화면에 탭이 없어 뺀다
-      const requests = res.page.content.filter((x) => x.status !== 'CANCELLED').map((x) => toRoleRequest(x, me.memberId))
+      const requests = all.filter((x) => x.status !== 'CANCELLED').map((x) => toRoleRequest(x, me.memberId))
       const extra = Object.fromEntries(
         REQUEST_STATUSES.map((t) => [t, Math.max(0, (res.counts[t] ?? 0) - requests.filter((r) => r.status === t).length)]),
       ) as Record<RoleRequest['status'], number>
@@ -1073,11 +1085,11 @@ export function useGithubAdmin() {
       orgUnavailable: false,
     }),
     async () => {
-      const [g, d] = await Promise.all([
-        api<GithubAdminDto>('/github/accounts', { query: { memberStatus: 'ALL', size: 100 } }),
+      const [{ first: g, content: accounts }, d] = await Promise.all([
+        fetchEveryPage((page) => api<GithubAdminDto>('/github/accounts', { query: { memberStatus: 'ALL', page, size: 100 } }), (r) => r.members),
         api<DeliveriesDto>('/github/webhook-deliveries', { query: { size: 5 } }),
       ])
-      const rows = g.members.content
+      const rows = accounts
       return {
         stats: {
           linked: g.summary.linkedActiveCount,

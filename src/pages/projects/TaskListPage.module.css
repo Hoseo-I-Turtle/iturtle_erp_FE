@@ -304,3 +304,13 @@
 .apply:disabled {
   opacity: 0.5;
 }
+
+/* ---------- 휴대폰 (720px 이하): 표는 카드 안에서 옆으로 민다 (화면 전체가 밀리지 않게) ---------- */
+@media (max-width: 720px) {
+  .table {
+    overflow-x: auto;
+  }
+  .row {
+    min-width: 600px;
+  }
+}

@@ -181,3 +181,11 @@
   font-size: var(--fs-caption);
   color: var(--text-secondary);
 }
+
+/* ---------- 휴대폰 (720px 이하): 칸을 한 줄에 하나씩 ---------- */
+@media (max-width: 720px) {
+  .three,
+  .two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

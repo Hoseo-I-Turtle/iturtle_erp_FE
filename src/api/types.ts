@@ -42,6 +42,25 @@ export async function fetchAllPages<T>(fetchPage: (page: number) => Promise<Page
   return all
 }
 
+/**
+ * 응답이 { 덧붙인 값, page: PageResponse } 처럼 감싸여 올 때 페이지를 끝까지 이어 받는다 (화면이 전체를 한 번에 다뤄야 할 때 — 정책 ERP-P32 의 예외).
+ * @returns first: 첫 응답(개수 같은 덧붙인 값을 읽는다), content: 모든 페이지의 항목
+ */
+export async function fetchEveryPage<R, T>(
+  fetchPage: (page: number) => Promise<R>,
+  pageOf: (response: R) => PageResponse<T>,
+  maxPages = 10,
+): Promise<{ first: R; content: T[] }> {
+  const first = await fetchPage(0)
+  const content = [...pageOf(first).content]
+  for (let page = 1, more = pageOf(first).hasNext; more && page < maxPages; page++) {
+    const next = pageOf(await fetchPage(page))
+    content.push(...next.content)
+    more = next.hasNext
+  }
+  return { first, content }
+}
+
 /** '2026-11-17' / ISO 시각 → '2026.11.17' */
 export const dotDate = (d: string | null | undefined) => (d ? d.slice(0, 10).replace(/-/g, '.') : '')
 

@@ -3,11 +3,13 @@ import { Folder, Lock, Plus } from 'lucide-react'
 import { Button, Card, Columns, Empty, Loadable, Note, PillTabs, Select } from '../../components/ui'
 import { PageHeader } from '../../layouts/PageHeader'
 import { CATEGORY_NAME, type DocumentCategory } from '../../mocks/documents'
-import { useLibrary, type LibraryData, type LibrarySort } from '../../api/content'
+import { fetchMoreLibrary, useLibrary, type LibraryData, type LibrarySort } from '../../api/content'
 import { openUpload, useDocumentsChanged, useFolders } from '../../api/documents'
 import { DocRow } from './list/DocRow'
 import { LibraryFilters } from './list/LibraryFilters'
 import { PinnedDocsCard, PopularTagsCard, UnresolvedCard } from './list/LibrarySideCards'
+import { LoadMore } from '../../components/ui/LoadMore'
+import { useLoadMore } from '../../api/useLoadMore'
 import s from './LibraryPage.module.css'
 
 /** 'ALL' 또는 공통코드 DOCUMENT_CATEGORY 코드 (실서버는 기본 7개 밖의 코드도 온다) */
@@ -19,6 +21,8 @@ const EMPTY: LibraryData = {
   pinnedDocs: [],
   unresolved: [],
   popularTags: [],
+  page: 0,
+  hasNext: false,
   options: { tags: [], projects: [], authors: [], types: [] },
 }
 
@@ -33,7 +37,10 @@ export function LibraryPage() {
   const folders = useFolders(null).data?.folders ?? []
 
   // 거르기 · 정렬은 서버가 하고(실서버), 화면도 같은 조건으로 한 번 더 거른다(목업 · 고정 자료)
-  const lib = useLibrary({ category: tab, tag, project, author, fileType, sort, folderId: folder ? Number(folder) : null })
+  const libFilter = { category: tab, tag, project, author, fileType, sort, folderId: folder ? Number(folder) : null }
+  const lib = useLibrary(libFilter)
+  // 목록 끝에 닿으면 같은 조건의 다음 페이지를 이어 붙인다
+  const more = useLoadMore(lib, lib.data?.hasNext, (d) => fetchMoreLibrary(libFilter, d))
   // 올리기 모달에서 자료를 만들면 다시 불러온다
   useDocumentsChanged(lib.reload)
   // 다시 불러오는 동안에도 앞의 값으로 탭 · 거르기 칸을 그려 둔다
@@ -101,17 +108,20 @@ export function LibraryPage() {
               options={options}
             />
             <Loadable resource={lib} label="자료 목록">
-              {() =>
-                list.length === 0 ? (
-                  <Empty>조건에 맞는 자료가 없어요.</Empty>
-                ) : (
-                  <ul className={s.list}>
-                    {list.map((d) => (
-                      <DocRow key={d.documentId} d={d} onTag={setTag} />
-                    ))}
-                  </ul>
-                )
-              }
+              {(data) => (
+                <>
+                  {list.length === 0 && !data.hasNext ? (
+                    <Empty>조건에 맞는 자료가 없어요.</Empty>
+                  ) : (
+                    <ul className={s.list}>
+                      {list.map((d) => (
+                        <DocRow key={d.documentId} d={d} onTag={setTag} />
+                      ))}
+                    </ul>
+                  )}
+                  <LoadMore more={more} />
+                </>
+              )}
             </Loadable>
           </Card>
         }

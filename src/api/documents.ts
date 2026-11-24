@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { api, ApiError } from './client'
 import { useResource } from './useResource'
 import { fileUrl, type FileRef } from './content'
-import { ago, type MemberRef, type PageResponse } from './types'
+import { ago, fetchEveryPage, type MemberRef, type PageResponse } from './types'
 import { getDataMode } from '../lib/dataMode'
 
 export type DocVisibility = 'LAB' | 'PROJECT_MEMBERS' | 'PRIVATE'
@@ -370,10 +370,15 @@ export function useProjectDocuments(projectKey: string | undefined, folderId: nu
     ['project-documents', projectKey, folderId],
     () => MOCK_PROJECT_DOCS.filter((d) => folderId === null || d.folderId === folderId),
     async () => {
-      const r = await api<{ pinned: DocumentItemDto[]; page: PageResponse<DocumentItemDto> }>('/documents', {
-        query: { projectKey, folderId: folderId ?? undefined, size: 100, sort: 'createdAt,desc' },
-      })
-      return [...r.pinned, ...r.page.content].map((d) => ({
+      // 폴더 안의 자료를 한 화면에 놓고 고르므로 페이지를 끝까지 돌며 모두 받는다 (첫 100개에서 끊기지 않게)
+      const { first: r, content } = await fetchEveryPage(
+        (page) =>
+          api<{ pinned: DocumentItemDto[]; page: PageResponse<DocumentItemDto> }>('/documents', {
+            query: { projectKey, folderId: folderId ?? undefined, page, size: 100, sort: 'createdAt,desc' },
+          }),
+        (x) => x.page,
+      )
+      return [...r.pinned, ...content].map((d) => ({
         documentId: d.documentId,
         title: d.title,
         category: d.categoryName ?? d.categoryCode,

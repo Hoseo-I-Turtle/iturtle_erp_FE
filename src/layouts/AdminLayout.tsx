@@ -63,7 +63,10 @@ export function AdminLayout() {
           </NavLink>
         ))}
       </nav>
-      <Outlet />
+      {/* 관리 화면 묶음: 휴대폰 폭에서 넓은 표가 카드 안에서 옆으로 밀리게 한다 (layout.module.css 의 adminBody) */}
+      <div className={s.adminBody}>
+        <Outlet />
+      </div>
     </>
   )
 }

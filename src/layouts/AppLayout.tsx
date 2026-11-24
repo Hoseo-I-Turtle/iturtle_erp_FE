@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate, Outlet, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, Outlet, useLocation, useSearchParams } from 'react-router-dom'
 import { Info, Lock, Menu, X } from 'lucide-react'
 import { Sidebar } from './Sidebar'
 import { BrandLogo } from '../components/ui'
@@ -49,6 +49,13 @@ export function AppLayout() {
   const [params, setParams] = useSearchParams()
   // 좁은 화면: 사이드바를 접어 두고 메뉴 버튼으로 연다
   const [navOpen, setNavOpen] = useState(false)
+  // 화면이 바뀌면 닫는다 (메뉴를 눌렀을 때뿐 아니라 뒤로 가기 · 화면 안의 링크로 옮겨도)
+  const { pathname } = useLocation()
+  const [seenPath, setSeenPath] = useState(pathname)
+  if (pathname !== seenPath) {
+    setSeenPath(pathname)
+    setNavOpen(false)
+  }
   useEffect(() => {
     if (!navOpen) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setNavOpen(false)
