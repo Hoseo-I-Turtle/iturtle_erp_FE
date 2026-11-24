@@ -7,7 +7,8 @@ const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(' ')
 
 /* ---------- Card ---------- */
 export function Card({ className, ...rest }: HTMLAttributes<HTMLElement>) {
-  return <section className={cx(s.card, className)} {...rest} />
+  // data-snow-ledge: 크리스마스 테마에서 마우스 눈이 이 카드 윗변에 쌓인다 (components/theme/MouseEffects.tsx)
+  return <section className={cx(s.card, className)} data-snow-ledge="" {...rest} />
 }
 
 /* ---------- SectionHead ---------- */

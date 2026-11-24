@@ -45,6 +45,24 @@
   }
 }
 
+/* 끈에 매달린 장식 (Hanging): 끈은 SVG 로 그리고, 장식 그림은 끈 끝점을 따라 움직인다 */
+.hanging {
+  position: absolute;
+  height: 0;
+  overflow: visible;
+}
+.rope {
+  position: absolute;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.hangingImg {
+  position: absolute;
+  left: 0;
+  will-change: transform;
+}
+
 /* 화면 전체에 흩뿌리는 것: 본문(카드) 뒤에 고정 */
 .page {
   position: fixed;
