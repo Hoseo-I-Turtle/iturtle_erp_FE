@@ -3,14 +3,31 @@
 //   크리스마스 : 마우스가 지나간 자리와 하늘(배경)에서 눈이 떨어져, 그 아래 카드 윗변(data-snow-ledge)과 화면 바닥에 쌓인다.
 //                쌓인 눈으로 눈덩이를 굴리고(경사면에서는 저절로 굴러 내려간다), 눈덩이 둘을 합치면 눈사람이 된다.
 //                높은 데서 떨어진 눈덩이는 부서지고, 눈사람은 마우스를 바라보고 · 누르면 흔들리고 · 끌어 옮길 수 있고 · 높은 데서 떨어지면 흩어진다
-//   우주       : 마우스 주변에서 별빛이 반짝인다
+//   우주       : 마우스 주변에서 별빛이 반짝인다. 본문 뒤 밤하늘에는 별똥별이 떨어진다 (ShootingStars)
+// 오브젝트를 만졌을 때의 불꽃 · 로켓 연기 · zzz · 방울도 여기서 그린다 (Playful · SeaLife 가 fx.ts 의 emitFx 로 부탁한다).
 //   다크       : 없음 (깔끔하게 쓰는 테마)
 // 설정 › 테마의 "마우스 효과" 스위치로 끈다. 기기의 "움직임 줄이기"가 켜져 있으면 그리지 않는다.
 // 틀의 색 · 장식 오브젝트와는 따로 돈다 (lib/theme.ts 의 data-effects).
 import { useEffect, useRef } from 'react'
 import { prefersReducedMotion, useTheme, type ThemeId } from '../../lib/theme'
+import { onFx, type Fx } from './fx'
+import { ShootingStars } from './ShootingStars'
 
-type Particle = { x: number; y: number; vx: number; vy: number; r: number; life: number; max: number; kind: 'bubble' | 'snow' | 'spark'; hue?: string; sky?: boolean; /** 부서진 눈덩이 조각: 중력을 받는다 */ g?: number }
+type Particle = {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  r: number
+  life: number
+  max: number
+  /** puff = 로켓 연기 (커지며 옅어진다), z = 잠꼬대 글자 */
+  kind: 'bubble' | 'snow' | 'spark' | 'puff' | 'z'
+  hue?: string
+  sky?: boolean
+  /** 부서진 눈덩이 조각: 중력을 받는다 */
+  g?: number
+}
 
 /* ---------- 쌓이는 눈 (크리스마스) ---------- */
 const BIN = 3 // 쌓인 눈 높이를 이 너비(px)마다 하나씩 둔다
@@ -96,6 +113,33 @@ function spawn(theme: ThemeId, x: number, y: number): Particle[] {
       ? [{ x: x + rnd(-20, 20), y: y + rnd(-20, 20), vx: rnd(-0.15, 0.15), vy: rnd(-0.15, 0.15), r: rnd(2.5, 6), life: 0, max: rnd(24, 44), kind: 'spark', hue: Math.random() < 0.5 ? '#c4b5fd' : '#ffffff' }]
       : []
   return []
+}
+
+/** 오브젝트가 부탁한 알갱이 (fx.ts 의 emitFx) */
+function spawnFx(fx: Fx): Particle[] {
+  const rnd = (a: number, b: number) => a + Math.random() * (b - a)
+  const n = fx.n ?? 8
+  const out: Particle[] = []
+  for (let i = 0; i < n; i++) {
+    if (fx.kind === 'sparks') {
+      // 사방으로 튀었다가 느려지며 사라진다
+      const a = rnd(0, Math.PI * 2)
+      const sp = rnd(1.2, 3.6)
+      out.push({ x: fx.x, y: fx.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: rnd(3, 7), life: 0, max: rnd(26, 46), kind: 'spark', hue: ['#ffffff', '#c4b5fd', '#fde68a'][i % 3], g: -0.02 })
+    } else if (fx.kind === 'puffs') {
+      // 뿜는 쪽(dx, dy)으로 퍼져 나가는 연기
+      const dx = fx.dx ?? 0
+      const dy = fx.dy ?? 1
+      const sp = rnd(1.2, 2.6)
+      out.push({ x: fx.x + rnd(-4, 4), y: fx.y + rnd(-4, 4), vx: dx * sp + rnd(-0.6, 0.6), vy: dy * sp + rnd(-0.4, 0.4), r: rnd(6, 11), life: 0, max: rnd(34, 56), kind: 'puff', hue: Math.random() < 0.5 ? '233,229,245' : '196,181,253' })
+    } else if (fx.kind === 'zzz') {
+      // z 가 하나씩 엇갈려 떠오르며 커진다 (처음 몇 장면은 안 보이게 life 를 음수로)
+      out.push({ x: fx.x + i * 6, y: fx.y, vx: 0.25, vy: -0.55, r: 11 + i * 3, life: -i * 14, max: 70, kind: 'z' })
+    } else if (fx.kind === 'bubbles') {
+      out.push({ x: fx.x + rnd(-14, 14), y: fx.y + rnd(-8, 8), vx: rnd(-0.3, 0.3), vy: rnd(-1.8, -0.7), r: rnd(2.5, 8), life: 0, max: rnd(60, 110), kind: 'bubble' })
+    }
+  }
+  return out
 }
 
 /**
@@ -450,8 +494,19 @@ export function MouseEffects() {
           if (p.life >= p.max) continue
         }
         p.life++
-        p.x += p.vx + (p.kind === 'bubble' ? Math.sin((p.life + p.r * 10) / 14) * 0.4 : 0)
+        if (p.life <= 0) continue // 아직 나올 차례가 아니다 (zzz)
+        p.x += p.vx + (p.kind === 'bubble' ? Math.sin((p.life + p.r * 10) / 14) * 0.4 : p.kind === 'z' ? Math.sin(p.life / 9) * 0.5 : 0)
         if (p.g) p.vy += p.g
+        if (p.kind === 'spark' && p.g) {
+          // 오브젝트에서 튄 불꽃은 점점 느려진다
+          p.vx *= 0.94
+          p.vy *= 0.94
+        }
+        if (p.kind === 'puff') {
+          p.vx *= 0.95
+          p.vy *= 0.95
+          p.r += 0.35
+        }
         p.y += p.vy
         const t = p.life / p.max
         const alpha = p.kind === 'snow' && piling ? Math.min(1, p.life / 8) : t < 0.15 ? t / 0.15 : 1 - (t - 0.15) / 0.85
@@ -468,6 +523,22 @@ export function MouseEffects() {
           ctx.arc(p.x - p.r * 0.35, p.y - p.r * 0.35, p.r * 0.18, 0, Math.PI * 2)
           ctx.fillStyle = `rgba(255,255,255,${0.9 * alpha})`
           ctx.fill()
+        } else if (p.kind === 'puff') {
+          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r)
+          g.addColorStop(0, `rgba(${p.hue},${0.75 * alpha})`)
+          g.addColorStop(0.5, `rgba(${p.hue},${0.35 * alpha})`)
+          g.addColorStop(1, `rgba(${p.hue},0)`)
+          ctx.fillStyle = g
+          ctx.beginPath()
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+          ctx.fill()
+        } else if (p.kind === 'z') {
+          ctx.font = `700 ${Math.round(p.r + t * 6)}px system-ui, sans-serif`
+          ctx.fillStyle = `rgba(233,229,245,${0.95 * alpha})`
+          ctx.shadowColor = 'rgba(139,92,246,0.9)'
+          ctx.shadowBlur = 8
+          ctx.fillText('z', p.x, p.y)
+          ctx.shadowBlur = 0
         } else if (p.kind === 'snow') {
           ctx.beginPath()
           ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
@@ -641,6 +712,12 @@ export function MouseEffects() {
     }
     // 크리스마스는 하늘 눈이 마우스 없이도 내리므로 바로 그리기 시작한다
     if (active === 'christmas') raf = requestAnimationFrame(frame)
+    // 오브젝트를 만졌을 때 부탁받은 알갱이
+    const offFx = onFx((fx) => {
+      if (fx.kind === 'meteors' || particles.length >= MAX_PARTICLES) return
+      particles.push(...spawnFx(fx))
+      if (!raf) raf = requestAnimationFrame(frame)
+    })
     window.addEventListener('pointermove', move, { passive: true })
     window.addEventListener('pointerdown', down)
     window.addEventListener('pointermove', drag, { passive: true })
@@ -658,11 +735,17 @@ export function MouseEffects() {
       window.removeEventListener('scroll', scroll, { capture: true })
       window.removeEventListener('resize', resize)
       document.removeEventListener('pointerleave', leave)
+      offFx()
       if (raf) cancelAnimationFrame(raf)
       ctx.clearRect(0, 0, w, h)
     }
   }, [on, active])
 
   if (!on) return null
-  return <canvas ref={ref} aria-hidden style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', zIndex: 60, pointerEvents: 'none' }} />
+  return (
+    <>
+      {active === 'space' && <ShootingStars />}
+      <canvas ref={ref} aria-hidden style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', zIndex: 60, pointerEvents: 'none' }} />
+    </>
+  )
 }

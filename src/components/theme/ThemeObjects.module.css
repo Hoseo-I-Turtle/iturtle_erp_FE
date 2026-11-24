@@ -342,3 +342,80 @@
     animation: none;
   }
 }
+
+/* ---------- 우주: 만지면 반응하는 오브젝트의 평소 움직임 (Playful.tsx) ---------- */
+/* 위성: 둥실 떠 있다 */
+.idleFloat {
+  animation: idleFloat 7s ease-in-out infinite;
+}
+@keyframes idleFloat {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  50% { transform: translate(3px, -5px) rotate(-2deg); }
+}
+/* 잠든 거북이: 숨 쉬듯 부풀었다 가라앉는다 (아랫변을 축으로) */
+.idleBreathe {
+  animation: idleBreathe 4.2s ease-in-out infinite;
+}
+@keyframes idleBreathe {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.015, 1.035); }
+}
+/* 별똥별 캔버스 (ShootingStars.tsx): 본문 뒤 · 사이드바 옆 밤하늘 */
+.meteors {
+  position: fixed;
+  inset: 0 0 0 var(--sidebar-width);
+  width: calc(100% - var(--sidebar-width));
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+@media (max-width: 900px) {
+  .meteors {
+    left: 0;
+    width: 100%;
+  }
+}
+
+/* ---------- 바다: 해초는 물결에 흔들리고, 방울은 둥실 오르내린다 ---------- */
+.seaweed {
+  transform-origin: 50% 100%;
+  animation: seaweedSway 5.5s ease-in-out infinite alternate;
+}
+.seaweed:nth-of-type(2n) {
+  animation-duration: 4.3s;
+  animation-delay: -2s;
+}
+.seaweed:nth-of-type(3n) {
+  animation-duration: 6.4s;
+  animation-delay: -3.1s;
+}
+@keyframes seaweedSway {
+  from { transform: skewX(-4deg) rotate(-1.5deg); }
+  to { transform: skewX(5deg) rotate(1.5deg); }
+}
+.bubble {
+  animation: bubbleBob 3.6s ease-in-out infinite alternate;
+}
+.bubble:nth-of-type(2n) {
+  animation-duration: 2.8s;
+  animation-delay: -1.3s;
+}
+@keyframes bubbleBob {
+  from { transform: translateY(2px); }
+  to { transform: translateY(-6px); }
+}
+
+:global([data-effects='off']) .idleFloat,
+:global([data-effects='off']) .idleBreathe,
+:global([data-effects='off']) .seaweed,
+:global([data-effects='off']) .bubble {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .idleFloat,
+  .idleBreathe,
+  .seaweed,
+  .bubble {
+    animation: none;
+  }
+}
