@@ -32,6 +32,10 @@ type Placement = {
   sway?: number
   /** 끈에 매달린 장식: 끈 윗끝(전구 줄에 닿는 점)을 고정점으로 두고, 끈을 점 여러 개로 계산해 그린다 (sway 대신) */
   rope?: Rope
+  /** 우주: 기울어진 원반(은하)이 제자리에서 돈다 — 기울기(도) · 납작한 정도(짧은축/긴축) · 한 바퀴 초 · 회전 중심(%) */
+  spin?: { tilt: number; squash: number; period: number; origin: string }
+  /** 천천히 흐르며 밝기가 오르내린다 (성운 띠) */
+  drift?: boolean
 }
 /** 끈 — x: 장식 그림 안에서 끈이 붙는 가로 위치(px), top: 끈 윗끝의 y(px, 장식 그림 윗변은 40) */
 type Rope = { x: number; top: number }
@@ -152,11 +156,12 @@ const sp = (name: string) => SP[`../../assets/themes/space/${name}.png`]
 
 const SPACE: Placement[] = [
   // --- 본문 맨 위: 성운 · 지구 · 위성 (카드 뒤)
-  { set: 0, slot: 'header', src: sp('nebula'), style: { left: 376, top: -40, width: 560 } },
+  { set: 0, slot: 'header', src: sp('nebula'), style: { left: 376, top: -40, width: 560 }, drift: true },
   { set: 0, slot: 'header', src: sp('earth'), style: { left: 436, top: -150, width: 250 } },
   { set: 0, slot: 'header', src: sp('satellite'), style: { left: 276, top: 22, width: 130 }, wideOnly: true },
   // --- 화면 아래: 은하 (본문 뒤)
-  { set: 0, slot: 'page', src: sp('galaxy'), style: { left: 36, bottom: -18, width: 330 } },
+  // 은하: 그림 속 원반 기울기 −29°, 짧은축/긴축 ≈ 0.38 (그림 알파의 주성분으로 잼). 기울기를 풀어 돌리고 다시 기울여, 원반이 제자리에서 돈다
+  { set: 0, slot: 'page', src: sp('galaxy'), style: { left: 36, bottom: -18, width: 330 }, spin: { tilt: -29, squash: 0.38, period: 160, origin: '50% 47%' } },
   // --- "꼭 확인할 것" 카드: 혜성
   { set: 0, slot: 'hero', src: sp('comet'), style: { right: '16.9%', top: 15, width: 190 }, wideOnly: true },
   // --- "내 작업" 카드: 로켓
@@ -467,7 +472,13 @@ export function ThemeObjects({ slot }: { slot: ObjectSlot }) {
     {active === 'ocean' && (slot === 'hero' || slot === 'tasks') && <CardWaves light={slot === 'tasks'} />}
     <div className={`${s.slot} ${s[slot]} ${set?.pixel ? s.pixel : ''} ${set?.glow ? s.glow : ''}`} aria-hidden data-theme-objects={slot}>
       {items.map((p, i) =>
-        p.rope ? (
+        p.spin ? (
+          <span key={i} className={`${s.spinOuter} ${p.wideOnly ? s.wideOnly : ''}`} style={{ ...p.style, transformOrigin: p.spin.origin, '--tilt': `${p.spin.tilt}deg`, '--squash': p.spin.squash } as CSSProperties}>
+            <img src={p.src} alt="" draggable={false} className={effects ? s.spinInner : undefined} style={{ transformOrigin: p.spin.origin, animationDuration: `${p.spin.period}s` }} />
+          </span>
+        ) : p.drift ? (
+          <img key={i} src={p.src} alt="" draggable={false} className={`${effects ? s.drift : ''} ${p.wideOnly ? s.wideOnly : ''}`} style={p.style} />
+        ) : p.rope ? (
           <Hanging key={i} p={p} rope={p.rope} animate={effects} />
         ) : p.sway && effects ? (
           <Swaying key={i} p={p} />

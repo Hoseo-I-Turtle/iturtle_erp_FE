@@ -301,3 +301,44 @@
     animation: none;
   }
 }
+
+/* ---------- 우주: 은하가 돌고 성운 띠가 흐른다 ---------- */
+/* 은하 그림은 기울어져 있어 그냥 돌리면 타원이 통째로 돈다.
+   바깥(spinOuter)이 기울기(--tilt) · 납작함(--squash)을 다시 입히고, 안쪽(spinInner)이 그것을 풀어 정면 원반으로 만든 뒤 돈다 → 원반이 제자리에서 회전 */
+.spinOuter {
+  position: absolute;
+  display: block;
+  transform: rotate(var(--tilt)) scaleY(var(--squash));
+  pointer-events: none;
+}
+.spinOuter img {
+  position: static;
+  display: block;
+  width: 100%;
+  transform: scaleY(calc(1 / var(--squash))) rotate(calc(-1 * var(--tilt)));
+}
+.spinInner {
+  animation: galaxySpin linear infinite;
+}
+@keyframes galaxySpin {
+  from { transform: rotate(0deg) scaleY(calc(1 / var(--squash))) rotate(calc(-1 * var(--tilt))); }
+  to { transform: rotate(-360deg) scaleY(calc(1 / var(--squash))) rotate(calc(-1 * var(--tilt))); }
+}
+.drift {
+  animation: nebulaDrift 26s ease-in-out infinite alternate;
+}
+@keyframes nebulaDrift {
+  from { transform: translateX(-10px) scale(1); opacity: 0.82; }
+  50% { opacity: 1; }
+  to { transform: translateX(14px) scale(1.03); opacity: 0.9; }
+}
+:global([data-effects='off']) .spinInner,
+:global([data-effects='off']) .drift {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinInner,
+  .drift {
+    animation: none;
+  }
+}
