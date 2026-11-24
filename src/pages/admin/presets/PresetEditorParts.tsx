@@ -89,11 +89,10 @@ type PropagateProps = {
   onPropagate: (v: boolean) => void
   applied: { loading: boolean; error: string | null }
   preview: string[]
-  added: string[]
 }
 
 /** 적용한 구성원에게도 반영 · 미리보기 */
-export function PropagateBox({ propagate, onPropagate, applied, preview, added }: PropagateProps) {
+export function PropagateBox({ propagate, onPropagate, applied, preview }: PropagateProps) {
   return (
     <div className={s.propagate}>
       <div className={s.propTop}>
@@ -107,7 +106,7 @@ export function PropagateBox({ propagate, onPropagate, applied, preview, added }
             : applied.error
               ? `미리보기 · ${applied.error}`
               : preview.length > 0
-                ? `미리보기 · 아직 ${added[0] ?? 'penpot-member'} 가 없는 ${preview.length}명(${preview.join(', ')})에게 더해져요`
+                ? `미리보기 · ${preview.length}명(${preview.join(', ')})의 역할이 이 프리셋 역할로 바뀌어요 (프리셋에 없는 역할은 빠져요)`
                 : '미리보기 · 바뀌는 구성원이 없어요'}
         </small>
       )}

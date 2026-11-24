@@ -106,20 +106,21 @@ function AdminMembersView({ data }: { data: AdminMembersData }) {
   }
   const toggleRole = (code: string) => setDraftRoles(roles.includes(code) ? roles.filter((r) => r !== code) : [...roles, code])
 
-  /** 3-5 프리셋 적용: 프리셋 역할 중 없는 것만 더한다 (이미 가진 역할은 그대로) */
+  /** 3-5 프리셋 적용: 역할을 프리셋 역할로 덮어쓴다 (프리셋에 없는 역할은 빠짐, ERP-51) */
   const applyPresets = async () => {
     const p = data.presets.find((x) => x.id === pick)
     if (!p) return setErr('적용할 프리셋을 골라 주세요.')
-    // 목업: 프리셋 역할을 고치는 중인 역할에 더한다 (저장은 "역할 저장")
-    if (!isLive()) return setDraftRoles([...new Set([...roles, ...p.roles])])
+    // 목업: 고치는 중인 역할을 프리셋 역할로 바꾼다 (저장은 "역할 저장")
+    if (!isLive()) return setDraftRoles([...p.roles])
     const id = sel.memberId
     setErr('')
     try {
       const r = await applyPreset(id, Number(p.id))
       update(id, {
         roles: r.roles,
-        presets: sel.presets.includes(p.name) ? sel.presets : [...sel.presets, p.name],
-        presetIds: [...new Set([...(sel.presetIds ?? []), Number(p.id)])],
+        // 덮어쓰기라 적용한 프리셋은 이것 하나만 남는다
+        presets: [p.name],
+        presetIds: [Number(p.id)],
       })
       setDraftRoles(null)
       conflicts.reload()

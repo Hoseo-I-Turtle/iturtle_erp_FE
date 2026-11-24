@@ -50,8 +50,10 @@ function PresetsView({ data }: { data: PresetsData }) {
   }
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved)
   const added = draft.roles.filter((r) => !saved.roles.includes(r))
-  // 더해진 역할이 아직 없는 적용 구성원 (미리보기)
-  const affected = propagate ? (applied.data ?? []).filter((m) => added.some((r) => !m.roles.includes(r))) : []
+  // 반영하면 역할이 바뀌는 적용 구성원 (미리보기) — 반영은 덮어쓰기라 빠질 역할이 있어도 바뀐다 (ERP-51)
+  const affected = propagate
+    ? (applied.data ?? []).filter((m) => draft.roles.some((r) => !m.roles.includes(r)) || m.roles.some((r) => !draft.roles.includes(r)))
+    : []
   const preview = !isLive() && added.length === 0 && saved.id === 'student' && !dirty ? missingPenpot : affected.map((m) => m.name)
 
   const toggle = (code: string) =>
@@ -94,7 +96,7 @@ function PresetsView({ data }: { data: PresetsData }) {
       <Card className={s.editor}>
         <PresetFields draft={draft} isNew={isNew} onChange={setDraft} />
         <PresetRoleGrid roles={ROLES} draft={draft} saved={saved} onToggle={toggle} />
-        {!isNew && <PropagateBox propagate={propagate} onPropagate={setPropagate} applied={applied} preview={preview} added={added} />}
+        {!isNew && <PropagateBox propagate={propagate} onPropagate={setPropagate} applied={applied} preview={preview} />}
         {err && <p className={a.err}>{err}</p>}
         <div className={a.actions}>
           <Button variant="secondary" onClick={() => setDraft(saved)} disabled={!dirty}>
