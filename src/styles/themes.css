@@ -141,14 +141,17 @@
 
 /* ================= 우주 ================= */
 /* 색은 Penpot "14 Theme · 우주" 의 "Screen · 홈 · 오브젝트 A + 거북이" 에서 옮겼다.
-   검은 밤하늘 바탕에 보라 강조색, 카드는 흰 테두리 선과 보랏빛 글로우를 두른다 */
+   검은 밤하늘 바탕에 보라 강조색, 카드는 흰 테두리 선과 보랏빛 그림자를 두른다 */
 [data-theme='space'] {
   --accent-deep: #1e1535;
-  --accent: #7c3aed; /* 헤더 버튼 · 주 버튼 (Penpot 은 #7c3aed → #b46cf5 그라데이션) */
+  --accent: #7c3aed; /* 선택 표시 · 글자 강조 (주 버튼 바탕은 아래 --accent-fill) */
   --accent-2: #a855f7; /* 진행 막대 · 개수 칩 */
   --accent-3: #8b5cf6; /* 아바타 */
   --accent-line: #8b5cf6;
   --accent-soft: #2d2343; /* 칩 */
+  --accent-fill: linear-gradient(90deg, #7c3aed, #b46cf5);
+  --accent-fill-hover: linear-gradient(90deg, #8b4cf2, #c285f8);
+  --count-bg: #a855f7;
 
   --surface-page: #07060c;
   --page-bg: linear-gradient(180deg, #120a24 0%, #07060c 30%, #050409 100%);
@@ -199,20 +202,25 @@
   --sidebar-card: #100d18;
   --sidebar-badge: #c4b5fd;
   --sidebar-badge-text: #1e1535;
+  --sidebar-section-text: #c9c3da;
+  --sidebar-user-bg: #100d18;
+  --sidebar-user-border: transparent;
+  --sidebar-avatar-bg: #c4b5fd;
+  --sidebar-avatar-text: #1e1535;
 
   --hero-from: #16112a;
   --hero-to: #0b0914;
+  --hero-chip-bg: #e4e1ec;
+  --hero-chip-text: #15111f;
+  --hero-action-bg: #e4e1ec;
+  --hero-action-text: #15111f;
+  --hero-action-hover: #ffffff;
 
-  /* 글로우: 흰 테두리 선 + Penpot 의 보랏빛 그림자 + 더 넓게 번지는 빛 */
-  --shadow-card:
-    0 0 0 1.5px rgba(255, 255, 255, 0.28),
-    0 4px 16px rgba(139, 92, 246, 0.36),
-    0 0 40px rgba(139, 92, 246, 0.26);
-  --shadow-floating:
-    0 0 0 1.5px rgba(255, 255, 255, 0.34),
-    0 6px 22px rgba(139, 92, 246, 0.5),
-    0 0 60px rgba(139, 92, 246, 0.34),
-    0 18px 44px rgba(0, 0, 0, 0.7);
+  /* 카드: 안쪽 흰 테두리 선(1.5px) + 보랏빛 그림자. Penpot 값 그대로 */
+  --shadow-card: inset 0 0 0 1.5px rgba(255, 255, 255, 0.28), 0 4px 16px rgba(139, 92, 246, 0.22);
+  /* 검색창 · 알림 버튼: 테두리 선이 짙은 보라 */
+  --shadow-control: inset 0 0 0 1px #3d3654, 0 4px 16px rgba(139, 92, 246, 0.22);
+  --shadow-floating: inset 0 0 0 1.5px rgba(255, 255, 255, 0.28), 0 6px 24px rgba(139, 92, 246, 0.4), 0 18px 44px rgba(0, 0, 0, 0.7);
 
   color-scheme: dark;
 }

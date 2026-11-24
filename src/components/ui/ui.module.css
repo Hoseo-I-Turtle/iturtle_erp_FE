@@ -80,7 +80,7 @@
   color: var(--status-warning-text);
 }
 .chip-count {
-  background: var(--status-negative);
+  background: var(--count-bg);
   color: var(--text-on-dark);
 }
 .chip-muted {
@@ -129,13 +129,13 @@
   transition: background-color 0.15s, box-shadow 0.15s;
 }
 .button-primary {
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--text-on-dark);
   padding: 10px 18px;
   font-size: var(--fs-body);
 }
 .button-primary:hover {
-  background: var(--accent-2);
+  background: var(--accent-fill-hover);
 }
 .button-light {
   background: var(--surface-card);
@@ -642,7 +642,7 @@
   justify-content: center;
   background: var(--surface-card);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-control);
   color: var(--text-body);
   flex: none;
 }

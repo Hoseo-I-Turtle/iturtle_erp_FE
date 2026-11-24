@@ -15,6 +15,9 @@
   --accent-3: #5b86b6; /* 아바타 · 보조 채움 */
   --accent-line: #80aad3; /* 입력 포커스 테두리 · 점선 */
   --accent-soft: #c0e6fd; /* 강조 칩 배경 */
+  --accent-fill: var(--accent); /* 주 버튼 바탕 (테마에 따라 그라데이션) */
+  --accent-fill-hover: var(--accent-2);
+  --count-bg: var(--status-negative); /* 개수 칩 */
 
   /* ---------- 바탕 ---------- */
   --surface-page: #eef5fb; /* 화면 바탕 (한 가지 색) */
@@ -71,10 +74,18 @@
   --sidebar-card: #1b3554; /* 아래 내 정보 칸 */
   --sidebar-badge: #5b86b6;
   --sidebar-badge-text: #ffffff;
+  --sidebar-section-text: var(--text-muted); /* 메뉴 묶음 제목 */
+  --sidebar-user-bg: rgba(255, 255, 255, 0.1); /* 아래 내 정보 칸 (밝은 막) */
+  --sidebar-user-border: rgba(255, 255, 255, 0.16);
 
   /* ---------- 강조 카드 (홈 "꼭 확인할 것") ---------- */
   --hero-from: var(--accent);
   --hero-to: var(--accent-2);
+  --hero-chip-bg: var(--accent-soft); /* 카드 안 종류 칩 */
+  --hero-chip-text: var(--text-body);
+  --hero-action-bg: var(--surface-card); /* 카드 안 버튼 */
+  --hero-action-text: var(--text-body);
+  --hero-action-hover: var(--accent-soft);
 
   /* ---------- 카드 테두리 장식 (기본은 없음. 장식을 켠 테마만 값을 준다) ---------- */
   --card-sheen: none; /* 카드 위쪽에 비치는 빛 (테마가 채운다) */
@@ -86,6 +97,7 @@
   --grad-hero: linear-gradient(90deg, var(--hero-from), var(--hero-to));
   --shadow-card: 0 4px 16px rgba(0, 15, 34, 0.08);
   --shadow-floating: 0 12px 32px rgba(0, 15, 34, 0.16);
+  --shadow-control: var(--shadow-card); /* 머리의 검색창 · 알림 버튼 */
 
   /* ---------- 예전 이름 (새 코드에서는 쓰지 않는다. 위 쓰임새 이름으로 이어 둔 것) ---------- */
   --brand-100: var(--accent-soft);
