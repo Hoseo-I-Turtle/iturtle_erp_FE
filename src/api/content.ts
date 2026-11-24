@@ -8,7 +8,7 @@
 import { api, ApiError } from './client'
 import { ago, fetchAllPages, type MemberRef, type PageResponse, type TaskRef } from './types'
 import { useResource } from './useResource'
-import { appendUnique } from './useLoadMore'
+import { appendUnique, mergeNext, pagedOf } from './useLoadMore'
 import { getApiBase, getDataMode } from '../lib/dataMode'
 import { projectCategoryName } from './projects'
 import { STATUS_NAME, type TaskStatus } from '../mocks/tasks'
@@ -1094,6 +1094,9 @@ export type LibraryData = {
   unresolved: LibraryDocument[]
   popularTags: string[]
   options: { tags: string[]; projects: string[]; authors: string[]; types: string[] }
+  /** 목록을 어디까지 받았는지 (무한 스크롤) */
+  page: number
+  hasNext: boolean
 }
 
 const uniq = (xs: string[]) => [...new Set(xs)].sort()
@@ -1110,6 +1113,8 @@ function mockLibrary(): LibraryData {
     pinnedDocs: mockPinnedDocs,
     unresolved: mockDocuments.filter((d) => d.resolved === false),
     popularTags: mockPopularTags,
+    page: 0,
+    hasNext: false,
     options: {
       tags: uniq(mockDocuments.flatMap((d) => d.tags)),
       projects: uniq(mockDocuments.flatMap((d) => (d.project ? [d.project.name] : []))),
@@ -1151,7 +1156,7 @@ const toDocument = (d: DocumentItem): LibraryDocument => {
 
 /**
  * 서버 정렬 (DocumentService: createdAt · updatedAt 과 commentCount 만 받는다, 모두 내림차순).
- * 백엔드에 제목 정렬이 없어 제목순은 최신순으로 받고 화면에서 다시 정렬한다 (한 번에 100개까지라 그 안에서만 맞다).
+ * 백엔드에 제목 정렬이 없어 제목순은 최신순으로 받고 화면에서 다시 정렬한다 (받아 온 것 안에서만 맞다 — 끝까지 내려 받으면 전체가 맞는다).
  */
 const SORT_PARAM: Record<LibrarySort, string> = {
   최신순: 'createdAt,desc',
@@ -1159,23 +1164,38 @@ const SORT_PARAM: Record<LibrarySort, string> = {
   제목순: 'createdAt,desc',
 }
 
-/** 자료실 목록 · 고정 자료 · 카테고리 개수 · 해결 안 된 질문 · 많이 쓰는 태그 (D-1, D-8) */
+/** 자료실 목록 한 페이지 크기 (정책 ERP-P32 의 기본값) */
+const LIBRARY_PAGE_SIZE = 20
+
+/** 거르기 조건 → GET /documents 쿼리 (첫 페이지와 다음 페이지가 같은 조건을 쓴다) */
+const libraryQuery = (f: LibraryFilter, page: number) => ({
+  categoryCode: f.category === 'ALL' ? undefined : f.category,
+  tag: f.tag || undefined,
+  projectKey: f.project ? seenProjects.get(f.project) : undefined,
+  authorId: f.author ? seenAuthors.get(f.author) : undefined,
+  fileType: f.fileType || undefined,
+  folderId: f.folderId ?? undefined,
+  sort: SORT_PARAM[f.sort],
+  page,
+  size: LIBRARY_PAGE_SIZE,
+})
+
+/** 자료실 목록의 다음 페이지 (useLoadMore 에 넘긴다). 고정 자료는 첫 페이지에서 이미 받았다 */
+export const fetchMoreLibrary = (f: LibraryFilter, d: LibraryData) =>
+  api<DocumentListResponse>('/documents', { query: libraryQuery(f, d.page + 1) }).then((list) =>
+    mergeNext(d, (cur) => ({
+      ...cur,
+      documents: appendUnique(cur.documents, list.page.content.map(toDocument), (x) => x.documentId),
+      ...pagedOf(list.page),
+    })),
+  )
+
+/** 자료실 목록 · 고정 자료 · 카테고리 개수 · 해결 안 된 질문 · 많이 쓰는 태그 (D-1, D-8). 목록은 첫 페이지만 받는다 */
 export function useLibrary(f: LibraryFilter) {
   return useResource<LibraryData>(['library', f], mockLibrary, async () => {
     const filtered = f.category !== 'ALL' || !!f.tag || !!f.project || !!f.author || !!f.fileType || f.folderId != null
     const [list, unresolvedList, tags, all] = await Promise.all([
-      api<DocumentListResponse>('/documents', {
-        query: {
-          categoryCode: f.category === 'ALL' ? undefined : f.category,
-          tag: f.tag || undefined,
-          projectKey: f.project ? seenProjects.get(f.project) : undefined,
-          authorId: f.author ? seenAuthors.get(f.author) : undefined,
-          fileType: f.fileType || undefined,
-          folderId: f.folderId ?? undefined,
-          sort: SORT_PARAM[f.sort],
-          size: 100,
-        },
-      }),
+      api<DocumentListResponse>('/documents', { query: libraryQuery(f, 0) }),
       // 해결 안 된 질문: unresolved 는 해결 표시가 되는 카테고리(공통코드 extra=Y, 기본 QNA)만 거른다
       api<DocumentListResponse>('/documents', { query: { unresolved: true, size: 5 } }),
       api<{ tag: string; count: number }[]>('/documents/tags', { query: { limit: 30 } }),
@@ -1197,6 +1217,7 @@ export function useLibrary(f: LibraryFilter) {
       // 고정된 질문은 pinned 쪽에 온다
       unresolved: [...unresolvedList.pinned, ...unresolvedList.page.content].slice(0, 5).map(toDocument),
       popularTags: tags.slice(0, 10).map((t) => t.tag),
+      ...pagedOf(list.page),
       options: {
         tags: uniq([...tags.map((t) => t.tag), ...page.flatMap((d) => d.tags)]),
         projects: uniq([...seenProjects.keys()]),
