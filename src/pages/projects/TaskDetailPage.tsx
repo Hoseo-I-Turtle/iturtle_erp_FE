@@ -20,8 +20,10 @@ import { Avatar, AvatarStack, Breadcrumb, Button, Card, Checkbox, Columns, Empty
 import { Markdown } from '../../components/markdown/Markdown'
 import { MarkdownEditor } from '../../components/markdown/MarkdownEditor'
 import { STATUS_NAME, type TaskStatus } from '../../mocks/tasks'
+import { LoadMore } from '../../components/ui/LoadMore'
 import { ApiError } from '../../api/client'
 import { whenLive } from '../../api/useResource'
+import { useLoadMore, type LoadMoreState } from '../../api/useLoadMore'
 import {
   addChecklistItem,
   deleteChecklistItem,
@@ -32,6 +34,7 @@ import {
   transitionRule,
   transitionTask,
   updateTask,
+  fetchMoreTaskActivity,
   useTaskDetail,
   type TaskDetailData,
   type TaskFields,
@@ -63,14 +66,16 @@ function toPatch(next: Partial<TaskFields>): TaskPatch {
 export function TaskDetailPage() {
   const { key, taskKey } = useParams()
   const detail = useTaskDetail(key, taskKey)
+  // 활동 기록: 목록 끝에 닿으면 다음 페이지를 이어 붙인다
+  const moreActivity = useLoadMore(detail, detail.data?.activityHasNext, (d) => fetchMoreTaskActivity(key, taskKey, d))
   return (
     <Loadable resource={detail} label="작업 상세">
-      {(d) => <TaskDetailView key={d.task.taskKey} d={d} projectKey={key ?? d.task.taskKey.split('-')[0]} reload={detail.reload} />}
+      {(d) => <TaskDetailView key={d.task.taskKey} d={d} projectKey={key ?? d.task.taskKey.split('-')[0]} reload={detail.reload} moreActivity={moreActivity} />}
     </Loadable>
   )
 }
 
-function TaskDetailView({ d, projectKey, reload }: { d: TaskDetailData; projectKey: string; reload: () => void }) {
+function TaskDetailView({ d, projectKey, reload, moreActivity }: { d: TaskDetailData; projectKey: string; reload: () => void; moreActivity: LoadMoreState }) {
   const task = d.task
   const ME = d.me
 
@@ -430,6 +435,7 @@ function TaskDetailView({ d, projectKey, reload }: { d: TaskDetailData; projectK
                   <small>{a.ago}</small>
                 </div>
               ))}
+          {tab === 'activity' && <LoadMore more={moreActivity} />}
           <div className={s.commentBox}>
             <input
               value={draft}

@@ -6,7 +6,7 @@
 // comment 모듈 CommentController, document 모듈 DocumentController, file 모듈 FileController 와 각 dto.
 // 응답을 화면이 쓰는 mocks/* 의 모양으로 바꾼다.
 import { api, ApiError } from './client'
-import { ago, type MemberRef, type PageResponse, type TaskRef } from './types'
+import { ago, fetchAllPages, type MemberRef, type PageResponse, type TaskRef } from './types'
 import { useResource } from './useResource'
 import { appendUnique } from './useLoadMore'
 import { getApiBase, getDataMode } from '../lib/dataMode'
@@ -260,8 +260,11 @@ export function useThreadReplies(threadId: number | undefined, mockReplies: Thre
     () => mockReplies,
     async () => {
       if (threadId === undefined) return []
-      const page = await listComments('PROJECT_THREAD', threadId)
-      return page.content.flatMap((c) => [c, ...(c.replies ?? [])]).map(toReply)
+      // 답글은 대화라 앞뒤가 이어져야 읽힌다 → 페이지를 끝까지 돌며 모두 받는다 (첫 100개에서 끊기지 않게)
+      const all = await fetchAllPages((page) =>
+        api<PageResponse<Comment>>('/comments', { query: { targetType: 'PROJECT_THREAD', targetId: threadId, page, size: 100 } }),
+      )
+      return all.flatMap((c) => [c, ...(c.replies ?? [])]).map(toReply)
     },
   )
 }

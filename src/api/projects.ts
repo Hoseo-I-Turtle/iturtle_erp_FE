@@ -3,7 +3,7 @@
 // ProjectLinkController, ServiceAccessController, VaultPathRequestController) 와 dto/request · dto/response.
 // 응답을 화면이 쓰는 mocks/projects.ts · projectDetail.ts · tasks.ts 의 모양으로 바꾼다.
 import { api } from './client'
-import { ago, type MemberRef, type PageResponse } from './types'
+import { ago, fetchAllPages, type MemberRef, type PageResponse } from './types'
 import { useResource } from './useResource'
 import { appendUnique, mergeNext, NOT_PAGED, pagedOf, type Paged } from './useLoadMore'
 import { getApiBase } from '../lib/dataMode'
@@ -842,6 +842,9 @@ export type TaskDetailData = {
   attachments: { name: string; size: string; href: string }[]
   comments: TaskComment[]
   activity: ActivityLine[]
+  /** 활동 기록을 어디까지 받았는지 (무한 스크롤) */
+  activityPage: number
+  activityHasNext: boolean
   subscribers: string[]
   watchCount: number
   watching: boolean
@@ -895,6 +898,20 @@ function sourceLink(s: NonNullable<TaskDetailDto['source']>): TaskLink {
 }
 
 /** 작업 상세: T-3 + P-3(이름 · 권한) + P-9(?taskKey) + CM-1(TASK) */
+/** 작업 활동 기록의 한 페이지 (최신 순, 정책 ERP-P32 의 기본 크기 20) */
+const taskActivityPage = (projectKey: string | undefined, taskKey: string | undefined, page: number) =>
+  api<PageResponse<ActivityDto>>(`/projects/${encodeURIComponent(projectKey ?? '')}/activities`, { query: { taskKey, page, size: 20 } })
+
+/** 작업 활동 기록의 다음 페이지 (useLoadMore 에 넘긴다). 부르는 사이에 상세가 다시 불려 왔으면 붙이지 않는다 */
+export const fetchMoreTaskActivity = (projectKey: string | undefined, taskKey: string | undefined, d: TaskDetailData) =>
+  taskActivityPage(projectKey, taskKey, d.activityPage + 1).then(
+    (acts) =>
+      (cur: TaskDetailData): TaskDetailData =>
+        cur.activityPage !== d.activityPage
+          ? cur
+          : { ...cur, activity: [...cur.activity, ...acts.content.map((a) => toActivity(a, true))], activityPage: acts.page, activityHasNext: acts.hasNext },
+  )
+
 export function useTaskDetail(projectKey: string | undefined, taskKey: string | undefined) {
   return useResource<TaskDetailData>(
     ['task', projectKey, taskKey],
@@ -908,6 +925,8 @@ export function useTaskDetail(projectKey: string | undefined, taskKey: string | 
         attachments: extra.attachments.map((a) => ({ ...a, href: '#' })),
         comments: extra.comments,
         activity: extra.activity,
+        activityPage: 0,
+        activityHasNext: false,
         subscribers: extra.subscribers,
         watchCount: extra.subscribers.length,
         watching: true,
@@ -934,10 +953,13 @@ export function useTaskDetail(projectKey: string | undefined, taskKey: string | 
         api<TaskDetailDto>(`/tasks/${k}`),
         getProject(projectKey ?? ''),
         api<MemberRef>('/members/me'),
-        api<PageResponse<ActivityDto>>(`/projects/${encodeURIComponent(projectKey ?? '')}/activities`, { query: { taskKey, size: 20 } }),
+        taskActivityPage(projectKey, taskKey, 0),
       ])
-      // 댓글 대상 ID 는 작업의 숫자 ID (taskId) 라 상세를 받은 뒤 부른다
-      const comments = await api<PageResponse<CommentDto>>('/comments', { query: { targetType: 'TASK', targetId: t.taskId, size: 100 } })
+      // 댓글 대상 ID 는 작업의 숫자 ID (taskId) 라 상세를 받은 뒤 부른다.
+      // 대화는 앞뒤가 이어져야 읽히므로 페이지를 끝까지 돌며 모두 받는다 (첫 100개에서 끊기지 않게)
+      const comments = await fetchAllPages((page) =>
+        api<PageResponse<CommentDto>>('/comments', { query: { targetType: 'TASK', targetId: t.taskId, page, size: 100 } }),
+      )
       const base = getApiBase().replace(/\/$/, '')
       return {
         task: toTask(t),
@@ -945,8 +967,10 @@ export function useTaskDetail(projectKey: string | undefined, taskKey: string | 
         description: t.description ?? '',
         checklist: t.checklistItems.map((c) => ({ itemId: c.itemId, text: c.content, done: c.done })),
         attachments: t.attachments.map((a) => ({ name: a.name, size: fileSize(a.size), href: `${base}/files/${a.publicId}/download` })),
-        comments: comments.content.flatMap((c) => [c, ...(c.replies ?? [])]).map(toComment),
+        comments: comments.flatMap((c) => [c, ...(c.replies ?? [])]).map(toComment),
         activity: acts.content.map((a) => toActivity(a, true)),
+        activityPage: acts.page,
+        activityHasNext: acts.hasNext,
         subscribers: t.watchers.members.map((m) => m.name),
         watchCount: t.watchers.count,
         watching: t.watchers.watching,
