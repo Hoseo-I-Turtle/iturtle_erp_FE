@@ -16,7 +16,8 @@ const SERVICE_ICON: Record<Service['icon'], LucideIcon> = {
 /** 이번 주 일정 */
 export function WeekEventsCard({ weekEvents }: { weekEvents: Resource<WeekEvent[]> }) {
   return (
-    <Card>
+    <Card className={s.decorHost}>
+      <ThemeObjects slot="schedule" />
       <SectionHead icon={Calendar} title="이번 주 일정" link={{ to: '/calendar', label: '캘린더' }} />
       <Loadable resource={weekEvents} label="이번 주 일정">
         {(events) =>

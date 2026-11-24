@@ -5,7 +5,7 @@
 // 틀의 색 · 오브젝트 묶음(여러 개) · 마우스 효과는 서로 따로 켜고 끈다.
 import { useSyncExternalStore } from 'react'
 
-export type ThemeId = 'default' | 'ocean' | 'christmas' | 'dark'
+export type ThemeId = 'default' | 'ocean' | 'christmas' | 'space' | 'dark'
 /** 'auto' 는 기기 설정(밝게 · 어둡게)을 따라 기본 ↔ 다크 */
 export type ThemeChoice = ThemeId | 'auto'
 
@@ -21,6 +21,11 @@ export type ThemeInfo = {
    * 그림은 components/theme/ThemeObjects.tsx (그림 파일) · ThemeDecor.tsx (코드로 그린 것) 에 있다.
    */
   objectSets: string[]
+  /**
+   * 오브젝트 묶음이 같은 자리에 놓이는 서로 다른 그림이라 한 번에 하나만 보여 줄지.
+   * 켜진 묶음 중 앞의 것만 그린다 (오브젝트 1 을 끄면 오브젝트 2 가 보인다).
+   */
+  exclusiveObjects?: boolean
   hasEffects: boolean
   /** 아직 만드는 중이라 고르기 화면에서 숨길지 (개발 서버에서는 보인다) */
   hidden?: boolean
@@ -42,6 +47,16 @@ export const THEMES: ThemeInfo[] = [
     hasEffects: true,
     darkPage: true,
     preview: { sidebar: '#022c1f', page: '#750d11', card: '#fdefe0', accent: '#0a5a3a', text: '#1f120d' },
+  },
+  {
+    id: 'space',
+    name: '우주',
+    desc: '밤하늘 바탕 · 성운과 행성 · 로켓 · 우주 거북이',
+    objectSets: ['지구 · 성운 · 은하 · 혜성 · 로켓 · 망원경 · 거북이', '귀여운 그림 (달 · 토성 · 깃발 꽂은 달). 오브젝트 1 을 끄면 보여요'],
+    exclusiveObjects: true,
+    hasEffects: true,
+    darkPage: true,
+    preview: { sidebar: '#0b0a24', page: '#0d0b2b', card: '#1a1842', accent: '#7c6cf0', text: '#f1efff' },
   },
   { id: 'dark', name: '다크', desc: '짙은 남색 바탕 · 꾸밈 없이 깔끔하게', objectSets: [], hasEffects: false, preview: { sidebar: '#070e18', page: '#0b1522', card: '#132235', accent: '#3b6ea8', text: '#eef4fb' } },
 ]
@@ -127,13 +142,16 @@ const subscribe = (l: () => void) => {
 export function useTheme() {
   const s = useSyncExternalStore(subscribe, getThemeState)
   const active = resolveTheme(s.choice)
+  const info = THEMES.find((t) => t.id === active)!
   return {
     choice: s.choice,
     /** 실제로 켜진 테마 */
     active,
-    info: THEMES.find((t) => t.id === active)!,
+    info,
     /** 오브젝트 묶음별 켜짐 여부 */
     objects: s.objects,
+    /** 실제로 그릴 묶음 (한 번에 하나만 보여 주는 테마는 켜진 것 중 앞의 것만) */
+    shownObjects: info.exclusiveObjects ? s.objects.map((on, i) => on && i === s.objects.indexOf(true)) : s.objects,
     effects: s.effects,
     setTheme: (choice: ThemeChoice) => setThemeState({ choice }),
     /** index 번째 오브젝트 묶음 켜기 · 끄기 (0 = 오브젝트 1) */
