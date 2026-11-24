@@ -36,7 +36,6 @@ export function HomePage() {
   return (
     <>
       <PageHeader title="홈" subtitle="오늘 확인할 것과 내 일을 한눈에" />
-      <ObjectToggles />
 
       <div className={s.body}>
         <div className={s.left}>
@@ -81,21 +80,5 @@ export function HomePage() {
         </div>
       </div>
     </>
-  )
-}
-
-/** 테마 오브젝트 묶음을 켜고 끄는 버튼 (지금 테마에 오브젝트가 있을 때만 보인다) */
-function ObjectToggles() {
-  const { info, objects, setObject } = useTheme()
-  if (info.objectSets.length === 0) return null
-  return (
-    <div className={s.objectToggles} role="group" aria-label="테마 오브젝트">
-      <span>{info.name} 테마</span>
-      {info.objectSets.map((label, i) => (
-        <button key={i} type="button" aria-pressed={objects[i]} className={objects[i] ? s.objectOn : undefined} title={label} onClick={() => setObject(i, !objects[i])}>
-          오브젝트 {i + 1} {objects[i] ? '끄기' : '켜기'}
-        </button>
-      ))}
-    </div>
   )
 }

@@ -41,10 +41,9 @@ export const THEMES: ThemeInfo[] = [
     objectSets: ['전구 줄 · 리본 · 선물 · 눈 · 반짝이'],
     hasEffects: true,
     darkPage: true,
-    hidden: !import.meta.env.DEV,
     preview: { sidebar: '#022c1f', page: '#750d11', card: '#fdefe0', accent: '#0a5a3a', text: '#1f120d' },
   },
-  { id: 'dark', name: '다크', desc: '짙은 남색 바탕 · 마우스를 따라오는 빛', objectSets: [], hasEffects: true, preview: { sidebar: '#070e18', page: '#0b1522', card: '#132235', accent: '#3b6ea8', text: '#eef4fb' } },
+  { id: 'dark', name: '다크', desc: '짙은 남색 바탕 · 꾸밈 없이 깔끔하게', objectSets: [], hasEffects: false, preview: { sidebar: '#070e18', page: '#0b1522', card: '#132235', accent: '#3b6ea8', text: '#eef4fb' } },
 ]
 
 export type ThemeState = {

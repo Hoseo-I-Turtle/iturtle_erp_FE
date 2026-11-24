@@ -144,7 +144,7 @@ export function ThemeSettingsPage() {
           <span>
             <strong>마우스 효과</strong>
             <small>
-              {info.hasEffects ? '마우스를 움직이면 방울 · 눈 · 빛이 따라와요. 기기에서 "움직임 줄이기"를 켰으면 자동으로 꺼져요' : `${info.name} 테마에는 마우스 효과가 없어요`}
+              {info.hasEffects ? '마우스를 움직이면 방울 · 눈이 따라와요. 기기에서 "움직임 줄이기"를 켰으면 자동으로 꺼져요' : `${info.name} 테마에는 마우스 효과가 없어요`}
             </small>
           </span>
           <Switch checked={effects} onChange={setEffects} label="마우스 효과" />
