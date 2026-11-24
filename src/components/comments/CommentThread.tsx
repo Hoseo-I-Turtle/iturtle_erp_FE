@@ -80,7 +80,8 @@ export function CommentThread({ targetType, targetId, meName, mock, manage = tru
     <section className={s.thread} aria-label="댓글">
       <div className={s.head}>
         <MessageCircle size={18} />
-        <span>댓글 {comments.data?.filter((c) => !c.deleted).length ?? ''}</span>
+        {/* 앞쪽을 아직 안 받았으면 전체 개수를 모른다 → 숫자를 보여 주지 않는다 */}
+        <span>댓글 {comments.earlier.hasPrev ? '' : (comments.data?.filter((c) => !c.deleted).length ?? '')}</span>
       </div>
       <Loadable resource={comments} label="댓글">
         {(list) =>
@@ -88,6 +89,15 @@ export function CommentThread({ targetType, targetId, meName, mock, manage = tru
             <Empty>아직 댓글이 없어요.</Empty>
           ) : (
             <ul className={s.list}>
+              {/* 최신 댓글을 먼저 받는다. 더 오래된 댓글은 한 페이지씩 위에 붙인다 */}
+              {comments.earlier.hasPrev && (
+                <li className={s.earlier}>
+                  <button type="button" onClick={comments.earlier.loadPrev} disabled={comments.earlier.loading}>
+                    {comments.earlier.loading ? '불러오는 중…' : '이전 댓글 더 보기'}
+                  </button>
+                  {comments.earlier.error && <span className={s.error}>{comments.earlier.error}</span>}
+                </li>
+              )}
               {list.map((c) => (
                 <li key={c.id} className={c.reply ? `${s.item} ${s.reply}` : s.item}>
                   <Avatar name={c.author} size={32} />
