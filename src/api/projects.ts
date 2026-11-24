@@ -5,6 +5,7 @@
 import { api } from './client'
 import { ago, type MemberRef, type PageResponse } from './types'
 import { useResource } from './useResource'
+import { appendUnique, mergeNext, NOT_PAGED, pagedOf, type Paged } from './useLoadMore'
 import { getApiBase } from '../lib/dataMode'
 import {
   findProject,
@@ -134,7 +135,31 @@ const toCard = (x: ProjectSummaryDto): ProjectCard => {
 }
 
 export type ProjectListFilter = { category: string; mine: boolean; activeOnly: boolean; archived: boolean }
-export type ProjectList = { projects: ProjectCard[]; counts: Record<string, number>; categories: { code: string; name: string }[] }
+export type ProjectList = { projects: ProjectCard[]; counts: Record<string, number>; categories: { code: string; name: string }[] } & Paged
+
+/** 프로젝트 목록 화면의 한 페이지 크기 (정책 ERP-P32 의 기본값) */
+export const PROJECT_PAGE_SIZE = 20
+
+const projectListQuery = (f: ProjectListFilter, page: number, size: number) => ({
+  categoryCode: f.category === 'ALL' ? undefined : f.category,
+  mine: f.mine || undefined,
+  // 쉼표로 여러 상태 (ProjectService.parseStatuses)
+  status: f.activeOnly ? 'PREPARING,ACTIVE' : undefined,
+  includeArchived: f.archived || undefined,
+  page,
+  size,
+})
+
+/** 프로젝트 목록의 다음 페이지 (useLoadMore 에 넘긴다) */
+export const fetchMoreProjects = (f: ProjectListFilter, d: ProjectList) =>
+  api<ProjectListResponse>('/projects', { query: projectListQuery(f, d.page + 1, PROJECT_PAGE_SIZE) }).then((r) =>
+    mergeNext(d, (cur) => ({
+      ...cur,
+      projects: appendUnique(cur.projects, r.page.content.map(toCard), (p) => p.projectKey),
+      counts: r.categoryCounts,
+      ...pagedOf(r.page),
+    })),
+  )
 
 /** 탭: 기본 카테고리 + 서버 개수에 나온 카테고리 (서버 순서를 앞에) */
 const categoryTabs = (counts: Record<string, number>) =>
@@ -146,30 +171,23 @@ const categoryTabs = (counts: Record<string, number>) =>
 /**
  * 프로젝트 목록 화면 (P-1 GET /projects). 실서버는 조건을 서버에 넘기고, 목업은 지금처럼 화면이 거른다.
  * 화면은 늘 같은 거르기를 한 번 더 하므로 (서버가 이미 거른 값이면 그대로) 결과가 같다.
+ * @param size 첫 페이지 크기. 목록 화면은 기본값(20)으로 받고 fetchMoreProjects 로 이어 붙인다.
+ *             고르기 창처럼 내 프로젝트를 한 번에 다 보여 줘야 하는 곳만 100 을 준다
  */
-export function useProjectList(f: ProjectListFilter) {
+export function useProjectList(f: ProjectListFilter, size = PROJECT_PAGE_SIZE) {
   return useResource<ProjectList>(
     // 목업은 보관 포함만 개수에 영향을 준다
-    ['projects', f],
+    ['projects', f, size],
     () => {
       const base = mockProjects.filter((p) => f.archived || p.status !== 'ARCHIVED')
       const counts: Record<string, number> = { ALL: base.length }
       for (const p of base) counts[p.categoryCode] = (counts[p.categoryCode] ?? 0) + 1
-      return { projects: base, counts, categories: categoryTabs(counts) }
+      return { projects: base, counts, categories: categoryTabs(counts), ...NOT_PAGED }
     },
     async () => {
-      const r = await api<ProjectListResponse>('/projects', {
-        query: {
-          categoryCode: f.category === 'ALL' ? undefined : f.category,
-          mine: f.mine || undefined,
-          // 쉼표로 여러 상태 (ProjectService.parseStatuses)
-          status: f.activeOnly ? 'PREPARING,ACTIVE' : undefined,
-          includeArchived: f.archived || undefined,
-          size: 100,
-        },
-      })
+      const r = await api<ProjectListResponse>('/projects', { query: projectListQuery(f, 0, size) })
       const projects = r.page.content.map(toCard)
-      return { projects, counts: r.categoryCounts, categories: categoryTabs(r.categoryCounts) }
+      return { projects, counts: r.categoryCounts, categories: categoryTabs(r.categoryCounts), ...pagedOf(r.page) }
     },
   )
 }

@@ -49,7 +49,7 @@ export function UploadModal({ projectKey: fixedProject, onClose }: { projectKey?
   const live = getDataMode() === 'live'
   const policy = useDocumentPolicy().data
   const categories = useDocumentCategories().data ?? []
-  const projects = useProjectList({ category: 'ALL', mine: true, activeOnly: true, archived: false }).data?.projects ?? []
+  const projects = useProjectList({ category: 'ALL', mine: true, activeOnly: true, archived: false }, 100).data?.projects ?? []
 
   const [items, setItems] = useState<Item[]>([])
   const [dragging, setDragging] = useState(false)

@@ -2,19 +2,22 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Calendar, ChevronDown, Clock, ListChecks, Search, Users } from 'lucide-react'
 import { AvatarStack, Card, Checkbox, Chip, Columns, Empty, Loadable } from '../../components/ui'
+import { LoadMore } from '../../components/ui/LoadMore'
 import { errorText } from '../../api/content'
+import { useLoadMore } from '../../api/useLoadMore'
 import {
   checkMinuteAction,
+  fetchMoreMinutes,
   useMinuteRows,
   useMyMinuteActions,
   useProjectMembers,
+  type MinuteFilter,
   type MinutePeriod,
   type MinuteRow,
   type MyMinuteAction,
 } from '../../api/minutes'
 import s from './MinuteListPage.module.css'
 
-const PAGE = 5
 const PERIODS: { value: MinutePeriod; label: string }[] = [
   { value: 'm3', label: '최근 3개월' },
   { value: 'm6', label: '최근 6개월' },
@@ -27,8 +30,10 @@ export function MinuteListPage() {
   const [keyword, setKeyword] = useState('')
   const [period, setPeriod] = useState<MinutePeriod>('m3')
   const [attendeeId, setAttendeeId] = useState<number | null>(null)
-  const [size, setSize] = useState(PAGE)
-  const rows = useMinuteRows(key, { keyword, period, attendeeId, size })
+  const filter: MinuteFilter = { keyword, period, attendeeId }
+  const rows = useMinuteRows(key, filter)
+  // 목록 끝에 닿으면 같은 조건의 다음 페이지를 이어 붙인다
+  const more = useLoadMore(rows, rows.data?.hasNext, (d) => fetchMoreMinutes(key, filter, d))
   // 참석자 고르기는 프로젝트 참여자로
   const members = useProjectMembers(key).data ?? []
 
@@ -41,10 +46,7 @@ export function MinuteListPage() {
               <Search size={18} />
               <input
                 value={keyword}
-                onChange={(e) => {
-                  setKeyword(e.target.value)
-                  setSize(PAGE)
-                }}
+                onChange={(e) => setKeyword(e.target.value)}
                 placeholder="제목 · 내용 · 참석자 검색"
                 aria-label="회의록 검색"
               />
@@ -92,11 +94,7 @@ export function MinuteListPage() {
                       <MinuteRowItem key={r.minuteId} r={r} projectKey={key} />
                     ))}
                   </ul>
-                  {d.total > d.rows.length && (
-                    <button type="button" className={s.more} onClick={() => setSize((n) => n + PAGE)}>
-                      {Math.min(PAGE, d.total - d.rows.length)}개 더 보기 <ChevronDown size={14} />
-                    </button>
-                  )}
+                  <LoadMore more={more} />
                 </>
               )
             }

@@ -50,6 +50,24 @@ export function useLoadMore<T>(resource: Resource<T>, hasNext: boolean | undefin
   return { hasNext: !!hasNext, loadingMore, error, loadMore }
 }
 
+/** 어디까지 받았는지 — 무한 스크롤하는 목록 데이터에 넣는다 */
+export type Paged = { page: number; hasNext: boolean }
+/** PageResponse → Paged */
+export const pagedOf = (p: { page: number; hasNext: boolean }): Paged => ({ page: p.page, hasNext: p.hasNext })
+/** 다음 페이지를 한 번도 부르지 않는 목록 (목업) */
+export const NOT_PAGED: Paged = { page: 0, hasNext: false }
+
+/**
+ * 다음 페이지를 받은 뒤의 "이어 붙이는 함수"를 만든다.
+ * 부르는 사이에 목록이 처음부터 다시 불려 왔으면(page 가 달라짐) 붙이지 않는다.
+ * @param from  다음 페이지를 부를 때의 데이터
+ * @param merge 최신 데이터에 새 페이지를 붙이는 함수
+ */
+export const mergeNext =
+  <T extends Paged>(from: T, merge: (current: T) => T) =>
+  (current: T): T =>
+    current.page === from.page ? merge(current) : current
+
 /** 기존 목록 뒤에 새 항목을 붙인다. 이미 있는 id 는 거른다 (무한 스크롤 중 새 글이 들어와 한 칸씩 밀린 경우) */
 export function appendUnique<T>(prev: T[], next: T[], id: (item: T) => string | number): T[] {
   const seen = new Set(prev.map(id))
