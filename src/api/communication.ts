@@ -1245,9 +1245,15 @@ const notiFromDto = (n: NotificationDto): NotiItem => ({
 
 export const mockNotiItems: NotiItem[] = mockNotifications
 
-/** 알림 목록 (NT-1). 화면이 거르므로 전체를 최신 순으로 100개까지 */
-export const fetchNotifications = () =>
-  api<PageResponse<NotificationDto>>('/notifications', { query: { filter: 'ALL', size: 100 } }).then((p) => p.content.map(notiFromDto))
+/** 알림 한 페이지 크기 (정책 ERP-P32 의 기본값) */
+const NOTI_PAGE_SIZE = 20
+/** 알림 목록의 한 페이지 (NT-1, 최신 순). 화면이 거르므로 필터 없이 받고, 끝에 닿으면 다음 page 를 이어 붙인다 */
+export const fetchNotificationPage = (page: number) =>
+  api<PageResponse<NotificationDto>>('/notifications', { query: { filter: 'ALL', page, size: NOTI_PAGE_SIZE } }).then((p) => ({
+    items: p.content.map(notiFromDto),
+    page: p.page,
+    hasNext: p.hasNext,
+  }))
 /** 안 읽은 알림 수 (NT-2) */
 export const fetchUnreadCount = () => api<{ count: number }>('/notifications/unread-count').then((r) => r.count)
 /** 읽음 처리 (NT-3). ids 를 비우면 모두 읽음 */

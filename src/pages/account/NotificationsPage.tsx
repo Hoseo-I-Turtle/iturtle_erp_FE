@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bell, Check, Settings } from 'lucide-react'
 import { Button, Card, Columns, Empty, Loadable, Note, Segmented } from '../../components/ui'
+import { LoadMore } from '../../components/ui/LoadMore'
 import { PageHeader } from '../../layouts/PageHeader'
 import { getDataMode } from '../../lib/dataMode'
 import { notificationStore, useNotifications } from '../../lib/notificationStore'
@@ -67,7 +68,13 @@ export function NotificationsPage() {
               </Note>
             )}
             <Loadable resource={resource} label="알림">
-              {() => <NotiList list={list} onOpen={open} />}
+              {() => (
+                <>
+                  <NotiList list={list} onOpen={open} more={store.hasNext} />
+                  {/* 거르기는 받은 것 안에서 하므로, 끝에 닿으면 다음 페이지를 이어 받는다 */}
+                  <LoadMore more={{ hasNext: store.hasNext, loadingMore: store.loadingMore, error: store.moreError, loadMore: notificationStore.loadMore }} />
+                </>
+              )}
             </Loadable>
           </Card>
         }
@@ -87,12 +94,13 @@ export function NotificationsPage() {
   )
 }
 
-function NotiList({ list, onOpen }: { list: NotiItem[]; onOpen: (id: number, to: string) => void }) {
+/** more: 아직 안 받은 알림이 더 있는지 (있으면 "없어요" 라고 하지 않는다) */
+function NotiList({ list, onOpen, more }: { list: NotiItem[]; onOpen: (id: number, to: string) => void; more: boolean }) {
   // 같은 날 묶음 순서 (오늘 · 어제 · 그 전 날짜)
   const days = [...new Set(list.map((n) => n.day))]
   return (
     <>
-      {list.length === 0 && <Empty>알림이 없어요.</Empty>}
+      {list.length === 0 && !more && <Empty>알림이 없어요.</Empty>}
       {days.map((day) => {
         const items = list.filter((n) => n.day === day)
         return (
