@@ -1,7 +1,8 @@
 // 마우스에 반응하는 효과 — 화면 맨 위에 눌리지 않는 캔버스 한 장을 깔고 테마마다 다른 것을 그린다.
 //   바다       : 마우스가 지나간 자리에서 방울이 떠오른다
 //   크리스마스 : 마우스가 지나간 자리와 하늘(배경)에서 눈이 떨어져, 그 아래 카드 윗변(data-snow-ledge)과 화면 바닥에 쌓인다.
-//                쌓인 눈으로 눈덩이를 굴리고(경사면에서는 저절로 굴러 내려간다), 눈덩이 둘을 합치면 눈사람이 된다
+//                쌓인 눈으로 눈덩이를 굴리고(경사면에서는 저절로 굴러 내려간다), 눈덩이 둘을 합치면 눈사람이 된다.
+//                높은 데서 떨어진 눈덩이는 부서지고, 눈사람은 마우스를 바라보고 · 누르면 흔들리고 · 끌어 옮길 수 있고 · 높은 데서 떨어지면 흩어진다
 //   우주       : 마우스 주변에서 별빛이 반짝인다
 //   다크       : 없음 (깔끔하게 쓰는 테마)
 // 설정 › 테마의 "마우스 효과" 스위치로 끈다. 기기의 "움직임 줄이기"가 켜져 있으면 그리지 않는다.
@@ -9,7 +10,7 @@
 import { useEffect, useRef } from 'react'
 import { prefersReducedMotion, useTheme, type ThemeId } from '../../lib/theme'
 
-type Particle = { x: number; y: number; vx: number; vy: number; r: number; life: number; max: number; kind: 'bubble' | 'snow' | 'spark'; hue?: string; sky?: boolean }
+type Particle = { x: number; y: number; vx: number; vy: number; r: number; life: number; max: number; kind: 'bubble' | 'snow' | 'spark'; hue?: string; sky?: boolean; /** 부서진 눈덩이 조각: 중력을 받는다 */ g?: number }
 
 /* ---------- 쌓이는 눈 (크리스마스) ---------- */
 const BIN = 3 // 쌓인 눈 높이를 이 너비(px)마다 하나씩 둔다
@@ -21,13 +22,29 @@ const BALL_START_R = 4
 const BALL_MAX_R = 26
 const SNOWMAN_MIN_R = 10 // 이 크기 이상인 눈덩이 둘을 합치면 눈사람
 const SLOPE_G = 0.45 // 경사면에서 눈덩이를 끌어내리는 힘
-const ROLL_FRICTION = 0.97
+const ROLL_FRICTION = 0.93
+const ROLL_STOP_SLOPE = 0.18 // 이보다 완만하고 느리면 멈춘다 (울퉁불퉁한 눈 위에서 끝없이 구르지 않게)
 const SKY_EVERY = 3 // 이 프레임마다 하늘에서 눈송이 하나 (배경 눈도 쌓인다)
 const SKY_DEPOSIT = 0.9 // 하늘 눈은 마우스 눈보다 조금 덜 쌓인다
 /** 눈덩이: 놓인 자리(ledge)와 그 자리 왼쪽부터의 x. 들고 있을 때는 화면 좌표(hx, hy) */
 type Ball = { ledge: Ledge | null; x: number; r: number; held: boolean; hx: number; hy: number; vx: number; vy: number; rolling: boolean; spin: number }
 /** 눈사람: 아래부터 눈덩이 반지름 */
-type Snowman = { ledge: Ledge; x: number; parts: number[] }
+type Snowman = {
+  ledge: Ledge | null
+  x: number
+  parts: number[]
+  /** 흔들림(라디안)과 그 속도: 누르거나 착지하면 흔들린다 */
+  wob: number
+  wobV: number
+  /** 들고 있거나 떨어지는 중이면 화면 좌표(밑바닥 가운데) */
+  held: boolean
+  hx: number
+  hy: number
+  vy: number
+}
+const BALL_BREAK_V = 9 // 이 속도(px/프레임) 이상으로 떨어지면 눈덩이가 부서진다 (≈ 80px 넘게 떨어졌을 때)
+const SNOWMAN_BREAK_V = 11 // 눈사람은 이 속도 이상이면 눈덩이로 흩어진다
+const CHUNK_G = 0.28
 
 /** 눈이 쌓이는 자리 하나: 카드 윗변(el) 또는 화면 바닥(el = null). 높이는 그 자리 왼쪽부터 BIN 간격 */
 type Ledge = { el: Element | null; h: number[] }
@@ -60,7 +77,7 @@ function settle(hs: number[]) {
   }
 }
 
-const MAX_PARTICLES = 160
+const MAX_PARTICLES = 420
 
 /** 테마별로 마우스가 움직일 때 만들 알갱이 */
 function spawn(theme: ThemeId, x: number, y: number): Particle[] {
@@ -88,7 +105,7 @@ function spawn(theme: ThemeId, x: number, y: number): Particle[] {
 function eatSnow(hs: number[], x: number, r: number, dist: number) {
   const from = Math.floor((x - r * 0.7) / BIN)
   const to = Math.floor((x + r * 0.7) / BIN)
-  const bite = Math.min(1, 0.12 + Math.abs(dist) * 0.18) // 이번에 걷어 낼 비율
+  const bite = Math.min(0.35, 0.05 + Math.abs(dist) * 0.06) // 이번에 걷어 낼 비율
   let took = 0
   for (let i = from; i <= to; i++) {
     const v = hs[i] ?? 0
@@ -97,7 +114,7 @@ function eatSnow(hs: number[], x: number, r: number, dist: number) {
     hs[i] = v - t
     took += t
   }
-  return r >= BALL_MAX_R ? r : Math.min(BALL_MAX_R, Math.sqrt(r * r + took * BIN * 0.9))
+  return r >= BALL_MAX_R ? r : Math.min(BALL_MAX_R, Math.sqrt(r * r + took * BIN * 0.45))
 }
 
 /** 눈덩이: 흰 원 + 아래쪽 그늘 + 굴린 결(회전) */
@@ -121,11 +138,12 @@ function drawBall(ctx: CanvasRenderingContext2D, x: number, y: number, r: number
   }
 }
 /** 눈사람 머리: 숯 눈 · 당근 코 · 입 */
-function drawFace(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
+function drawFace(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, lx = 0, ly = 0) {
+  // 눈동자는 마우스 쪽을 본다 (lx, ly: -1 ~ 1)
   ctx.fillStyle = '#1f2328'
   for (const dx of [-0.35, 0.35]) {
     ctx.beginPath()
-    ctx.arc(x + dx * r, y - r * 0.15, Math.max(1.2, r * 0.11), 0, Math.PI * 2)
+    ctx.arc(x + dx * r + lx * r * 0.07, y - r * 0.15 + ly * r * 0.07, Math.max(1.2, r * 0.11), 0, Math.PI * 2)
     ctx.fill()
   }
   ctx.fillStyle = '#f08a24'
@@ -204,10 +222,53 @@ export function MouseEffects() {
       const i = Math.floor(b.x / BIN)
       return { x: r.left + b.x, y: r.top - (b.ledge.h[i] ?? 0) - b.r }
     }
+    /** 눈덩이가 부서진다: 크기만큼 눈 조각이 튀어 흩어지고, 내려앉은 조각은 다시 쌓인다 */
+    const shatter = (x: number, y: number, r: number) => {
+      const n = Math.min(40, Math.round(r * 1.6))
+      for (let k = 0; k < n; k++) {
+        const a = Math.random() * Math.PI - Math.PI // 위쪽 반원으로
+        const sp = 1 + Math.random() * 3
+        particles.push({ x: x + Math.cos(a) * r * 0.5, y: y + Math.sin(a) * r * 0.3, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 0.5, r: 1.4 + Math.random() * 2, life: 0, max: 100000, kind: 'snow', g: CHUNK_G })
+      }
+    }
+    /** 눈사람 밑바닥 가운데(화면 좌표) */
+    const manBase = (m: Snowman) => {
+      if (m.held || !m.ledge) return { x: m.hx, y: m.hy }
+      const r = rectOf(m.ledge)
+      if (!r) return null
+      return { x: r.left + m.x, y: r.top - (m.ledge.h[Math.floor(m.x / BIN)] ?? 0) }
+    }
+    /** 눈사람 각 눈덩이의 가운데 (흔들림 반영) */
+    const manParts = (m: Snowman) => {
+      const base = manBase(m)
+      if (!base) return null
+      const out: { x: number; y: number; r: number }[] = []
+      let up = 0
+      for (const pr of m.parts) {
+        up += pr
+        out.push({ x: base.x + Math.sin(m.wob) * up, y: base.y - Math.cos(m.wob) * up, r: pr })
+        up += pr * 0.7
+      }
+      return out
+    }
+    let grabMan: { m: Snowman; sx: number; sy: number; moved: boolean; ox: number; oy: number } | null = null
+
     const down = (e: PointerEvent) => {
       if (active !== 'christmas' || e.button !== 0) return
       rects = ledgeRects(ledges, w, h)
       rectsAt = performance.now()
+      // 0) 눈사람을 누른다 (끌면 옮기고, 그냥 떼면 흔들린다)
+      for (const m of snowmen) {
+        const ps = manParts(m)
+        const base = manBase(m)
+        if (!ps || !base) continue
+        if (ps.some((q) => Math.hypot(e.clientX - q.x, e.clientY - q.y) <= q.r + 2)) {
+          grabMan = { m, sx: e.clientX, sy: e.clientY, moved: false, ox: e.clientX - base.x, oy: e.clientY - base.y }
+          e.preventDefault()
+          if (!raf) raf = requestAnimationFrame(frame)
+          return
+        }
+      }
       // 1) 눈덩이를 집는다
       for (const b of balls) {
         const p = ballPos(b)
@@ -241,6 +302,22 @@ export function MouseEffects() {
     }
     let dragV = 0
     const drag = (e: PointerEvent) => {
+      if (grabMan) {
+        const g = grabMan
+        if (!g.moved && Math.hypot(e.clientX - g.sx, e.clientY - g.sy) > 4) {
+          g.moved = true
+          g.m.held = true
+          g.m.ledge = null
+        }
+        if (g.moved) {
+          const dxm = e.clientX - g.ox - g.m.hx
+          g.m.hx = e.clientX - g.ox
+          g.m.hy = e.clientY - g.oy
+          g.m.wobV += dxm * 0.004 // 끌면 몸이 기운다
+        }
+        if (!raf) raf = requestAnimationFrame(frame)
+        return
+      }
       if (!grab) return
       const dx = e.clientX - lastPX
       lastPX = e.clientX
@@ -260,6 +337,19 @@ export function MouseEffects() {
       if (!raf) raf = requestAnimationFrame(frame)
     }
     const up = () => {
+      if (grabMan) {
+        const g = grabMan
+        grabMan = null
+        if (!g.moved) {
+          // 눌렀다 뗌: 흔들린다
+          g.m.wobV += (Math.random() < 0.5 ? -1 : 1) * 0.12
+        } else {
+          g.m.held = false
+          g.m.vy = 0
+        }
+        if (!raf) raf = requestAnimationFrame(frame)
+        return
+      }
       const b = grab
       grab = null
       if (!b) return
@@ -279,7 +369,7 @@ export function MouseEffects() {
           const p = ballPos(o)
           if (p && o.ledge && Math.hypot(b.hx - p.x, b.hy - p.y) < b.r + o.r) {
             const parts = [o.r, b.r].sort((a, c) => c - a)
-            snowmen.push({ ledge: o.ledge, x: o.x, parts })
+            snowmen.push({ ledge: o.ledge, x: o.x, parts, wob: 0, wobV: 0.06, held: false, hx: 0, hy: 0, vy: 0 })
             balls.splice(balls.indexOf(o), 1)
             balls.splice(balls.indexOf(b), 1)
             if (!raf) raf = requestAnimationFrame(frame)
@@ -287,8 +377,8 @@ export function MouseEffects() {
           }
         }
         for (const m of snowmen) {
-          const r = rectOf(m.ledge)
-          if (!r || m.parts.length >= 3) continue
+          const r = m.ledge && rectOf(m.ledge)
+          if (!r || !m.ledge || m.parts.length >= 3) continue
           const baseY = r.top - (m.ledge.h[Math.floor(m.x / BIN)] ?? 0)
           const topY = baseY - m.parts.reduce((a, c) => a + c * 2 * 0.85, 0)
           if (Math.abs(b.hx - (r.left + m.x)) < b.r + m.parts[m.parts.length - 1] && Math.abs(b.hy - topY) < b.r * 2 + 10) {
@@ -312,11 +402,12 @@ export function MouseEffects() {
       mouse.x = e.clientX
       mouse.y = e.clientY
       mouse.seen = true
-      // 너무 많이 만들지 않게 35ms 에 한 번
+      // 너무 많이 만들지 않게 간격을 둔다. 크리스마스는 눈을 넉넉히 (15ms 마다 3번)
       const now = performance.now()
-      if (now - lastSpawn > 35 && particles.length < MAX_PARTICLES) {
+      const christmas = active === 'christmas'
+      if (now - lastSpawn > (christmas ? 15 : 35) && particles.length < MAX_PARTICLES) {
         lastSpawn = now
-        particles.push(...spawn(active, mouse.x, mouse.y))
+        for (let k = 0; k < (christmas ? 3 : 1); k++) particles.push(...spawn(active, mouse.x, mouse.y))
       }
       if (!raf) raf = requestAnimationFrame(frame)
     }
@@ -360,6 +451,7 @@ export function MouseEffects() {
         }
         p.life++
         p.x += p.vx + (p.kind === 'bubble' ? Math.sin((p.life + p.r * 10) / 14) * 0.4 : 0)
+        if (p.g) p.vy += p.g
         p.y += p.vy
         const t = p.life / p.max
         const alpha = p.kind === 'snow' && piling ? Math.min(1, p.life / 8) : t < 0.15 ? t / 0.15 : 1 - (t - 0.15) / 0.85
@@ -436,6 +528,12 @@ export function MouseEffects() {
             b.hx += b.vx
             const sfc = surfaceBelow(b.hx, b.hy + b.r)
             if (sfc && ny + b.r >= sfc.top) {
+              if (b.vy >= BALL_BREAK_V) {
+                // 높은 데서 떨어졌다: 부서진다
+                shatter(b.hx, sfc.top - b.r * 0.5, b.r)
+                b.r = 0
+                continue
+              }
               b.ledge = sfc.r.ledge
               b.x = Math.max(0, Math.min(sfc.r.width, b.hx - sfc.r.left))
               b.vy = 0
@@ -454,7 +552,7 @@ export function MouseEffects() {
               const at = (x: number) => hs[Math.floor(x / BIN)] ?? 0
               const slope = (at(b.x - b.r * 0.6) - at(b.x + b.r * 0.6)) / Math.max(b.r * 1.2, 1) // 오른쪽이 낮으면 +
               b.vx = (b.vx + slope * SLOPE_G) * ROLL_FRICTION
-              if (Math.abs(b.vx) < 0.02 && Math.abs(slope) < 0.05) b.vx = 0
+              if (Math.abs(b.vx) < 0.35 && Math.abs(slope) < ROLL_STOP_SLOPE) b.vx = 0
               if (b.vx !== 0) {
                 b.x += b.vx
                 b.spin += b.vx / Math.max(b.r, 1)
@@ -476,19 +574,59 @@ export function MouseEffects() {
           drawBall(ctx, p.x, p.y, b.r, b.spin)
         }
         for (let i = balls.length - 1; i >= 0; i--) if (balls[i].r <= 0) balls.splice(i, 1)
-        for (const m of snowmen) {
-          const r = rectOf(m.ledge)
-          if (!r) continue
-          let y = r.top - (m.ledge.h[Math.floor(m.x / BIN)] ?? 0)
-          const x = r.left + m.x
-          m.parts.forEach((pr, k) => {
-            y -= pr
-            drawBall(ctx, x, y, pr, 0)
-            if (k === m.parts.length - 1) drawFace(ctx, x, y, pr)
-            else if (k === m.parts.length - 2) drawButtons(ctx, x, y, pr)
-            y -= pr * 0.7
+        for (let mi = snowmen.length - 1; mi >= 0; mi--) {
+          const m = snowmen[mi]
+          // 놓은 눈사람은 아래 표면까지 떨어진다. 너무 빨리 떨어지면 눈덩이로 흩어진다
+          if (!m.held && !m.ledge) {
+            m.vy = Math.min(m.vy + 0.5, 16)
+            const sfc = surfaceBelow(m.hx, m.hy)
+            if (sfc && m.hy + m.vy >= sfc.top) {
+              if (m.vy >= SNOWMAN_BREAK_V) {
+                let up = 0
+                for (const pr of m.parts) {
+                  up += pr
+                  balls.push({ ledge: null, x: 0, r: pr, held: false, hx: m.hx + (Math.random() - 0.5) * pr, hy: sfc.top - up, vx: (Math.random() - 0.5) * 5, vy: -2 - Math.random() * 2, rolling: false, spin: 0 })
+                  up += pr * 0.7
+                }
+                shatter(m.hx, sfc.top, 6)
+                snowmen.splice(mi, 1)
+                continue
+              }
+              m.ledge = sfc.r.ledge
+              m.x = Math.max(0, Math.min(sfc.r.width, m.hx - sfc.r.left))
+              m.wobV += (Math.random() < 0.5 ? -1 : 1) * m.vy * 0.01 // 착지하며 흔들린다
+              m.vy = 0
+            } else if (m.hy > h + 120) {
+              snowmen.splice(mi, 1)
+              continue
+            } else {
+              m.hy += m.vy
+            }
+            moving = true
+          }
+          // 흔들림: 바로 서려는 힘 + 감쇠
+          if (m.wob !== 0 || m.wobV !== 0) {
+            m.wobV += -m.wob * 0.08
+            m.wobV *= 0.92
+            m.wob += m.wobV
+            if (Math.abs(m.wob) < 0.002 && Math.abs(m.wobV) < 0.002) {
+              m.wob = 0
+              m.wobV = 0
+            } else moving = true
+          }
+          const ps = manParts(m)
+          if (!ps) continue
+          ps.forEach((q, k) => {
+            drawBall(ctx, q.x, q.y, q.r, 0)
+            if (k === ps.length - 1) {
+              // 머리: 마우스를 바라본다
+              const d = Math.hypot(mouse.x - q.x, mouse.y - q.y) || 1
+              const look = mouse.seen ? Math.min(1, d / 80) : 0
+              drawFace(ctx, q.x, q.y, q.r, ((mouse.x - q.x) / d) * look, ((mouse.y - q.y) / d) * look)
+            } else if (k === ps.length - 2) drawButtons(ctx, q.x, q.y, q.r)
           })
         }
+        if (grabMan) moving = true
         if (grab) moving = true
       }
 

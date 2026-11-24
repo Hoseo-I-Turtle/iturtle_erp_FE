@@ -69,6 +69,8 @@ const CHRISTMAS: Placement[] = [
   // 끈이 아주 짧은 눈송이 · 선물(4~5px)은 끈을 그림에 붙여 두고 끈 위치를 축으로 흔든다
   { set: 0, slot: 'header', src: x('ornament_garland_lights_left'), style: { left: 'calc(5% + 0px)', top: 0, width: 504 } },
   { set: 0, slot: 'header', src: x('ornament_garland_lights_right'), style: { left: 'calc(5% + 656px)', top: 0, width: 476 } },
+  // 리본 양옆의 전구 줄 · 전구는 따로 떼어(ornament_bow_wire) 움직이지 않게 둔다 — 리본만 흔들린다
+  { set: 0, slot: 'header', src: x('ornament_bow_wire'), style: { left: 'calc(5% + 507px)', top: -2, width: 146 } },
   { set: 0, slot: 'header', src: x('ornament_bow'), style: { left: 'calc(5% + 507px)', top: -2, width: 146 }, sway: 5 },
   { set: 0, slot: 'header', src: x('ornament_ball_red'), style: { left: 'calc(5% + 199px)', top: 40, width: 39 }, rope: { x: 20, top: 26 }, wideOnly: true },
   { set: 0, slot: 'header', src: x('ornament_sock'), style: { left: 'calc(5% + 266px)', top: 40, width: 52 }, sway: 14, wideOnly: true },
