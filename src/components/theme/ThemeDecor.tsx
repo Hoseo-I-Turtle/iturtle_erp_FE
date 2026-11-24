@@ -1,5 +1,5 @@
 // 테마의 장식 오브젝트 — 틀(카드 · 사이드바)의 색과는 따로 그린다.
-// "오브젝트 1" 이 꺼져 있으면 아무것도 그리지 않는다. 그림 파일로 된 오브젝트는 ThemeObjects.tsx 가 맡는다.
+// "오브젝트 1" 이 꺼져 있으면 그리지 않는다 (우주의 배경 잔별처럼 테마 바탕에 속하는 것만 빼고). 그림 파일로 된 오브젝트는 ThemeObjects.tsx 가 맡는다.
 // 모두 눌리지 않는(pointer-events: none) 층이고, 글자를 가리지 않게 카드 뒤 · 사이드바 메뉴 뒤에 깔린다.
 //
 // 지금 그림은 코드로 그린 단순한 도형이다. Penpot 에서 제대로 그린 그림이 나오면
@@ -68,6 +68,18 @@ function OceanRays() {
   )
 }
 
+/* ---------- 우주: 배경에 은은하게 깔린 잔별 ---------- */
+/** 점 무늬 세 겹이 서로 다른 박자로 밝아졌다 어두워졌다 한다. 테마 바탕의 일부라 오브젝트를 꺼도 보인다 */
+function Starfield() {
+  return (
+    <>
+      <span className={`${s.stars} ${s.starsA}`} />
+      <span className={`${s.stars} ${s.starsB}`} />
+      <span className={`${s.stars} ${s.starsC}`} />
+    </>
+  )
+}
+
 /* ---------- 테마별 장식 ---------- */
 const OCEAN: Record<Area, ReactNode> = {
   // 위에서 내려오는 빛줄기 (그림 파일이 아니라 CSS 로 그린다)
@@ -81,11 +93,14 @@ const DECOR: Partial<Record<ThemeId, Record<Area, ReactNode>>> = { ocean: OCEAN 
 /** area='page' 는 본문 뒤에 화면 가득, area='sidebar' 는 사이드바 안 아래쪽 */
 export function ThemeDecor({ area }: { area: Area }) {
   const { active, objects } = useTheme()
-  const d = DECOR[active]
-  if (!objects[0] || !d) return null
+  const d = objects[0] ? DECOR[active] : undefined
+  // 테마 바탕에 속하는 것 (오브젝트 스위치와 상관없이 그린다)
+  const base = area === 'page' && active === 'space' ? <Starfield /> : null
+  if (!d && !base) return null
   return (
     <div className={area === 'page' ? s.page : s.sidebar} aria-hidden>
-      {d[area]}
+      {base}
+      {d?.[area]}
     </div>
   )
 }
