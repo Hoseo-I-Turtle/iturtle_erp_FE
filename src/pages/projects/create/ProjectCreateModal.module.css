@@ -22,8 +22,16 @@
   font-size: var(--fs-caption);
   color: var(--text-secondary);
 }
+/* 단계 사이의 이음선: 알약 안이 아니라 두 단계 사이의 빈 자리에 그린다 (지금 단계의 알약 바탕에 선이 들어가지 않게) */
+.step + .step {
+  position: relative;
+  margin-left: 40px;
+}
 .step + .step::before {
   content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
   width: 32px;
   height: 1px;
   margin-right: 8px;
@@ -349,6 +357,9 @@
   }
   .steps {
     flex-wrap: wrap;
+  }
+  .step + .step {
+    margin-left: 0;
   }
   .step + .step::before {
     display: none;
