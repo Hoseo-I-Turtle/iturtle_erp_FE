@@ -244,6 +244,10 @@
 :global([data-effects='off']) .snowfall {
   display: none;
 }
+/* 마우스 효과가 켜져 있으면 하늘 눈을 캔버스(MouseEffects)가 그리고 쌓는다 → CSS 로 그리는 배경 눈은 끈다 */
+:global([data-effects='on']) .snowfall {
+  display: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .snowfall {
     display: none;
