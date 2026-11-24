@@ -89,6 +89,13 @@
   font-weight: 500;
   transition: background-color 0.15s;
 }
+.mustEmpty {
+  padding: 18px 16px;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-on-dark-muted);
+  text-align: center;
+}
 .mustAction:hover {
   background: var(--accent-soft);
 }
