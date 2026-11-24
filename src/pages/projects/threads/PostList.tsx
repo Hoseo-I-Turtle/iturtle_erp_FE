@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { ChevronDown, MessageCircle, Paperclip, Pin, Share2 } from 'lucide-react'
 import { Avatar } from '../../../components/ui'
 import type { ThreadPostView } from '../../../api/content'
@@ -12,10 +13,12 @@ type Props = {
   onTogglePinnedOnly: () => void
   selectedId: number | undefined
   onSelect: (postId: number) => void
+  /** 목록 맨 아래에 붙일 것 (무한 스크롤의 끝 표시) */
+  footer?: ReactNode
 }
 
 /** 전체 글 목록 (고정 글만 보기 토글) */
-export function PostList({ total, posts, pinnedOnly, onTogglePinnedOnly, selectedId, onSelect }: Props) {
+export function PostList({ total, posts, pinnedOnly, onTogglePinnedOnly, selectedId, onSelect, footer }: Props) {
   return (
     <>
           <div className={s.allHead}>
@@ -65,6 +68,7 @@ export function PostList({ total, posts, pinnedOnly, onTogglePinnedOnly, selecte
               </span>
             </button>
           ))}
+          {footer}
     </>
   )
 }

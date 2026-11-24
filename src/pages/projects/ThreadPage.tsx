@@ -2,12 +2,15 @@ import { useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Trash2 } from 'lucide-react'
 import { Button, Loadable, Modal } from '../../components/ui'
+import { LoadMore } from '../../components/ui/LoadMore'
+import { useLoadMore } from '../../api/useLoadMore'
 import { whenLive, type Resource } from '../../api/useResource'
 import {
   createThread,
   deleteThread,
   updateThread,
   errorText,
+  fetchMoreThreads,
   pinThread,
   replyToThread,
   savePinnedOrder,
@@ -53,6 +56,8 @@ function ThreadView({ board, d, projectKey, projectName }: ViewProps) {
   const ME = d.meName
 
   const { posts } = d
+  // 목록 끝에 닿으면 다음 페이지를 이어 붙인다 (고정 글만 볼 때는 더 부를 것이 없다)
+  const more = useLoadMore(board, d.hasNext, (x) => fetchMoreThreads(projectKey, x))
   const setPosts = (f: (ps: ThreadPostView[]) => ThreadPostView[]) => board.setData((x) => ({ ...x, posts: f(x.posts) }))
   const [selectedId, setSelectedId] = useState(linkedId ?? posts[0]?.postId ?? 0)
   // 다른 글 링크로 옮겨 오면 그 글을 고른다 (렌더 중 파생 — 이전 주소와 비교)
@@ -160,6 +165,7 @@ function ThreadView({ board, d, projectKey, projectName }: ViewProps) {
           onTogglePinnedOnly={() => setPinnedOnly(!pinnedOnly)}
           selectedId={selected?.postId}
           onSelect={setSelectedId}
+          footer={!pinnedOnly && <LoadMore more={more} />}
         />
       </div>
 

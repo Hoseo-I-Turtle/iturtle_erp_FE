@@ -8,6 +8,7 @@
 import { api, ApiError } from './client'
 import { ago, type MemberRef, type PageResponse, type TaskRef } from './types'
 import { useResource } from './useResource'
+import { appendUnique } from './useLoadMore'
 import { getApiBase, getDataMode } from '../lib/dataMode'
 import { projectCategoryName } from './projects'
 import { STATUS_NAME, type TaskStatus } from '../mocks/tasks'
@@ -175,7 +176,11 @@ type ThreadListResponse = {
 export type ThreadAttachment = ThreadPost['attachments'][number] & { url?: string }
 export type ThreadPostView = Omit<ThreadPost, 'attachments'> & { attachments: ThreadAttachment[] }
 export type ThreadReply = ThreadPost['replies'][number]
-export type ThreadBoard = { posts: ThreadPostView[]; total: number; pinnedLimit: number; meName: string }
+/** page · hasNext: 고정 안 된 글 목록을 어디까지 받았는지 (무한 스크롤) */
+export type ThreadBoard = { posts: ThreadPostView[]; total: number; pinnedLimit: number; meName: string; page: number; hasNext: boolean }
+
+/** 스레드 목록 한 페이지 크기 (정책 ERP-P32 의 기본값) */
+const THREAD_PAGE_SIZE = 20
 
 const MOCK_ME_NAME = '김민서'
 
@@ -209,11 +214,12 @@ const toThreadPost = (t: ThreadItem): ThreadPostView => ({
 export function useThreadBoard(projectKey: string) {
   return useResource<ThreadBoard>(
     ['threads', projectKey],
-    () => ({ posts: threadPosts, total: THREAD_TOTAL, pinnedLimit: 10, meName: MOCK_ME_NAME }),
+    () => ({ posts: threadPosts, total: THREAD_TOTAL, pinnedLimit: 10, meName: MOCK_ME_NAME, page: 0, hasNext: false }),
     async () => {
-      // TODO: 1분마다 since=serverTime 으로 바뀐 글만 받아 합치기 (README 1.6), 다음 페이지 불러오기
+      // 첫 페이지만. 다음 페이지는 fetchMoreThreads 가 이어 붙인다
+      // TODO: 1분마다 since=serverTime 으로 바뀐 글만 받아 합치기 (README 1.6)
       const [list, me] = await Promise.all([
-        api<ThreadListResponse>(`/projects/${projectKey}/threads`, { query: { size: 50 } }),
+        api<ThreadListResponse>(`/projects/${projectKey}/threads`, { query: { page: 0, size: THREAD_PAGE_SIZE } }),
         api<{ name: string }>('/members/me'),
       ])
       return {
@@ -221,10 +227,31 @@ export function useThreadBoard(projectKey: string) {
         total: list.totalCount,
         pinnedLimit: list.pinnedLimit,
         meName: me.name,
+        page: list.page.page,
+        hasNext: list.page.hasNext,
       }
     },
   )
 }
+
+/**
+ * 스레드 목록의 다음 페이지 (useLoadMore 에 넘긴다). 고정 글은 첫 페이지에서 이미 받았으므로 page 의 글만 붙인다.
+ * 부르는 사이에 목록이 처음부터 다시 불려 왔으면 붙이지 않는다.
+ */
+export const fetchMoreThreads = (projectKey: string, d: ThreadBoard) =>
+  api<ThreadListResponse>(`/projects/${projectKey}/threads`, { query: { page: d.page + 1, size: THREAD_PAGE_SIZE } }).then(
+    (list) =>
+      (cur: ThreadBoard): ThreadBoard =>
+        cur.page !== d.page
+          ? cur
+          : {
+              ...cur,
+              posts: appendUnique(cur.posts, list.page.content.map(toThreadPost), (p) => p.postId),
+              total: list.totalCount,
+              page: list.page.page,
+              hasNext: list.page.hasNext,
+            },
+  )
 
 /** 고른 글의 답글 (CM-1, 원 댓글과 그 답글을 한 줄로 펼친다) */
 export function useThreadReplies(threadId: number | undefined, mockReplies: ThreadReply[]) {

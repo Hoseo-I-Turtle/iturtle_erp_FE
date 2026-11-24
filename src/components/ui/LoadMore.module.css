@@ -1,0 +1,21 @@
+.more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px;
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+.err {
+  color: var(--status-negative);
+}
+.retry {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-tint);
+  color: var(--text-body);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+}
