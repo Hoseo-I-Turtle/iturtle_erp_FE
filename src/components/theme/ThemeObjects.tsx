@@ -166,10 +166,6 @@ const SPACE: Placement[] = [
   // --- 화면 아래: 은하 (본문 뒤)
   // 은하: 그림 속 원반 기울기 −29°, 짧은축/긴축 ≈ 0.38 (그림 알파의 주성분으로 잼). 기울기를 풀어 돌리고 다시 기울여, 원반이 제자리에서 돈다
   { set: 0, slot: 'page', src: sp('galaxy'), style: { left: 36, bottom: -18, width: 330 }, spin: { tilt: -29, squash: 0.38, period: 160, origin: '50% 47%' } },
-  // --- "꼭 확인할 것" 카드: 혜성
-  { set: 0, slot: 'hero', src: sp('comet'), style: { right: '16.9%', top: 15, width: 190 }, wideOnly: true, play: 'comet' },
-  // --- "내 작업" 카드: 로켓
-  { set: 0, slot: 'tasks', src: sp('rocket'), style: { right: '24.9%', top: 48, width: 105 }, wideOnly: true, play: 'rocket' },
   // --- "이번 주 일정" 카드: 반짝이
   { set: 0, slot: 'schedule', src: sp('sparkles'), style: { right: 106, bottom: 4, width: 46 }, play: 'sparkles' },
   // --- "최근 공지" 카드: 잠든 거북이
