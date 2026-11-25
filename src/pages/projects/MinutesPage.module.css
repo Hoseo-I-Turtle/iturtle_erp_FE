@@ -174,3 +174,25 @@
   font-size: var(--fs-caption);
   color: var(--text-muted);
 }
+
+/* 휴대폰 폭: 할 일 글은 윗줄에 넓게, 담당 · 기한 · 작업 링크는 아랫줄로 */
+@media (max-width: 720px) {
+  .todoHead {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .todoHead > span:not(.grow) {
+    white-space: nowrap;
+  }
+  .todo {
+    flex-wrap: wrap;
+    row-gap: 6px;
+    padding: 10px 12px;
+  }
+  .todoText {
+    flex: 1 1 calc(100% - 40px);
+  }
+  .taskLink {
+    white-space: nowrap;
+  }
+}

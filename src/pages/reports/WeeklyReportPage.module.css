@@ -401,3 +401,43 @@ div.sectionHead {
   font-size: var(--fs-caption);
   color: var(--status-warning-text);
 }
+
+/* 휴대폰 폭 */
+@media (max-width: 720px) {
+  .main {
+    padding: 16px 14px;
+  }
+  /* 탭은 한 줄을 다 쓰고, 지난 주 · 저장 상태 · 복사는 아랫줄로 */
+  .top {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .top > :first-child {
+    flex-basis: 100%;
+  }
+  .saveState,
+  .copy {
+    white-space: nowrap;
+  }
+  /* 프로젝트 이름이 옆 안내 칩에 눌려 세로로 쌓이지 않게 */
+  .sectionHead,
+  .boxHead {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .sectionHead strong,
+  .boxHead strong,
+  .taskChip strong {
+    white-space: nowrap;
+  }
+  /* GitHub 표: 숫자 칸을 좁혀 저장소 이름 칸을 넓게 */
+  .table th,
+  .table td {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+  .table th:not(:first-child),
+  .table td:not(:first-child) {
+    width: 44px;
+  }
+}

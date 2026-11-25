@@ -291,4 +291,24 @@
   .tasksCard {
     padding: 16px 14px;
   }
+  /* 내 작업: 키 · 기한 · 상태를 윗줄에, 제목 · 프로젝트는 아랫줄에 넓게 */
+  .task {
+    flex-wrap: wrap;
+    row-gap: 6px;
+    column-gap: 8px;
+    padding: 12px;
+  }
+  .task .taskKey {
+    width: auto;
+    margin-right: auto;
+  }
+  .task .rowText {
+    order: 3;
+    flex-basis: 100%;
+  }
+  /* 내 프로젝트: 카드를 한 줄에 하나씩 */
+  .projects {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
 }
