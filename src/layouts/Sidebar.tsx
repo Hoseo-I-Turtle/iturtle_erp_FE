@@ -70,7 +70,7 @@ export function Sidebar({ mode, open, onClose }: { mode: DataMode; open: boolean
       )}
 
       <div className={s.user}>
-        <Avatar name={me?.name ?? '…'} size={44} colorIndex={0} />
+        <Avatar name={me?.name ?? '…'} src={me?.photoUrl} size={44} colorIndex={0} />
         <div className={s.userText}>
           <div className={s.userName}>{me?.name ?? ''}</div>
           <div className={s.userMeta}>{me ? `${MEMBER_TYPE_NAME[me.memberType]} · ${STATUS_NAME[me.status]}` : ''}</div>

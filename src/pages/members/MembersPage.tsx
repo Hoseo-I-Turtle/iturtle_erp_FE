@@ -101,7 +101,7 @@ function MembersView({ dir, linkedId }: { dir: MemberDirectory; linkedId: number
         side={
           <>
             <Card className={s.profile}>
-              <Avatar name={selected.name} size={80} />
+              <Avatar name={selected.name} src={selected.photoUrl} size={80} />
               <h2 className={s.profileName}>{selected.name}</h2>
               <div className={s.profileChips}>
                 <Chip tone="tint">{MEMBER_TYPE_NAME[selected.memberType]}</Chip>
@@ -156,7 +156,7 @@ function MemberCard({ m, selected, onClick }: { m: Member; selected: boolean; on
   return (
     <button type="button" className={selected ? `${s.card} ${s.cardOn}` : s.card} onClick={onClick}>
       <span className={s.cardTop}>
-        <Avatar name={m.name} size={44} />
+        <Avatar name={m.name} src={m.photoUrl} size={44} />
         <span className={s.cardName}>
           <strong>{m.name}</strong>
           <span className={s.typeBadge}>{MEMBER_TYPE_NAME[m.memberType]}</span>

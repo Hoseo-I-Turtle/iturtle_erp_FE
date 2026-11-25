@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Card, Columns, Loadable } from '../../components/ui'
 import { PageHeader } from '../../layouts/PageHeader'
 import { whenLive } from '../../api/useResource'
+import { setMyPhoto } from '../../api/members'
 import { keepModeAcrossReload } from '../../lib/dataMode'
 import {
   deleteProfilePhoto,
@@ -71,14 +72,20 @@ function ProfileView({ data }: { data: ProfileData }) {
     if (file.size > MAX_PHOTO) return setPhotoError('5MB 이하만 올릴 수 있어요')
     setPhotoError('')
     const prev = photo
-    setPhoto(URL.createObjectURL(file))
+    const preview = URL.createObjectURL(file)
+    setPhoto(preview)
+    setMyPhoto(preview) // 사이드바 · 구성원 목록의 내 사진도 곧바로
     setUploading(true)
     try {
       const url = await whenLive(() => uploadProfilePhoto(data.memberId, file))
-      if (url) setPhoto(url)
+      if (url) {
+        setPhoto(url)
+        setMyPhoto(url)
+      }
     } catch (e) {
       // 실패하면 이전 사진 그대로 (1-3)
       setPhoto(prev)
+      setMyPhoto(prev)
       setPhotoError(errorText(e, '사진을 올리지 못했어요. 다시 시도해 주세요.'))
     } finally {
       setUploading(false)
@@ -89,11 +96,13 @@ function ProfileView({ data }: { data: ProfileData }) {
   const removePhoto = async () => {
     const prev = photo
     setPhoto(null)
+    setMyPhoto(null)
     setPhotoError('')
     try {
       await whenLive(() => deleteProfilePhoto(data.memberId))
     } catch (e) {
       setPhoto(prev)
+      setMyPhoto(prev)
       setPhotoError(errorText(e, '사진을 지우지 못했어요.'))
     }
   }

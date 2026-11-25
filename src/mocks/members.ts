@@ -21,6 +21,8 @@ export type Member = {
   joinedAt: string // YYYY.MM.DD
   graduatedAt?: string
   githubLogin: string | null
+  /** 프로필 사진 주소 (없으면 이름 첫 글자) */
+  photoUrl?: string | null
   roles: string[]
   projects: { name: string; role: string; category: string }[]
 }
