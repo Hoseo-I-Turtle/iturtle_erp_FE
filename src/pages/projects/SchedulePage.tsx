@@ -21,6 +21,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { Card, FilterSelect, Loadable, Switch } from '../../components/ui'
+import { usePhotoOf } from '../../api/members'
 import { whenLive, type Resource } from '../../api/useResource'
 import {
   createView,
@@ -444,6 +445,17 @@ function Timeline({ axis, today, label, children }: { axis: Axis; today: number;
 
 const initial = (name: string | null) => (name ? name.slice(0, 1) : '?')
 
+/** 사람 동그라미: 구성원 목록에 사진이 있으면 사진, 없거나 깨지면 이름 첫 글자 */
+function Face({ name, className }: { name: string | null; className: string }) {
+  const src = usePhotoOf(name ?? undefined)
+  const [broken, setBroken] = useState<string | null>(null)
+  return (
+    <span className={className} title={name ?? undefined}>
+      {src && broken !== src ? <img className={s.faceImg} src={src} alt="" onError={() => setBroken(src)} /> : initial(name)}
+    </span>
+  )
+}
+
 /** 작업 막대 (간트 · 담당자별 같이 씀) */
 function TaskBar({ t, axis, today, drag, preview, laneSwitch, label }: { t: SchedTask; axis: Axis; today: number; drag: DragApi; preview: Preview | null; laneSwitch?: boolean; label: 'dates' | 'key' }) {
   if (t.due === null || t.start === null) {
@@ -474,7 +486,7 @@ function TaskBar({ t, axis, today, drag, preview, laneSwitch, label }: { t: Sche
         aria-label={`${t.taskKey} ${t.title}, ${dayMdw(t.start)}부터 ${dayMdw(t.due)}까지, ${SCHED_STATUS_NAME[t.status]}`}
       >
         {modes.includes('start') && <span className={`${s.handle} ${s.handleL}`} onPointerDown={(e) => drag.begin(e, t, 'start', false)} />}
-        {label === 'dates' && <span className={s.avatar}>{initial(t.assignee)}</span>}
+        {label === 'dates' && <Face name={t.assignee} className={s.avatar} />}
         <span className={s.barText}>{text}</span>
         {modes.includes('end') && <span className={`${s.handle} ${s.handleR}`} onPointerDown={(e) => drag.begin(e, t, 'end', false)} />}
         {!dragging && (
@@ -709,7 +721,7 @@ function MemberView({ d, tasks, axis, today, drag, preview, assigneeFilter }: { 
         return (
           <div key={p.id ?? 'none'} className={`${s.row} ${s.laneRow}`} style={{ height: lanes * 30 + 24 }} data-lane={p.id ?? 'none'}>
             <div className={s.personLeft}>
-              <span className={p.id === null ? `${s.bigAvatar} ${s.bigAvatarNone}` : s.bigAvatar}>{initial(p.id === null ? null : p.name)}</span>
+              <Face name={p.id === null ? null : p.name} className={p.id === null ? `${s.bigAvatar} ${s.bigAvatarNone}` : s.bigAvatar} />
               <span className={s.personText}>
                 <strong className={p.id === null ? s.mutedText : undefined}>{p.name}</strong>
                 {p.sub && <small>{p.sub}</small>}

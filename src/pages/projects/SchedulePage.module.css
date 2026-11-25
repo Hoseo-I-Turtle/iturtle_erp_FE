@@ -1213,3 +1213,11 @@
     white-space: nowrap;
   }
 }
+
+/* 사람 동그라미 안의 프로필 사진 */
+.faceImg {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}

@@ -5,9 +5,10 @@ import { api, serverRoot } from './client'
 import { dotDate, fetchAllPages, MAX_PAGE_SIZE, type MemberStatusCode, type MemberTypeCode, type PageResponse } from './types'
 import { GRADUATE_TOTAL, ME_ID, members as mockMembers, type Member } from '../mocks/members'
 import { useResource } from './useResource'
+import { getDataMode } from '../lib/dataMode'
 
 /** 서버가 준 '/api/v1/files/…' 주소를 API 서버 기준으로 (blob: · https: 는 그대로) */
-const fileUrl = (u: string | null | undefined) => (u ? (u.startsWith('/') ? serverRoot() + u : u) : null)
+export const fileUrl = (u: string | null | undefined) => (u ? (u.startsWith('/') ? serverRoot() + u : u) : null)
 
 /*
  * 내 사진이 바뀌었다는 신호. 사이드바(useMe) · 구성원 목록이 이 번호를 키에 넣어 다시 그린다.
@@ -33,8 +34,60 @@ export const mockMyPhotoUrl = () => mockMyPhoto
 export function setMyPhoto(url: string | null) {
   mockMyPhoto = url
   if (meOnce) meOnce = meOnce.then((m) => ({ ...m, photoUrl: url }))
+  if (book && book.myName) book.photos.set(book.myName, fileUrl(url))
   meVersion++
   meListeners.forEach((l) => l())
+}
+
+/*
+ * 이름 → 사진 표. 작업 · 댓글 · 회의록처럼 이름만 가진 자리의 Avatar 가 여기서 사진을 찾는다.
+ * 구성원 목록(재실 + 졸업생)을 한 번 받아 만든다. 같은 이름이 둘 이상이면 누구인지 모르니 사진을 쓰지 않는다(첫 글자).
+ * 내 사진이 바뀌면 setMyPhoto 가 표의 내 칸을 고치고 meVersion 신호를 올린다.
+ */
+type PhotoBook = { mode: string; photos: Map<string, string | null>; myName: string | null }
+let book: PhotoBook | null = null
+let bookLoading: Promise<void> | null = null
+let bookFailedAt = 0
+
+function makeBook(mode: string, list: { name: string; photoUrl?: string | null }[], myName: string | null): PhotoBook {
+  const photos = new Map<string, string | null>()
+  for (const m of list) photos.set(m.name, photos.has(m.name) ? null : fileUrl(m.photoUrl))
+  return { mode, photos, myName }
+}
+
+function loadBook(mode: string) {
+  if (bookLoading || Date.now() - bookFailedAt < 60_000) return
+  bookLoading = (async () => {
+    if (mode !== 'live') {
+      const me = mockMembers.find((m) => m.memberId === ME_ID)
+      const list = mockMembers.map((m) => (m.memberId === ME_ID && mockMyPhoto ? { ...m, photoUrl: mockMyPhoto } : m))
+      book = makeBook(mode, list, me?.name ?? null)
+    } else {
+      const [active, alumni, me] = await Promise.all([listGroup('ACTIVE')(), listGroup('ALUMNI')(), fetchMeOnce()])
+      const list = [...active.items, ...alumni.items].map((m) => (m.memberId === me.memberId ? { ...m, photoUrl: me.photoUrl } : m))
+      book = makeBook(mode, list, me.name)
+    }
+  })()
+    .catch(() => {
+      bookFailedAt = Date.now() // 로그인 전 · 권한 없음: 잠시 다시 부르지 않는다 (아바타마다 요청이 쏟아지지 않게)
+    })
+    .finally(() => {
+      bookLoading = null
+      meVersion++
+      meListeners.forEach((l) => l())
+    })
+}
+
+/** 이 이름의 사진 주소 (없거나 같은 이름이 여럿이면 null). 처음 부를 때 구성원 목록을 한 번 받는다 */
+export function usePhotoOf(name: string | undefined): string | null {
+  useMeVersion()
+  const mode = getDataMode()
+  if (!name || !mode) return null
+  if (!book || book.mode !== mode) {
+    loadBook(mode)
+    return null
+  }
+  return book.photos.get(name) ?? null
 }
 
 /** MemberSummaryResponse (2-1). phone 은 공개했거나 contact-view · 본인일 때만, 아니면 빠지고 phoneHidden: true */

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Check, ChevronDown, ChevronRight, X, type LucideIcon } from 'lucide-react'
 import s from './ui.module.css'
 import { Dropdown } from './Dropdown'
+import { fileUrl, usePhotoOf } from '../../api/members'
 
 export { Dropdown, type DropdownOption } from './Dropdown'
 export { MemberPicker, type PickMember } from './MemberPicker'
@@ -58,10 +59,15 @@ export function Chip({ tone = 'brand', icon: Icon, children, className }: ChipPr
 
 /* ---------- Avatar ---------- */
 const AVATAR_COLORS = ['var(--accent-3)', 'var(--accent-2)', 'var(--accent-line)', 'var(--accent)']
-/** src: 프로필 사진. 없거나 불러오지 못하면 이름 첫 글자 동그라미 */
-export function Avatar({ name, size = 26, colorIndex, src }: { name: string; size?: number; colorIndex?: number; src?: string | null }) {
+/**
+ * src: 프로필 사진. 넘기지 않으면 구성원 목록에서 이름으로 찾는다 (usePhotoOf).
+ * 없거나 불러오지 못하면 이름 첫 글자 동그라미
+ */
+export function Avatar({ name, size = 26, colorIndex, src: given }: { name: string; size?: number; colorIndex?: number; src?: string | null }) {
   const idx = colorIndex ?? [...name].reduce((a, ch) => a + ch.charCodeAt(0), 0) % AVATAR_COLORS.length
   const [broken, setBroken] = useState<string | null>(null)
+  const found = usePhotoOf(given ? undefined : name)
+  const src = given ? fileUrl(given) : found
   if (src && broken !== src)
     return <img className={s.avatarImg} src={src} alt="" title={name} width={size} height={size} style={{ width: size, height: size }} onError={() => setBroken(src)} />
   return (
