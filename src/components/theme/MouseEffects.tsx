@@ -446,12 +446,12 @@ export function MouseEffects() {
       mouse.x = e.clientX
       mouse.y = e.clientY
       mouse.seen = true
-      // 너무 많이 만들지 않게 간격을 둔다. 크리스마스는 눈을 넉넉히 (15ms 마다 3번)
+      // 너무 많이 만들지 않게 간격을 둔다. 크리스마스는 눈을 조금 더 (20ms 마다 2번)
       const now = performance.now()
       const christmas = active === 'christmas'
-      if (now - lastSpawn > (christmas ? 15 : 35) && particles.length < MAX_PARTICLES) {
+      if (now - lastSpawn > (christmas ? 20 : 35) && particles.length < MAX_PARTICLES) {
         lastSpawn = now
-        for (let k = 0; k < (christmas ? 3 : 1); k++) particles.push(...spawn(active, mouse.x, mouse.y))
+        for (let k = 0; k < (christmas ? 2 : 1); k++) particles.push(...spawn(active, mouse.x, mouse.y))
       }
       if (!raf) raf = requestAnimationFrame(frame)
     }
