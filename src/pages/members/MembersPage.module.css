@@ -154,7 +154,7 @@
 }
 
 /* 휴대폰 폭: 재실 · 졸업생 탭과 교수 · 학생 · 인턴 칩을 두 줄로 (칩 글자가 세로로 쌓이지 않게) */
-@media (max-width: 720px) {
+@media (max-width: 720px), (max-width: 960px) and (max-height: 500px) {
   .top {
     flex-wrap: wrap;
     row-gap: 10px;

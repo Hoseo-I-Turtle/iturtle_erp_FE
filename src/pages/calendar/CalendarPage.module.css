@@ -195,7 +195,7 @@
 }
 
 /* ---------- 휴대폰 (720px 이하) ---------- */
-@media (max-width: 720px) {
+@media (max-width: 720px), (max-width: 960px) and (max-height: 500px) {
   .calendar {
     padding: 14px 10px;
   }
@@ -208,5 +208,30 @@
   }
   .weekdays > div {
     padding: 0 4px;
+  }
+  /* 월 보기: 칸이 좁아 제목이 한 글자만 보이므로 일정은 색 막대로만 그리고, 고른 날의 일정은 달력 바로 아래 카드에서 본다 */
+  .day {
+    min-height: 64px;
+    padding: 6px 4px;
+    gap: 3px;
+  }
+  .isToday .dayNum {
+    width: 22px;
+    height: 22px;
+    margin: -2px 0 0 -2px;
+  }
+  .day .event {
+    height: 5px;
+    padding: 0;
+    border-radius: 3px;
+    font-size: 0;
+    line-height: 0;
+    background: currentColor !important;
+  }
+  .weekTall .day {
+    min-height: 200px;
+  }
+  .selectedDay {
+    order: -1;
   }
 }
