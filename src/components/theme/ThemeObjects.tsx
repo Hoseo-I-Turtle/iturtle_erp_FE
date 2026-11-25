@@ -77,7 +77,8 @@ const CHRISTMAS: Placement[] = [
   { set: 0, slot: 'header', src: x('ornament_garland_lights_left'), style: { left: 'calc(5% + 0px)', top: 0, width: 504 } },
   { set: 0, slot: 'header', src: x('ornament_garland_lights_right'), style: { left: 'calc(5% + 656px)', top: 0, width: 476 } },
   // 리본 양옆의 전구 줄 · 전구는 따로 떼어(ornament_bow_wire) 움직이지 않게 둔다 — 리본만 흔들린다
-  { set: 0, slot: 'header', src: x('ornament_bow_wire'), style: { left: 'calc(5% + 507px)', top: -2, width: 146 } },
+  // 양옆 전구 줄과의 틈을 메우려고 왼쪽 4px · 오른쪽 16px 넓혔다 (줄은 리본 뒤로 끝까지 이어진다)
+  { set: 0, slot: 'header', src: x('ornament_bow_wire'), style: { left: 'calc(5% + 503px)', top: -2, width: 166 } },
   { set: 0, slot: 'header', src: x('ornament_bow'), style: { left: 'calc(5% + 507px)', top: -2, width: 146 }, sway: 5 },
   { set: 0, slot: 'header', src: x('ornament_ball_red'), style: { left: 'calc(5% + 199px)', top: 40, width: 39 }, rope: { x: 20, top: 26 }, wideOnly: true },
   { set: 0, slot: 'header', src: x('ornament_sock'), style: { left: 'calc(5% + 266px)', top: 40, width: 52 }, sway: 14, wideOnly: true },
