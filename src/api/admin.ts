@@ -6,6 +6,7 @@
 import { api, ApiError, serverRoot } from './client'
 import { ago, dotDate, fetchEveryPage, type MemberRef, type PageResponse } from './types'
 import { useResource } from './useResource'
+import { mockMyPhotoUrl } from './members'
 import { getApiBase, getDataMode } from '../lib/dataMode'
 import { MEMBER_TYPE_NAME, ME_ID, members as mockMembers, type MemberType } from '../mocks/members'
 import {
@@ -1221,7 +1222,7 @@ export function useMyProfile() {
         loginId: 'minseo',
         typeLabel: MEMBER_TYPE_NAME[me.memberType],
         joinedAt: me.joinedAt,
-        photoUrl: null,
+        photoUrl: mockMyPhotoUrl(),
         form: { email: me.email ?? '', phone: '010-9876-5432', phonePublic: false, intro: me.intro },
         labRoles: ['penpot-member'],
         projectPerms: [

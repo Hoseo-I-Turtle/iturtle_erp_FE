@@ -1,10 +1,11 @@
-import { useEffect, type ButtonHTMLAttributes, type CSSProperties, type HTMLAttributes, type ReactNode } from 'react'
+import { useEffect, useState, type ButtonHTMLAttributes, type CSSProperties, type HTMLAttributes, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, ChevronDown, ChevronRight, X, type LucideIcon } from 'lucide-react'
 import s from './ui.module.css'
 import { Dropdown } from './Dropdown'
 
 export { Dropdown, type DropdownOption } from './Dropdown'
+export { MemberPicker, type PickMember } from './MemberPicker'
 
 const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(' ')
 
@@ -57,8 +58,12 @@ export function Chip({ tone = 'brand', icon: Icon, children, className }: ChipPr
 
 /* ---------- Avatar ---------- */
 const AVATAR_COLORS = ['var(--accent-3)', 'var(--accent-2)', 'var(--accent-line)', 'var(--accent)']
-export function Avatar({ name, size = 26, colorIndex }: { name: string; size?: number; colorIndex?: number }) {
+/** src: 프로필 사진. 없거나 불러오지 못하면 이름 첫 글자 동그라미 */
+export function Avatar({ name, size = 26, colorIndex, src }: { name: string; size?: number; colorIndex?: number; src?: string | null }) {
   const idx = colorIndex ?? [...name].reduce((a, ch) => a + ch.charCodeAt(0), 0) % AVATAR_COLORS.length
+  const [broken, setBroken] = useState<string | null>(null)
+  if (src && broken !== src)
+    return <img className={s.avatarImg} src={src} alt="" title={name} width={size} height={size} style={{ width: size, height: size }} onError={() => setBroken(src)} />
   return (
     <span
       className={s.avatar}

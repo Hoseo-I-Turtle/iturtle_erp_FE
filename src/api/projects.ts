@@ -226,7 +226,7 @@ export type ProjectDetailDto = {
 export const getProject = (key: string) => api<ProjectDetailDto>(`/projects/${encodeURIComponent(key)}`)
 
 /** 이전 참여자를 뺀 참여자 (PM 먼저 — 서버 순서 그대로) */
-export const toMembers = (d: ProjectDetailDto): (ProjectMember & { memberId: number })[] =>
+export const toMembers = (d: ProjectDetailDto): (ProjectMember & { memberId: number; photoUrl: string | null })[] =>
   d.members
     .filter((m) => m.role !== 'FORMER')
     .map((m) => ({
@@ -235,6 +235,7 @@ export const toMembers = (d: ProjectDetailDto): (ProjectMember & { memberId: num
       role: m.role as 'MANAGER' | 'MEMBER',
       note: m.member.memberType === 'INTERN' ? '인턴' : undefined,
       tags: m.tags ?? [],
+      photoUrl: m.member.photoUrl ?? null,
     }))
 
 const detailToCard = (d: ProjectDetailDto): ProjectCard => {

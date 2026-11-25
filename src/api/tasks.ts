@@ -1,7 +1,7 @@
 // 작업 만들기 · 작업 목록 API — 백엔드 TaskController (POST /tasks, GET /tasks, PATCH /tasks 일괄 변경, POST /tasks/{key}/checklist-items)
 // · MilestoneController (GET /projects/{key}/milestones) · ProjectLabelController (GET /projects/{key}/labels) 를 쓴다.
 import { useEffect } from 'react'
-import { api } from './client'
+import { api, serverRoot } from './client'
 import type { MemberRef } from './types'
 import { useResource } from './useResource'
 import { appendUnique, mergeNext, NOT_PAGED, pagedOf, type Paged } from './useLoadMore'
@@ -47,7 +47,11 @@ export function useTaskCreateRequests(open: (d: TaskCreateOpen) => void) {
 
 export type Option = { id: number; name: string }
 /** 담당 후보: 맡은 일 태그로 찾을 수 있게 (ERP-14) */
-export type MemberOption = Option & { tags: string[] }
+/** photoUrl: 프로필 사진 (없으면 이름 첫 글자 동그라미), role: 프로젝트 안 역할 */
+/** 서버가 준 '/api/v1/files/…' 주소를 API 서버 기준으로 (admin.ts 의 resolveUrl 과 같다) */
+const fileUrl = (u: string | null | undefined) => (u ? (u.startsWith('/') ? serverRoot() + u : u) : null)
+
+export type MemberOption = Option & { tags: string[]; photoUrl?: string | null; role?: 'MANAGER' | 'MEMBER' }
 export type LabelOption = Option & { color: string }
 /** 공통코드 TASK_TYPE (GET /codes/TASK_TYPE) */
 export type TypeOption = { code: string; name: string; icon: string | null }
@@ -71,7 +75,7 @@ export function useTaskFormOptions(key: string | undefined, enabled = true) {
     ['task-form', key, enabled],
     () => {
       const p = findProject(key)
-      const members = projectDetail.members.map((m, i) => ({ id: i + 1, name: m.name, tags: mockTagsOf(m.name) }))
+      const members = projectDetail.members.map((m, i) => ({ id: i + 1, name: m.name, tags: mockTagsOf(m.name), role: m.role }))
       return {
         projectKey: p.projectKey,
         projectName: p.name,
@@ -98,7 +102,7 @@ export function useTaskFormOptions(key: string | undefined, enabled = true) {
         projectKey: d.projectKey,
         projectName: d.name,
         me: { id: me.memberId, name: me.name },
-        members: toMembers(d).map((m) => ({ id: m.memberId, name: m.name, tags: m.tags ?? [] })),
+        members: toMembers(d).map((m) => ({ id: m.memberId, name: m.name, tags: m.tags ?? [], photoUrl: fileUrl(m.photoUrl), role: m.role })),
         milestones: ms.milestones.filter((m) => m.status === 'OPEN').map((m) => ({ id: m.milestoneId, name: m.name })),
         labels: ls.labels.map((l) => ({ id: l.labelId, name: l.name, color: l.color })),
         types,
