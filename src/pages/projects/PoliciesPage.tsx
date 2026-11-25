@@ -93,7 +93,7 @@ const shortSha = (sha: string) => sha.slice(0, 7)
 
 /**
  * 프로젝트 › 정책 (ERP-41): 정한 규칙과 그 이유. 목록 · 상세(정형 규칙 · 근거 · 커밋 · 이력 · 댓글) · 남기기 · 고치기.
- * 연구실 전체 정책은 LAB 프로젝트의 정책 탭. AI 는 MCP find_policies · save_policy 로 같은 정책을 읽고 남긴다.
+ * 연구실 전체 규칙은 ERP 프로젝트의 정책 탭 (LAB 프로젝트는 없앰, ERP-46). AI 는 MCP find_policies · save_policy 로 같은 정책을 읽고 남긴다.
  */
 export function PoliciesPage() {
   const { key = '', policyKey } = useParams()
@@ -138,7 +138,8 @@ function PolicyListView({ projectKey }: { projectKey: string }) {
         )}
       </div>
       <p className={s.hint}>
-        프로젝트가 정한 규칙과 그 이유예요. 사람이 바뀌어도, 다른 사람의 AI 도 같은 규칙을 따라요. 연구실 전체 규칙은 <Link to="/projects/LAB/policies">LAB 정책</Link>.
+        프로젝트가 정한 규칙과 그 이유예요. 사람이 바뀌어도, 다른 사람의 AI 도 같은 규칙을 따라요.
+        {projectKey === 'ERP' ? ' 연구실 전체 규칙도 여기에 남겨요.' : <> 연구실 전체 규칙은 <Link to="/projects/ERP/policies">ERP 정책</Link>에 있어요.</>}
       </p>
       <div className={s.filters}>
         <PillTabs

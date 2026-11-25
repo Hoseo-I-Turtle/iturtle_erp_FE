@@ -1,5 +1,5 @@
 // 프로젝트 정책 (ERP-40 · 41) — docs/api/30-project.md 정책 (PL-1 ~ PL-5)
-// 정책 = 정한 규칙 하나와 그 이유. 키는 프로젝트마다 ERP-P12, 연구실 전체 정책은 LAB 프로젝트.
+// 정책 = 정한 규칙 하나와 그 이유. 키는 프로젝트마다 ERP-P12, 연구실 전체 규칙도 ERP 프로젝트에 둔다 (LAB 프로젝트는 없앰, ERP-46).
 import { api } from './client'
 import type { MemberRef, PageResponse } from './types'
 import { useResource } from './useResource'
