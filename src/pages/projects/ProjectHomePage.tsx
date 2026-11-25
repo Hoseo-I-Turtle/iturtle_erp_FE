@@ -42,7 +42,7 @@ function ProjectHomeView({ d }: { d: ProjectHome }) {
             <ul className={s.members}>
               {d.members.map((m) => (
                 <li key={m.name}>
-                  <Avatar name={m.name} size={28} />
+                  <Avatar name={m.name} size={28} src={m.photoUrl} />
                   <span>
                     <strong>{m.name}</strong>
                     <small>
