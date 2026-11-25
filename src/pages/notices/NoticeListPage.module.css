@@ -289,3 +289,19 @@ button.leftItem:hover:not(:disabled) {
 .pollBar > :first-child {
   flex: 1;
 }
+
+/* 휴대폰 폭: 아이콘 · 필독 · 투표 · 댓글 · 읽음을 윗줄에, 제목 · 설명은 아랫줄에 넓게 */
+@media (max-width: 720px), (max-width: 960px) and (max-height: 500px) {
+  .row {
+    flex-wrap: wrap;
+    row-gap: 6px;
+    padding: 12px;
+  }
+  .rowText {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .rowEnd {
+    margin-left: auto;
+  }
+}

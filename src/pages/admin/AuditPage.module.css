@@ -95,7 +95,7 @@
 }
 
 /* ---------- 휴대폰 (720px 이하): 표는 카드 안에서 옆으로 민다 (좁아져 글자가 세로로 쌓이지 않게) ---------- */
-@media (max-width: 720px) {
+@media (max-width: 720px), (max-width: 960px) and (max-height: 500px) {
   .row {
     min-width: 860px;
   }

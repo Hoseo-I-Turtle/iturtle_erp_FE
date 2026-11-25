@@ -62,3 +62,12 @@ ul {
   outline: 2px solid var(--accent-3);
   outline-offset: 2px;
 }
+
+/* 터치 기기 (손가락): 입력칸 글자를 16px 이상으로 — iOS 는 그보다 작은 칸을 누르면 화면을 확대한다 */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+}

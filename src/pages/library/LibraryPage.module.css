@@ -168,3 +168,32 @@
   gap: 8px;
   color: var(--brand-500);
 }
+
+/* 휴대폰 폭: 첫 줄은 형식 · 제목, 둘째 줄에 작성자 · 공개 범위 · 댓글 · 내려받기 */
+@media (max-width: 720px), (max-width: 960px) and (max-height: 500px) {
+  .doc {
+    flex-wrap: wrap;
+    column-gap: 10px;
+    row-gap: 8px;
+    align-items: center;
+  }
+  .ft {
+    order: -3;
+  }
+  .docMain {
+    order: -2;
+    flex: 1 1 calc(100% - 52px);
+  }
+  .who {
+    order: -1;
+    flex-direction: row;
+    gap: 6px;
+  }
+  .comments {
+    order: 1;
+    margin-left: auto;
+  }
+  .dl {
+    order: 1;
+  }
+}

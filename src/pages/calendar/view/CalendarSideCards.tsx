@@ -65,7 +65,7 @@ export function KindLegendCard() {
 /** 고른 날의 일정 · 회의록 만들기 */
 export function SelectedDayCard({ selected, selectedEvents }: { selected: Date; selectedEvents: CalEvent[] }) {
   return (
-    <Card>
+    <Card className={s.selectedDay}>
       <SectionHead icon={Calendar} title={formatLongDay(selected)} />
       {selectedEvents.length === 0 && <p className={s.empty}>일정이 없어요.</p>}
       {selectedEvents.map((e) => (

@@ -361,7 +361,7 @@
 .scrim {
   display: none;
 }
-@media (max-width: 900px) {
+@media (max-width: 900px), (max-width: 960px) and (max-height: 500px) {
   .app {
     --page-padding: 16px;
   }
@@ -416,15 +416,15 @@
 }
 
 /* ---------- 휴대폰 (720px 이하) ---------- */
-@media (max-width: 720px) {
+@media (max-width: 720px), (max-width: 960px) and (max-height: 500px) {
   .headerTitle h1 {
     font-size: 26px;
     line-height: 34px;
   }
-  /* 검색 · 알림 · 버튼이 한 줄에 들어가게 검색창이 남는 자리를 쓴다 */
+  /* 검색창은 알림 종과 한 줄을 나눠 쓰고, 오른쪽 버튼(새로 만들기 등)은 다음 줄로 (검색창이 눌려 안내 글이 잘리지 않게) */
   .search {
-    flex: 1 1 120px;
-    min-width: 120px;
+    flex: 1 1 calc(100% - 64px);
+    min-width: 0;
   }
   /* 프로젝트 탭: 여러 줄로 접히지 않고 한 줄에서 옆으로 민다 */
   .projectTabs {
@@ -448,7 +448,7 @@
 :where(.adminBody) > :where(*) {
   position: relative;
 }
-@media (max-width: 720px) {
+@media (max-width: 720px), (max-width: 960px) and (max-height: 500px) {
   /* 관리 화면의 표 · 긴 줄은 화면을 밀지 않고 카드 안에서 옆으로 민다 */
   .adminBody section {
     max-width: 100%;
