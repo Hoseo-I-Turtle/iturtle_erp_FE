@@ -45,6 +45,16 @@
 .input select {
   cursor: pointer;
 }
+.pickInput {
+  width: 100%;
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+}
+.pickInput:focus-visible {
+  outline: 0;
+  border-color: var(--brand-300);
+  box-shadow: 0 0 0 3px rgba(128, 170, 211, 0.25);
+}
 .input small {
   font-size: var(--fs-overline);
   color: var(--text-muted);

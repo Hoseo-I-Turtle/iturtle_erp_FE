@@ -71,3 +71,10 @@ ul {
     font-size: max(16px, 1em);
   }
 }
+
+/* 아직 기본 <select> 를 쓰는 칸의 펼친 목록도 테마 색을 따른다 (color-scheme 은 테마가 :root 에 정한다) */
+option,
+optgroup {
+  background-color: var(--surface-card);
+  color: var(--text-body);
+}

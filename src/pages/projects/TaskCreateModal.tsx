@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, CalendarRange, Check, CircleUser, FlaskConical, ListChecks, Plus, SquareCheck, X } from 'lucide-react'
-import { Button, Chip, Loadable, Modal, Switch } from '../../components/ui'
+import { Calendar, CalendarRange, Check, FlaskConical, ListChecks, Plus, SquareCheck, X } from 'lucide-react'
+import { Button, Chip, Loadable, MemberPicker, Modal, Switch } from '../../components/ui'
 import { ApiError } from '../../api/client'
 import { createTask, notifyTasksChanged, useTaskFormOptions, type TaskCreateOpen, type TaskDraft, type TaskFormOptions } from '../../api/tasks'
 import { PRIORITY_NAME, type TaskPriority } from '../../mocks/tasks'
@@ -156,21 +156,17 @@ function TaskForm({ o, open, onClose }: { o: TaskFormOptions; open: TaskCreateOp
             </option>
           ))}
         </SelectField>
-        <SelectField
-          label="담당자"
-          icon={<CircleUser size={16} />}
-          value={d.assigneeMemberId ? String(d.assigneeMemberId) : ''}
-          onChange={(v) => set('assigneeMemberId', v ? Number(v) : null)}
-        >
-          <option value="">없음</option>
-          {candidates.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-              {m.id === o.me.id ? ' (나)' : ''}
-              {m.tags.length > 0 ? ` · ${m.tags.join(', ')}` : ''}
-            </option>
-          ))}
-        </SelectField>
+        <div className={s.field}>
+          <span className={s.label}>담당자</span>
+          <MemberPicker
+            label="담당자"
+            value={d.assigneeMemberId}
+            members={candidates.map((m) => ({ id: m.id, name: m.name, photoUrl: m.photoUrl, meta: [m.id === o.me.id ? '나' : '', ...m.tags].filter(Boolean).join(' · ') || undefined }))}
+            onChange={(id) => set('assigneeMemberId', id)}
+            triggerClassName={`${s.input} ${s.pickInput}`}
+            avatarSize={24}
+          />
+        </div>
         {memberTags.length > 0 && (
           <div className={s.tagFilter} role="group" aria-label="맡은 일로 담당 찾기">
             <span>맡은 일</span>

@@ -15,12 +15,10 @@ import { MustCheckSection } from './sections/MustCheckSection'
 import { MyProjectsGrid } from './sections/MyProjectsGrid'
 import { TaskList } from './sections/TaskList'
 import { ThemeObjects } from '../../components/theme/ThemeObjects'
-import { useTheme } from '../../lib/theme'
 import s from './HomePage.module.css'
 
 // 홈 API 는 따로 없다. 칸마다 따로 불러, 한 칸이 실패해도 나머지는 보인다 (docs/api/60-common.md 1장)
 export function HomePage() {
-  const darkPage = useTheme().info.darkPage
   const mustCheck = useHomeMustCheck()
   const myTasks = useHomeMyTasks()
   const reviewTasks = useHomeReviewTasks()
@@ -61,7 +59,7 @@ export function HomePage() {
           )}
 
           {/* 내 프로젝트 */}
-          <SectionHead icon={Kanban} title="내 프로젝트" link={{ to: '/projects', label: '프로젝트 목록' }} onDark={darkPage} />
+          <SectionHead icon={Kanban} title="내 프로젝트" link={{ to: '/projects', label: '프로젝트 목록' }} onPage />
           <MyProjectsGrid myProjects={myProjects} />
         </div>
 

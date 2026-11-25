@@ -64,7 +64,79 @@ const SNOWMAN_BREAK_V = 11 // 눈사람은 이 속도 이상이면 눈덩이로 
 const CHUNK_G = 0.28
 
 /** 눈이 쌓이는 자리 하나: 카드 윗변(el) 또는 화면 바닥(el = null). 높이는 그 자리 왼쪽부터 BIN 간격 */
-type Ledge = { el: Element | null; h: number[] }
+/** cover: 이 자리 위를 다른 것(메뉴 · 팝오버 · 알림 · 붙은 막대 등)이 덮고 있는 칸 (COVER_STEP 간격, 1 = 덮임) */
+type Ledge = { el: Element | null; h: number[]; cover?: Uint8Array }
+
+/* ---------- 덮인 자리 (크리스마스) ----------
+ * 캔버스는 본문 위에 깔려 있어, 그냥 두면 카드 위에 뜬 메뉴 · 팝오버 · 창 위로 눈 줄이 그어진다.
+ * - 창(모달) · 서랍처럼 화면을 막으로 덮는 것이 열리면: 캔버스를 본문 아래로 내린다 → 쌓인 눈도 어두운 막 아래에 깔린다.
+ *   그동안은 쌓이지도 녹지도 않고, 눈덩이 · 눈사람도 만질 수 없다 (닫으면 그대로 다시 보인다).
+ * - 막 없이 뜨는 것(메뉴 · 팝오버 · 알림)은: 카드 윗변 위를 무엇이 덮고 있는지 몇 칸마다 짚어 보고, 덮인 칸은 그리지도 쌓지도 않는다.
+ * 짚어 보는 일은 화면이 바뀔 때(MutationObserver) · 스크롤 · 크기 바꿈 · 가끔(COVER_EVERY_MS)만 한다 — 장면마다 하지 않는다.
+ */
+const COVER_STEP = 16
+const COVER_MIN_MS = 200 // 덮인 자리를 이보다 자주 다시 짚지 않는다
+const COVER_EVERY_MS = 1500 // 화면 변화 없이도 이만큼마다 다시 짚는다 (마우스를 올리면 뜨는 메뉴 등)
+const MODAL_SEL = '[role="dialog"][aria-modal="true"], [role="alertdialog"][aria-modal="true"], dialog[open]'
+
+const isFixed = (el: Element) => getComputedStyle(el).position === 'fixed'
+
+/** 화면을 거의 다 덮는 고정 막(창 뒤 막 · 서랍 뒤 막)에 속한 요소면 그 막 */
+function fullCover(el: Element | null, w: number, h: number) {
+  for (let e = el; e && e !== document.body && e !== document.documentElement; e = e.parentElement) {
+    if (!isFixed(e)) continue
+    const r = e.getBoundingClientRect()
+    return r.width >= w * 0.9 && r.height >= h * 0.9 ? e : null
+  }
+  return null
+}
+
+/** 창(모달)이 열려 있는지: 표시된 모달 요소, 또는 화면 다섯 곳이 모두 같은 고정 막에 덮여 있으면 */
+function modalOpen(w: number, h: number) {
+  for (const el of document.querySelectorAll(MODAL_SEL)) if (el.getClientRects().length > 0) return true
+  let cover: Element | null = null
+  for (const [fx, fy] of [[0.5, 0.5], [0.08, 0.08], [0.92, 0.08], [0.08, 0.92], [0.92, 0.92]]) {
+    const c = fullCover(document.elementFromPoint(w * fx, h * fy), w, h)
+    if (!c || (cover && c !== cover)) return false
+    cover = c
+  }
+  return true
+}
+
+/** from 에서 위로 올라가며 container 를 품은 조상에 닿기 전에 떠 있는 요소(absolute · fixed · sticky)가 있는지 */
+function floatsOver(from: Element, container: Element | null) {
+  for (let e: Element | null = from; e && e !== document.body && e !== document.documentElement; e = e.parentElement) {
+    if (container && e.contains(container)) return false
+    const p = getComputedStyle(e).position
+    if (p === 'absolute' || p === 'fixed' || p === 'sticky') return true
+  }
+  return false
+}
+
+/** 카드 윗변(또는 화면 바닥)의 가로 x 자리가 다른 것에 덮여 있는지 */
+function coveredAt(el: Element | null, x: number, top: number, h: number) {
+  if (!el) {
+    // 화면 바닥: 고정된 것(알림 등)이 바닥을 덮고 있으면
+    for (let e = document.elementFromPoint(x, h - 2); e && e !== document.body && e !== document.documentElement; e = e.parentElement) if (isFixed(e)) return true
+    return false
+  }
+  // 카드 윗변 바로 안쪽이 그 카드가 아니면 무언가 카드 위에 떠 있다
+  const yIn = top + 8
+  if (yIn >= 0 && yIn < h) {
+    const a = document.elementFromPoint(x, yIn)
+    if (a && !el.contains(a)) return true
+  }
+  // 쌓인 눈이 그려질 윗변 바로 위를 떠 있는 것(메뉴 아랫부분 등)이 덮고 있으면
+  const yUp = top - 6
+  if (yUp >= 0 && yUp < h) {
+    const b = document.elementFromPoint(x, yUp)
+    if (b && !b.contains(el) && floatsOver(b, el)) return true
+  }
+  return false
+}
+
+/** 쌓인 눈의 i 번째 칸(BIN)이 덮여 있는지 */
+const binCovered = (l: Ledge, i: number) => !!l.cover?.[Math.floor((i * BIN) / COVER_STEP)]
 
 /** 지금 화면에 보이는 카드 윗변 + 화면 바닥 */
 function ledgeRects(ledges: Map<Element | null, Ledge>, w: number, h: number) {
@@ -248,6 +320,60 @@ export function MouseEffects() {
     let grab: Ball | null = null
     let lastPX = 0
     const rectOf = (l: Ledge | null) => rects.find((r) => r.ledge === l)
+
+    // 창(모달)이 열려 있는지 · 덮인 자리. 화면이 바뀔 때만 다시 본다 (위의 "덮인 자리" 설명)
+    let modal = false
+    let modalSince = 0
+    let coverAt = 0
+    let coverDirty = true
+    const computeCover = () => {
+      for (const r of rects) {
+        const n = Math.ceil(r.width / COVER_STEP)
+        const c = new Uint8Array(n)
+        for (let k = 0; k < n; k++) {
+          // 카드의 둥근 모서리 밖을 짚지 않게 양 끝에서 12px 안쪽으로
+          const x = Math.max(r.left + 12, Math.min(r.left + r.width - 12, r.left + k * COVER_STEP + COVER_STEP / 2))
+          if (x < 0 || x >= w) continue
+          c[k] = coveredAt(r.ledge.el, x, r.top, h) ? 1 : 0
+        }
+        r.ledge.cover = c
+      }
+    }
+    const setModal = (next: boolean) => {
+      if (next === modal) return
+      modal = next
+      const now = performance.now()
+      if (next) {
+        modalSince = now
+        // 들고 있던 눈덩이 · 눈사람은 놓는다
+        if (grab || grabMan) up()
+      } else {
+        lastSnowAt += now - modalSince // 창이 열려 있던 동안은 녹지 않은 셈
+        coverDirty = true
+      }
+      // 창이 열리면 캔버스를 본문(z-index 1) 아래로: 쌓인 눈 · 내리는 눈이 창 뒤 어두운 막 아래에 깔린다
+      canvas.style.zIndex = next ? '0' : '60'
+    }
+    let checkTimer = 0
+    let checkTimer2 = 0
+    const check = () => {
+      setModal(modalOpen(w, h))
+      coverDirty = true
+      if (!raf) raf = requestAnimationFrame(frame)
+    }
+    // 화면이 바뀌면 조금 뒤에 다시 본다 (나타나는 움직임이 끝난 뒤에 한 번 더)
+    const observer = new MutationObserver(() => {
+      if (active !== 'christmas') return
+      clearTimeout(checkTimer)
+      clearTimeout(checkTimer2)
+      checkTimer = window.setTimeout(check, 50)
+      checkTimer2 = window.setTimeout(check, 400)
+    })
+    /** 쌓인 눈 칸이 지금 보이는지 (창이 열려 있으면 캔버스가 본문 아래라 가릴 필요가 없다) */
+    const hiddenBin = (l: Ledge, i: number) => !modal && binCovered(l, i)
+    /** 덮인 자리에 놓인 눈덩이 · 눈사람은 그리지도 만지지도 않는다 */
+    const ballHidden = (b: Ball) => !b.held && !!b.ledge && hiddenBin(b.ledge, Math.floor(b.x / BIN))
+    const manHidden = (m: Snowman) => !m.held && !!m.ledge && hiddenBin(m.ledge, Math.floor(m.x / BIN))
     /** 화면 좌표 아래에서 가장 가까운 눈 쌓인 표면 (높이 포함) */
     const surfaceBelow = (x: number, y: number) => {
       let best: { r: (typeof rects)[number]; top: number } | null = null
@@ -298,14 +424,14 @@ export function MouseEffects() {
     let grabMan: { m: Snowman; sx: number; sy: number; moved: boolean; ox: number; oy: number } | null = null
 
     const down = (e: PointerEvent) => {
-      if (active !== 'christmas' || e.button !== 0) return
+      if (active !== 'christmas' || e.button !== 0 || modal) return
       rects = ledgeRects(ledges, w, h)
       rectsAt = performance.now()
       // 0) 눈사람을 누른다 (끌면 옮기고, 그냥 떼면 흔들린다)
       for (const m of snowmen) {
         const ps = manParts(m)
         const base = manBase(m)
-        if (!ps || !base) continue
+        if (!ps || !base || manHidden(m)) continue
         if (ps.some((q) => Math.hypot(e.clientX - q.x, e.clientY - q.y) <= q.r + 2)) {
           grabMan = { m, sx: e.clientX, sy: e.clientY, moved: false, ox: e.clientX - base.x, oy: e.clientY - base.y }
           e.preventDefault()
@@ -316,7 +442,7 @@ export function MouseEffects() {
       // 1) 눈덩이를 집는다
       for (const b of balls) {
         const p = ballPos(b)
-        if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) <= b.r + 3) {
+        if (p && !ballHidden(b) && Math.hypot(e.clientX - p.x, e.clientY - p.y) <= b.r + 3) {
           b.held = true
           b.hx = p.x
           b.hy = p.y
@@ -333,7 +459,7 @@ export function MouseEffects() {
         if (e.clientX < r.left || e.clientX > r.left + r.width) continue
         const i = Math.floor((e.clientX - r.left) / BIN)
         const depth = r.ledge.h[i] ?? 0
-        if (depth >= ROLL_MIN_DEPTH && e.clientY >= r.top - depth - 6 && e.clientY <= r.top + 4) {
+        if (depth >= ROLL_MIN_DEPTH && !hiddenBin(r.ledge, i) && e.clientY >= r.top - depth - 6 && e.clientY <= r.top + 4) {
           const b: Ball = { ledge: r.ledge, x: e.clientX - r.left, r: BALL_START_R, held: false, hx: 0, hy: 0, vx: 0, vy: 0, rolling: true, spin: 0 }
           balls.push(b)
           grab = b
@@ -449,6 +575,8 @@ export function MouseEffects() {
       // 너무 많이 만들지 않게 간격을 둔다. 크리스마스는 눈을 조금 더 (20ms 마다 2번)
       const now = performance.now()
       const christmas = active === 'christmas'
+      // 창이 열려 있으면 마우스 눈을 만들지 않는다 (창 위에서 눈이 생기지 않게)
+      if (christmas && modal) return
       if (now - lastSpawn > (christmas ? 20 : 35) && particles.length < MAX_PARTICLES) {
         lastSpawn = now
         for (let k = 0; k < (christmas ? 2 : 1); k++) particles.push(...spawn(active, mouse.x, mouse.y))
@@ -467,8 +595,15 @@ export function MouseEffects() {
       const now = performance.now()
       const piling = active === 'christmas'
       if (piling && now - rectsAt > 120) {
+        const before = rects.length
         rects = ledgeRects(ledges, w, h)
         rectsAt = now
+        if (rects.length !== before || rects.some((r) => !r.ledge.cover)) coverDirty = true
+      }
+      if (piling && !modal && (coverDirty ? now - coverAt > COVER_MIN_MS : now - coverAt > COVER_EVERY_MS)) {
+        computeCover()
+        coverAt = now
+        coverDirty = false
       }
       // 하늘에서 내리는 눈 (배경 눈): 화면 위에서 생겨 떨어지고, 마우스 눈처럼 쌓인다
       if (piling && ++skyTick % SKY_EVERY === 0 && particles.length < MAX_PARTICLES && document.visibilityState === 'visible') {
@@ -477,11 +612,13 @@ export function MouseEffects() {
       particles = particles.filter((p) => p.life < p.max && p.y < h + 20)
       for (const p of particles) {
         // 떨어지는 눈: 아래에 있는 카드 윗변(또는 화면 바닥)에 닿으면 그 자리에 쌓인다
-        if (piling && p.kind === 'snow') {
+        // 창이 열려 있으면 쌓이지 않고 그대로 지나간다. 덮인 칸에도 쌓이지 않는다
+        if (piling && !modal && p.kind === 'snow') {
           const ny = p.y + p.vy
           for (const r of rects) {
             if (p.x < r.left || p.x > r.left + r.width) continue
             const i = Math.floor((p.x - r.left) / BIN)
+            if (binCovered(r.ledge, i)) continue
             const surface = r.top - (r.ledge.h[i] ?? 0)
             if (p.y <= surface && ny >= surface) {
               const amt = p.r * (p.sky ? SKY_DEPOSIT : 1)
@@ -562,22 +699,33 @@ export function MouseEffects() {
       // 쌓인 눈 그리기 (오래 가만히 있으면 녹는다)
       let snowLeft = false
       if (piling) {
-        const melting = now - lastSnowAt > MELT_AFTER_MS
+        // 창이 열려 있는 동안은 녹지 않는다
+        const melting = !modal && now - lastSnowAt > MELT_AFTER_MS
         for (const r of rects) {
           const hs = r.ledge.h
           if (hs.length === 0) continue
           settle(hs)
           let any = false
-          ctx.beginPath()
-          ctx.moveTo(r.left, r.top)
           for (let i = 0; i < hs.length; i++) {
             if (melting && hs[i]) hs[i] = Math.max(0, hs[i] - MELT_PER_FRAME)
-            const v = hs[i] ?? 0
-            if (v > 0.05) any = true
-            ctx.lineTo(r.left + i * BIN + BIN / 2, r.top - v)
+            if ((hs[i] ?? 0) > 0.05) any = true
           }
-          ctx.lineTo(r.left + hs.length * BIN, r.top)
-          ctx.closePath()
+          // 덮이지 않은 칸끼리 이어 그린다 (덮인 칸에서 끊는다)
+          ctx.beginPath()
+          let open = false
+          for (let i = 0; i <= hs.length; i++) {
+            const show = i < hs.length && !hiddenBin(r.ledge, i)
+            if (show && !open) {
+              ctx.moveTo(r.left + i * BIN, r.top)
+              open = true
+            }
+            if (show) ctx.lineTo(r.left + i * BIN + BIN / 2, r.top - (hs[i] ?? 0))
+            else if (open) {
+              ctx.lineTo(r.left + i * BIN, r.top)
+              ctx.closePath()
+              open = false
+            }
+          }
           ctx.fillStyle = 'rgba(255,255,255,0.95)'
           ctx.shadowColor = 'rgba(120,150,190,0.45)'
           ctx.shadowBlur = 3
@@ -641,7 +789,7 @@ export function MouseEffects() {
             }
           }
           const p = ballPos(b)
-          if (!p || b.r <= 0) continue
+          if (!p || b.r <= 0 || ballHidden(b)) continue
           drawBall(ctx, p.x, p.y, b.r, b.spin)
         }
         for (let i = balls.length - 1; i >= 0; i--) if (balls[i].r <= 0) balls.splice(i, 1)
@@ -686,7 +834,7 @@ export function MouseEffects() {
             } else moving = true
           }
           const ps = manParts(m)
-          if (!ps) continue
+          if (!ps || manHidden(m)) continue
           ps.forEach((q, k) => {
             drawBall(ctx, q.x, q.y, q.r, 0)
             if (k === ps.length - 1) {
@@ -708,10 +856,20 @@ export function MouseEffects() {
     // 스크롤하면 카드와 함께 쌓인 눈도 움직여야 해서 다시 그린다
     const scroll = () => {
       rectsAt = 0
+      coverDirty = true
       if (!raf) raf = requestAnimationFrame(frame)
     }
     // 크리스마스는 하늘 눈이 마우스 없이도 내리므로 바로 그리기 시작한다
-    if (active === 'christmas') raf = requestAnimationFrame(frame)
+    if (active === 'christmas') {
+      raf = requestAnimationFrame(frame)
+      // 창 · 메뉴가 뜨고 닫히는 것을 본다 (React 가 그리는 본문 · 몸통 아래에 붙는 것 모두)
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open', 'aria-modal', 'role', 'class', 'hidden'] })
+      check()
+    }
+    const onResize = () => {
+      resize()
+      coverDirty = true
+    }
     // 오브젝트를 만졌을 때 부탁받은 알갱이
     const offFx = onFx((fx) => {
       if (fx.kind === 'meteors' || particles.length >= MAX_PARTICLES) return
@@ -724,7 +882,7 @@ export function MouseEffects() {
     window.addEventListener('pointerup', up)
     window.addEventListener('pointercancel', up)
     window.addEventListener('scroll', scroll, { passive: true, capture: true })
-    window.addEventListener('resize', resize)
+    window.addEventListener('resize', onResize)
     document.addEventListener('pointerleave', leave)
     return () => {
       window.removeEventListener('pointermove', move)
@@ -733,7 +891,11 @@ export function MouseEffects() {
       window.removeEventListener('pointerup', up)
       window.removeEventListener('pointercancel', up)
       window.removeEventListener('scroll', scroll, { capture: true })
-      window.removeEventListener('resize', resize)
+      window.removeEventListener('resize', onResize)
+      observer.disconnect()
+      clearTimeout(checkTimer)
+      clearTimeout(checkTimer2)
+      canvas.style.zIndex = '60'
       document.removeEventListener('pointerleave', leave)
       offFx()
       if (raf) cancelAnimationFrame(raf)
