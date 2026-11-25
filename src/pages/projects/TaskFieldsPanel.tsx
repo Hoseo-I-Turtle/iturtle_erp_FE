@@ -1,8 +1,8 @@
 import { ChevronDown, Clock, SquareCheck } from 'lucide-react'
-import { Avatar, Chip, Dropdown, type DropdownOption } from '../../components/ui'
+import { Avatar, Chip, Dropdown, MemberPicker, type DropdownOption } from '../../components/ui'
 import { PRIORITY_NAME, STATUS_NAME, TYPE_NAME, type TaskPriority, type TaskStatus } from '../../mocks/tasks'
 import type { BoardTask, TaskFields } from '../../api/projects'
-import type { TaskFormOptions } from '../../api/tasks'
+import type { MemberOption, TaskFormOptions } from '../../api/tasks'
 import s from './TaskDetailPage.module.css'
 
 type Props = {
@@ -16,12 +16,15 @@ type Props = {
 }
 
 const PRIORITIES = Object.keys(PRIORITY_NAME) as TaskPriority[]
+/** 담당자 고르기의 흐린 글자: 맡은 일 태그, 없으면 프로젝트 관리자 표시 */
+const memberMeta = (m: MemberOption) => (m.tags.length > 0 ? m.tags.join(', ') : m.role === 'MANAGER' ? '관리자' : undefined)
 const md = (iso: string) => (iso ? `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}` : '')
 
 /** 작업 상세 오른쪽 속성 칸. 고칠 수 있으면 바로 고친다 (ERP-12, T-4) */
 export function TaskFieldsPanel({ task, status, cancelled, fields, options, onChange }: Props) {
   const o = options
   const nameOf = (id: number | null) => (id === null ? null : (o?.members.find((m) => m.id === id)?.name ?? task.assignee))
+  const photoOf = (name: string) => o?.members.find((m) => m.name === name)?.photoUrl
   const milestoneName = o?.milestones.find((m) => m.id === fields.milestoneId)?.name ?? task.milestone
   const labelNames = o ? o.labels.filter((l) => fields.labelIds.includes(l.id)).map((l) => l.name) : task.labels
   const badPeriod = !!fields.startOn && !!fields.dueOn && fields.dueOn < fields.startOn
@@ -36,25 +39,23 @@ export function TaskFieldsPanel({ task, status, cancelled, fields, options, onCh
       <dt>담당자</dt>
       <dd>
         {o ? (
-          <select className={s.propSelect} value={fields.assigneeId ?? ''} onChange={(e) => onChange({ assigneeId: e.target.value ? Number(e.target.value) : null })} aria-label="담당자">
-            <option value="">없음</option>
-            {o.members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-                {m.tags.length > 0 ? ` · ${m.tags.join(', ')}` : ''}
-              </option>
-            ))}
-          </select>
+          <MemberPicker
+            label="담당자"
+            value={fields.assigneeId}
+            members={o.members.map((m) => ({ id: m.id, name: m.name, photoUrl: m.photoUrl, meta: memberMeta(m) }))}
+            onChange={(assigneeId) => onChange({ assigneeId })}
+            avatarSize={20}
+          />
         ) : nameOf(fields.assigneeId) ? (
-          <Person name={nameOf(fields.assigneeId)!} />
+          <Person name={nameOf(fields.assigneeId)!} photo={photoOf(nameOf(fields.assigneeId)!)} />
         ) : (
-          '없음'
+          <span className={s.unassigned}>미지정</span>
         )}
       </dd>
 
       <dt>요청자</dt>
       <dd>
-        <Person name={task.requester} />
+        <Person name={task.requester} photo={photoOf(task.requester)} />
       </dd>
 
       <dt>우선순위</dt>
@@ -162,10 +163,10 @@ function PropSelect<T>({ label, value, options, onChange }: { label: string; val
   )
 }
 
-function Person({ name }: { name: string }) {
+function Person({ name, photo }: { name: string; photo?: string | null }) {
   return (
     <span className={s.person}>
-      <Avatar name={name} size={20} />
+      <Avatar name={name} src={photo} size={20} />
       {name}
     </span>
   )

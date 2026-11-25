@@ -207,6 +207,9 @@
   align-items: center;
   gap: 6px;
 }
+.unassigned {
+  color: var(--text-muted);
+}
 .statusChip {
   padding: 4px 10px;
   border-radius: var(--radius-full);

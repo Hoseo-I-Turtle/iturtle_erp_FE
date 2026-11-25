@@ -1,0 +1,55 @@
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.trigger:disabled {
+  cursor: default;
+}
+.trigger:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 2px;
+}
+.boxed {
+  margin: -5px 0 -5px -5px; /* 사진이 옆 줄(요청자 등)의 사진과 같은 자리에 오게 */
+  padding: 4px 8px 4px 4px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+}
+.boxed:hover:not(:disabled),
+.boxed[aria-expanded='true'] {
+  border-color: var(--border-default);
+  background: var(--surface-sunken);
+}
+.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.muted {
+  color: var(--text-muted);
+}
+.chev {
+  flex: none;
+  margin-left: auto;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+.chevOpen {
+  transform: rotate(180deg);
+}
+.none {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border-default);
+  border-radius: 50%;
+  color: var(--text-muted);
+}

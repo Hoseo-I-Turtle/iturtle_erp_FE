@@ -119,6 +119,12 @@
   font-weight: 500;
   flex: none;
 }
+.avatarImg {
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-soft);
+}
 .avatarStack {
   display: inline-flex;
 }
