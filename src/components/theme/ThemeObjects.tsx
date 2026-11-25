@@ -61,8 +61,8 @@ const scatter = (i: number, seed: number) => {
 const CHRISTMAS: Placement[] = [
   // --- 본문 맨 위: 전구 줄 두 개 + 가운데 리본 + 매달린 장식. 마우스가 닿으면 흔들린다
   // 전구 줄에 그려진 끈과 장식이 어긋나지 않게, 모두 원본 크기(px)로 두고 왼쪽 5% 지점부터 px 로 놓는다
-  { set: 0, slot: 'header', src: x('ornament_garland_lights_left'), style: { left: 'calc(5% + 0px)', top: 0, width: 504 } },
-  { set: 0, slot: 'header', src: x('ornament_garland_lights_right'), style: { left: 'calc(5% + 656px)', top: 0, width: 476 } },
+  // 전구 줄은 한 장 (리본 뒤로 줄이 이어진다 — 두 장으로 나누면 리본 양옆에 틈 · 잘린 전구가 보였다)
+  { set: 0, slot: 'header', src: x('ornament_garland_lights'), style: { left: 'calc(5% + 0px)', top: 0, width: 1132 } },
   { set: 0, slot: 'header', src: x('ornament_bow'), style: { left: 'calc(5% + 507px)', top: -2, width: 146 }, sway: 5 },
   { set: 0, slot: 'header', src: x('ornament_ball_red'), style: { left: 'calc(5% + 199px)', top: 40, width: 39 }, sway: 16, wideOnly: true },
   { set: 0, slot: 'header', src: x('ornament_sock'), style: { left: 'calc(5% + 266px)', top: 40, width: 52 }, sway: 14, wideOnly: true },
