@@ -111,6 +111,10 @@
   font-size: var(--fs-caption);
   color: var(--text-muted);
 }
+/* 카드 밖, 화면 바탕 위에 바로 놓인 설명 */
+.col > .muted {
+  color: var(--on-page-muted);
+}
 /* 저장 · 조치 실패 안내 */
 .err {
   font-size: var(--fs-caption);

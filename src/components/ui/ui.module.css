@@ -49,6 +49,14 @@
 .onDark .sectionLink {
   color: var(--text-on-dark-muted);
 }
+.onPage .sectionTitle,
+.onPage > svg,
+.onPage .sectionLink:hover {
+  color: var(--on-page-text);
+}
+.onPage .sectionLink {
+  color: var(--on-page-muted);
+}
 
 /* ---------- Chip ---------- */
 .chip {
@@ -350,25 +358,26 @@
   align-items: center;
   gap: 6px;
   padding: 7px 12px;
-  border: 1px solid var(--border-default);
+  /* 화면 바탕 위에 바로 놓여도 읽히게 테마의 "바탕 위 조작칸" 색을 쓴다 */
+  border: 1px solid var(--control-on-page-border);
   border-radius: 10px;
+  background: var(--control-on-page-bg);
   font-size: var(--fs-caption);
   font-weight: 500;
-  color: var(--text-body);
+  color: var(--control-on-page-text);
   cursor: pointer;
 }
 .filter:hover {
   background: var(--surface-sunken);
+  color: var(--text-body);
 }
 .filterOn {
   background: var(--surface-tint);
   border-color: var(--accent-line);
+  color: var(--text-primary);
 }
-.filter select {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
+.filter svg {
+  transition: transform 0.15s ease;
 }
 
 /* ---------- ListItem ---------- */
@@ -475,41 +484,50 @@
   position: relative;
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   min-width: 120px;
-}
-.select select {
-  width: 100%;
-  appearance: none;
-  padding: 6px 30px 6px 10px;
+  padding: 6px 10px;
   border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--surface-card);
   font-size: var(--fs-caption);
   color: var(--text-body);
+  text-align: left;
   cursor: pointer;
 }
-.select select:focus {
+.select:focus-visible {
   outline: 2px solid var(--accent-line);
+  outline-offset: 0;
+}
+.select:disabled {
+  cursor: default;
+  color: var(--text-disabled);
+  background: var(--surface-disabled);
 }
 .select svg {
-  position: absolute;
-  right: 10px;
-  pointer-events: none;
+  flex: none;
+  margin-left: auto;
   color: var(--text-body);
+  transition: transform 0.15s ease;
+}
+.selectText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chevOpen {
+  transform: rotate(180deg);
 }
 .selectBlock {
   display: flex;
   width: 100%;
-}
-.selectBlock select {
   height: 44px;
-  padding: 0 36px 0 14px;
+  padding: 0 14px;
   border-radius: var(--radius-md);
   font-size: 14px;
   color: var(--text-primary);
-}
-.selectBlock svg {
-  right: 14px;
 }
 
 /* ---------- Modal ---------- */

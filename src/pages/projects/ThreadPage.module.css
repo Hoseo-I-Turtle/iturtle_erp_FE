@@ -87,10 +87,11 @@
   flex: 1;
   font-size: var(--fs-body);
   font-weight: 600;
+  color: var(--on-page-text); /* 화면 바탕 위 */
 }
 .allHead h2 span {
   font-size: var(--fs-caption);
-  color: var(--text-muted);
+  color: var(--on-page-muted);
   font-weight: 500;
 }
 .pill {

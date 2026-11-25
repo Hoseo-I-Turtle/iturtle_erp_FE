@@ -13,6 +13,11 @@
 
 /* ================= 바다 ================= */
 [data-theme='ocean'] {
+  --on-page-text: #04284a;
+  --on-page-muted: #0b3d68;
+  --control-on-page-bg: rgba(233, 246, 254, 0.92);
+  --control-on-page-text: #04284a;
+  --control-on-page-border: rgba(4, 51, 94, 0.22);
   --accent-deep: #053763;
   --accent: #04335e; /* 헤더 버튼 */
   --accent-2: #185886;
@@ -74,6 +79,11 @@
 
 /* ================= 크리스마스 ================= */
 [data-theme='christmas'] {
+  --on-page-text: #ffffff;
+  --on-page-muted: #f6d9d2;
+  --control-on-page-bg: rgba(253, 239, 224, 0.94); /* 크림색 판 */
+  --control-on-page-text: #3d241a;
+  --control-on-page-border: rgba(255, 246, 236, 0.5);
   --accent-deep: #053522;
   --accent: #0a5a3a; /* 헤더 버튼 · 주 버튼 (초록) */
   --accent-2: #0f7a4d;
@@ -143,6 +153,11 @@
 /* 색은 Penpot "14 Theme · 우주" 의 "Screen · 홈 · 오브젝트 A + 거북이" 에서 옮겼다.
    검은 밤하늘 바탕에 보라 강조색, 카드는 흰 테두리 선과 보랏빛 그림자를 두른다 */
 [data-theme='space'] {
+  --on-page-text: #ffffff;
+  --on-page-muted: #bdb5d6;
+  --control-on-page-bg: rgba(13, 11, 20, 0.86);
+  --control-on-page-text: #e9e5f5;
+  --control-on-page-border: #3d3654;
   --accent-deep: #1e1535;
   --accent: #7c3aed; /* 선택 표시 · 글자 강조 (주 버튼 바탕은 아래 --accent-fill) */
   --accent-2: #a855f7; /* 진행 막대 · 개수 칩 */
@@ -227,6 +242,10 @@
 
 /* ================= 다크 ================= */
 [data-theme='dark'] {
+  --page-title: #eef4fb;
+  --page-subtitle: #a9c3df;
+  --on-page-text: #eef4fb;
+  --on-page-muted: #a9c3df;
   --accent-deep: #0a1524;
   --accent: #3b6ea8;
   --accent-2: #5b8fc9;

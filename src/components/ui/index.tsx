@@ -2,6 +2,9 @@ import { useEffect, type ButtonHTMLAttributes, type CSSProperties, type HTMLAttr
 import { Link } from 'react-router-dom'
 import { Check, ChevronDown, ChevronRight, X, type LucideIcon } from 'lucide-react'
 import s from './ui.module.css'
+import { Dropdown } from './Dropdown'
+
+export { Dropdown, type DropdownOption } from './Dropdown'
 
 const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(' ')
 
@@ -19,10 +22,12 @@ type SectionHeadProps = {
   extra?: ReactNode
   link?: { to: string; label: string }
   onDark?: boolean
+  /** 카드 밖, 화면 바탕 위에 바로 놓일 때 (테마의 바탕 위 글자색) */
+  onPage?: boolean
 }
-export function SectionHead({ icon: Icon, title, extra, link, onDark }: SectionHeadProps) {
+export function SectionHead({ icon: Icon, title, extra, link, onDark, onPage }: SectionHeadProps) {
   return (
-    <div className={cx(s.sectionHead, onDark && s.onDark)}>
+    <div className={cx(s.sectionHead, onDark && s.onDark, onPage && s.onPage)}>
       {Icon && <Icon size={20} strokeWidth={2} />}
       <h2 className={s.sectionTitle} style={extra ? { flex: 'none' } : undefined}>
         {title}
@@ -233,19 +238,22 @@ type FilterSelectProps = {
   onChange: (v: string) => void
 }
 export function FilterSelect({ label, value, options, onChange }: FilterSelectProps) {
+  const opts = [{ value: '', label: `${label}: 전체` }, ...options.map((o) => ({ value: o, label: o }))]
   return (
-    <label className={cx(s.filter, value && s.filterOn)}>
-      <span>{value || label}</span>
-      <ChevronDown size={14} />
-      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}>
-        <option value="">{label}: 전체</option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
-    </label>
+    <Dropdown
+      value={value}
+      options={opts}
+      onChange={onChange}
+      label={label}
+      searchable="auto"
+      triggerClassName={cx(s.filter, value && s.filterOn)}
+      trigger={(_, open) => (
+        <>
+          <span>{value || label}</span>
+          <ChevronDown size={14} className={open ? s.chevOpen : undefined} />
+        </>
+      )}
+    />
   )
 }
 
@@ -326,16 +334,21 @@ type SelectProps<T extends string> = {
 }
 export function Select<T extends string>({ value, options, onChange, label, width, block }: SelectProps<T>) {
   return (
-    <span className={cx(s.select, block && s.selectBlock)} style={{ width }}>
-      <select value={value} onChange={(e) => onChange(e.target.value as T)} aria-label={label}>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown size={14} />
-    </span>
+    <Dropdown
+      value={value}
+      options={options}
+      onChange={onChange}
+      label={label ?? ''}
+      searchable="auto"
+      triggerClassName={cx(s.select, block && s.selectBlock)}
+      triggerStyle={{ width }}
+      trigger={(sel, open) => (
+        <>
+          <span className={s.selectText}>{sel?.label ?? ''}</span>
+          <ChevronDown size={14} className={open ? s.chevOpen : undefined} />
+        </>
+      )}
+    />
   )
 }
 

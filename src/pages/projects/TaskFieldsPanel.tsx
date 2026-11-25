@@ -1,5 +1,5 @@
-import { Clock, SquareCheck } from 'lucide-react'
-import { Avatar, Chip } from '../../components/ui'
+import { ChevronDown, Clock, SquareCheck } from 'lucide-react'
+import { Avatar, Chip, Dropdown, type DropdownOption } from '../../components/ui'
 import { PRIORITY_NAME, STATUS_NAME, TYPE_NAME, type TaskPriority, type TaskStatus } from '../../mocks/tasks'
 import type { BoardTask, TaskFields } from '../../api/projects'
 import type { TaskFormOptions } from '../../api/tasks'
@@ -60,13 +60,7 @@ export function TaskFieldsPanel({ task, status, cancelled, fields, options, onCh
       <dt>우선순위</dt>
       <dd>
         {o ? (
-          <select className={s.propSelect} value={fields.priority} onChange={(e) => onChange({ priority: e.target.value as TaskPriority })} aria-label="우선순위">
-            {PRIORITIES.map((p) => (
-              <option key={p} value={p}>
-                {PRIORITY_NAME[p]}
-              </option>
-            ))}
-          </select>
+          <PropSelect label="우선순위" value={fields.priority} options={PRIORITIES.map((p) => ({ value: p, label: PRIORITY_NAME[p] }))} onChange={(priority) => onChange({ priority })} />
         ) : (
           <Chip tone={fields.priority === 'URGENT' ? 'danger' : fields.priority === 'HIGH' ? 'warning' : 'tint'}>{PRIORITY_NAME[fields.priority]}</Chip>
         )}
@@ -130,20 +124,41 @@ export function TaskFieldsPanel({ task, status, cancelled, fields, options, onCh
       <dt>마일스톤</dt>
       <dd>
         {o ? (
-          <select className={s.propSelect} value={fields.milestoneId ?? ''} onChange={(e) => onChange({ milestoneId: e.target.value ? Number(e.target.value) : null })} aria-label="마일스톤">
-            <option value="">없음</option>
-            {fields.milestoneId !== null && !o.milestones.some((m) => m.id === fields.milestoneId) && <option value={fields.milestoneId}>{milestoneName} (닫힘)</option>}
-            {o.milestones.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
+          <PropSelect
+            label="마일스톤"
+            value={fields.milestoneId}
+            options={[
+              { value: null, label: '없음' },
+              ...(fields.milestoneId !== null && !o.milestones.some((m) => m.id === fields.milestoneId) ? [{ value: fields.milestoneId, label: `${milestoneName} (닫힘)` }] : []),
+              ...o.milestones.map((m) => ({ value: m.id as number | null, label: m.name })),
+            ]}
+            onChange={(milestoneId) => onChange({ milestoneId })}
+          />
         ) : (
           (milestoneName ?? '없음')
         )}
       </dd>
     </dl>
+  )
+}
+
+/** 속성 칸의 고르기 (테마 드롭다운) */
+function PropSelect<T>({ label, value, options, onChange }: { label: string; value: T; options: DropdownOption<T>[]; onChange: (v: T) => void }) {
+  return (
+    <Dropdown
+      label={label}
+      value={value}
+      options={options}
+      onChange={onChange}
+      searchable="auto"
+      triggerClassName={s.propSelect}
+      trigger={(sel, open) => (
+        <>
+          <span className={s.propSelectText}>{sel?.label ?? ''}</span>
+          <ChevronDown size={14} className={open ? s.propChevOpen : undefined} />
+        </>
+      )}
+    />
   )
 }
 
