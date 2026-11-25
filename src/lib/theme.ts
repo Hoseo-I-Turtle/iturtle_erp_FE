@@ -35,7 +35,7 @@ export type ThemeInfo = {
 /** 새 테마는 여기에 한 줄, styles/themes.css 에 값 묶음 하나를 더한다 */
 export const THEMES: ThemeInfo[] = [
   { id: 'default', name: '기본', desc: '남색 · 하늘색', objectSets: [], hasEffects: false, preview: { sidebar: '#1b3554', page: '#eef5fb', card: '#ffffff', accent: '#1b3554', text: '#000f22' } },
-  { id: 'ocean', name: '바다', desc: '물빛 바탕 · 고래와 산호 · 방울', objectSets: ['고래 · 해파리 · 거북이 · 물고기 · 산호 · 해초 · 방울'], hasEffects: true, preview: { sidebar: '#0c4879', page: '#8fd0f4', card: '#e9f6fe', accent: '#04335e', text: '#04284a' } },
+  { id: 'ocean', name: '바다', desc: '물빛 바탕 · 고래와 산호 · 방울', objectSets: ['고래 · 해파리 · 거북이 · 물고기 · 산호 · 해초 · 방울'], hasEffects: true, logoMark: '/brand/iturtle-mark-ocean.png', /* 진주를 든 바다 탐험 거북이 */ preview: { sidebar: '#0c4879', page: '#8fd0f4', card: '#e9f6fe', accent: '#04335e', text: '#04284a' } },
   {
     id: 'christmas',
     name: '크리스마스',
