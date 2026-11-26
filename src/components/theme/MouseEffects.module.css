@@ -1,0 +1,9 @@
+.snowAnchor {
+  position: relative;
+}
+
+.cardSnow {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+}
