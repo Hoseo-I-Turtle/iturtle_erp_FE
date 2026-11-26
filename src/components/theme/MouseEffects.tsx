@@ -12,6 +12,7 @@ import { useEffect, useRef } from 'react'
 import { prefersReducedMotion, useTheme, type ThemeId } from '../../lib/theme'
 import { onFx, type Fx } from './fx'
 import { ShootingStars } from './ShootingStars'
+import styles from './MouseEffects.module.css'
 
 type Particle = {
   x: number
@@ -149,6 +150,22 @@ type LedgeRect = {
   width: number
   leftRadius: Radius
   rightRadius: Radius
+  clip?: { left: number; top: number; right: number; bottom: number }
+}
+
+type CardSnow = {
+  canvas: HTMLCanvasElement
+  ctx: CanvasRenderingContext2D
+  positioned: boolean
+}
+
+const SNOW_PAD_X = BALL_MAX_R + 6
+const SNOW_PAD_TOP = BALL_MAX_R * 6
+const SNOW_PAD_BOTTOM = BALL_MAX_R + 6
+
+function removeCardSnow(el: HTMLElement, snow: CardSnow) {
+  snow.canvas.remove()
+  if (snow.positioned) el.classList.remove(styles.snowAnchor)
 }
 
 function cornerRadius(value: string, width: number, height: number): Radius {
@@ -178,28 +195,66 @@ function holdsSnow(r: LedgeRect, i: number) {
 }
 
 /** 지금 화면에 보이는 카드 윗변 + 화면 바닥 */
-function ledgeRects(ledges: Map<Element | null, Ledge>, w: number, h: number) {
+type CardShape = Pick<LedgeRect, 'leftRadius' | 'rightRadius'> & {
+  scrollports: HTMLElement[]
+  width: number
+  height: number
+  measuredAt: number
+}
+
+function ledgeRects(ledges: Map<Element | null, Ledge>, shapes: WeakMap<Element, CardShape>, w: number, h: number, now: number) {
   const out: LedgeRect[] = []
-  for (const el of document.querySelectorAll('[data-snow-ledge]')) {
+  const portRects = new Map<HTMLElement, DOMRect>()
+  for (const el of document.querySelectorAll<HTMLElement>('[data-snow-ledge]')) {
     const r = el.getBoundingClientRect()
     if (r.width < 40 || r.height === 0 || r.bottom < 0 || r.top > h) continue
     let l = ledges.get(el)
     if (!l) ledges.set(el, (l = { el, h: [] }))
-    const style = getComputedStyle(el)
-    const tl = cornerRadius(style.borderTopLeftRadius, r.width, r.height)
-    const tr = cornerRadius(style.borderTopRightRadius, r.width, r.height)
-    const bl = cornerRadius(style.borderBottomLeftRadius, r.width, r.height)
-    const br = cornerRadius(style.borderBottomRightRadius, r.width, r.height)
-    // CSS reduces all radii by the same factor when adjacent corners overlap.
-    const scale = Math.min(1, r.width / (tl[0] + tr[0]), r.width / (bl[0] + br[0]),
-      r.height / (tl[1] + bl[1]), r.height / (tr[1] + br[1]))
+    let shape = shapes.get(el)
+    if (!shape || shape.width !== r.width || shape.height !== r.height || now - shape.measuredAt > 120) {
+      const style = getComputedStyle(el)
+      const tl = cornerRadius(style.borderTopLeftRadius, r.width, r.height)
+      const tr = cornerRadius(style.borderTopRightRadius, r.width, r.height)
+      const bl = cornerRadius(style.borderBottomLeftRadius, r.width, r.height)
+      const br = cornerRadius(style.borderBottomRightRadius, r.width, r.height)
+      const scale = Math.min(1, r.width / (tl[0] + tr[0]), r.width / (bl[0] + br[0]),
+        r.height / (tl[1] + bl[1]), r.height / (tr[1] + br[1]))
+      const scrollports: HTMLElement[] = []
+      for (let parent = el.parentElement; parent && parent !== document.body; parent = parent.parentElement) {
+        const parentStyle = getComputedStyle(parent)
+        if (parentStyle.overflowX !== 'visible' || parentStyle.overflowY !== 'visible') scrollports.push(parent)
+      }
+      shape = { width: r.width, height: r.height, measuredAt: now, scrollports,
+        leftRadius: [tl[0] * scale, tl[1] * scale], rightRadius: [tr[0] * scale, tr[1] * scale] }
+      shapes.set(el, shape)
+    }
+    const clip = { left: 0, top: 0, right: w, bottom: h }
+    for (const port of shape.scrollports) {
+      let bounds = portRects.get(port)
+      if (!bounds) {
+        bounds = port.getBoundingClientRect()
+        portRects.set(port, bounds)
+      }
+      const left = bounds.left + port.clientLeft
+      const top = bounds.top + port.clientTop
+      clip.left = Math.max(clip.left, left)
+      clip.top = Math.max(clip.top, top)
+      clip.right = Math.min(clip.right, left + port.clientWidth)
+      clip.bottom = Math.min(clip.bottom, top + port.clientHeight)
+    }
+    if (r.right < clip.left || r.left > clip.right || r.bottom < clip.top || r.top > clip.bottom) continue
     out.push({ ledge: l, left: r.left, top: r.top, width: r.width,
-      leftRadius: [tl[0] * scale, tl[1] * scale], rightRadius: [tr[0] * scale, tr[1] * scale] })
+      leftRadius: shape.leftRadius, rightRadius: shape.rightRadius, clip })
   }
   let floor = ledges.get(null)
   if (!floor) ledges.set(null, (floor = { el: null, h: [] }))
   out.push({ ledge: floor, left: 0, top: h, width: w, leftRadius: [0, 0], rightRadius: [0, 0] })
   return out
+}
+
+function ledgeVisibleAt(r: LedgeRect, x: number, y: number) {
+  const c = r.clip
+  return !c || (x >= c.left && x <= c.right && y >= c.top && y <= c.bottom)
 }
 
 /** 쌓인 눈이 옆보다 너무 높으면 흘러내린다 */
@@ -363,7 +418,11 @@ export function MouseEffects() {
     const ledges = new Map<Element | null, Ledge>()
     let lastSnowAt = 0
     let rects: ReturnType<typeof ledgeRects> = []
-    let rectsAt = 0
+    const shapes = new WeakMap<Element, CardShape>()
+    const cardSnow = new Map<HTMLElement, CardSnow>()
+    const frameContexts = new Map<Ledge, CanvasRenderingContext2D>()
+    let previousFrameAt = 0
+    let previousRects: LedgeRect[] = []
     let scrolled = false
     let ledgeVelocity = new Map<Ledge, number>()
     const balls: Ball[] = []
@@ -372,6 +431,51 @@ export function MouseEffects() {
     let grab: Ball | null = null
     let lastPX = 0
     const rectOf = (l: Ledge | null) => rects.find((r) => r.ledge === l)
+
+    // 붙어 있는 눈은 카드의 DOM 층에서 그린다. 브라우저가 스크롤을 합성할 때도 카드와 함께 움직인다.
+    const attachedContext = (r: LedgeRect | undefined) => {
+      const el = r?.ledge.el
+      if (!r || !(el instanceof HTMLElement)) return ctx
+      const already = frameContexts.get(r.ledge)
+      if (already) return already
+      let snow = cardSnow.get(el)
+      if (!snow) {
+        const style = getComputedStyle(el)
+        // 카드 자체가 잘라내는 경우에는 기존 화면 층에서 그린다.
+        if (style.overflowX !== 'visible' || style.overflowY !== 'visible') return ctx
+        const layer = document.createElement('canvas')
+        const local = layer.getContext('2d')
+        if (!local) return ctx
+        const positioned = style.position === 'static'
+        if (positioned) el.classList.add(styles.snowAnchor)
+        layer.className = styles.cardSnow
+        layer.setAttribute('aria-hidden', 'true')
+        el.append(layer)
+        snow = { canvas: layer, ctx: local, positioned }
+        cardSnow.set(el, snow)
+      }
+      if (snow.positioned && !el.classList.contains(styles.snowAnchor)) el.classList.add(styles.snowAnchor)
+      const layer = snow.canvas
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      // The rectangle is in viewport coordinates. Convert the drawing back into card coordinates.
+      const sx = r.width / Math.max(1, el.offsetWidth)
+      const shape = shapes.get(el)
+      const sy = (shape?.height ?? el.offsetHeight) / Math.max(1, el.offsetHeight)
+      const width = el.offsetWidth + 2 * SNOW_PAD_X
+      const height = SNOW_PAD_TOP + SNOW_PAD_BOTTOM + Math.ceil(Math.max(r.leftRadius[1], r.rightRadius[1]) / sy)
+      const left = -SNOW_PAD_X - el.clientLeft
+      const top = -SNOW_PAD_TOP - el.clientTop
+      if (layer.style.left !== `${left}px`) layer.style.left = `${left}px`
+      if (layer.style.top !== `${top}px`) layer.style.top = `${top}px`
+      if (layer.style.width !== `${width}px`) layer.style.width = `${width}px`
+      if (layer.style.height !== `${height}px`) layer.style.height = `${height}px`
+      if (layer.width !== Math.ceil(width * dpr)) layer.width = Math.ceil(width * dpr)
+      if (layer.height !== Math.ceil(height * dpr)) layer.height = Math.ceil(height * dpr)
+      snow.ctx.setTransform(dpr / sx, 0, 0, dpr / sy,
+        dpr * (SNOW_PAD_X - r.left / sx), dpr * (SNOW_PAD_TOP - r.top / sy))
+      frameContexts.set(r.ledge, snow.ctx)
+      return snow.ctx
+    }
 
     // 창(모달)이 열려 있는지 · 덮인 자리. 화면이 바뀔 때만 다시 본다 (위의 "덮인 자리" 설명)
     let modal = false
@@ -432,7 +536,7 @@ export function MouseEffects() {
       for (const r of rects) {
         if (x < r.left || x > r.left + r.width) continue
         const top = snowTop(r, x - r.left)
-        if (top >= y - 2 && (!best || top < best.top)) best = { r, top }
+        if (ledgeVisibleAt(r, x, top) && top >= y - 2 && (!best || top < best.top)) best = { r, top }
       }
       return best
     }
@@ -475,8 +579,7 @@ export function MouseEffects() {
 
     const down = (e: PointerEvent) => {
       if (active !== 'christmas' || e.button !== 0 || modal) return
-      rects = ledgeRects(ledges, w, h)
-      rectsAt = performance.now()
+      rects = ledgeRects(ledges, shapes, w, h, performance.now())
       // 0) 눈사람을 누른다 (끌면 옮기고, 그냥 떼면 흔들린다)
       for (const m of snowmen) {
         const ps = manParts(m)
@@ -650,23 +753,48 @@ export function MouseEffects() {
 
       const now = performance.now()
       const piling = active === 'christmas'
-      if (piling && (scrolled || ledgeVelocity.size > 0 || now - rectsAt > 120)) {
-        const before = rects
-        rects = ledgeRects(ledges, w, h)
-        rectsAt = now
+      if (piling) {
+        frameContexts.clear()
+        for (const [el, snow] of cardSnow) {
+          if (!el.isConnected) {
+            removeCardSnow(el, snow)
+            cardSnow.delete(el)
+            ledges.delete(el)
+          } else {
+            snow.ctx.resetTransform()
+            snow.ctx.clearRect(0, 0, snow.canvas.width, snow.canvas.height)
+          }
+        }
+        const before = previousRects
+        const dt = now - previousFrameAt
+        previousFrameAt = now
+        rects = ledgeRects(ledges, shapes, w, h, now)
+        previousRects = rects
+        const current = new Map(rects.map((r) => [r.ledge, r]))
+        for (const [el, l] of ledges) {
+          if (!(el instanceof HTMLElement)) continue
+          if (!el.isConnected) ledges.delete(el)
+          const snow = cardSnow.get(el)
+          if (snow && !current.has(l)) {
+            removeCardSnow(el, snow)
+            cardSnow.delete(el)
+          }
+        }
         if (scrolled || ledgeVelocity.size > 0) {
           const nextVelocity = new Map<Ledge, number>()
-          const current = new Map(rects.map((r) => [r.ledge, r]))
           for (const previous of before) {
             if (!previous.ledge.el) continue
             const r = current.get(previous.ledge)
             const top = r?.top ?? previous.ledge.el.getBoundingClientRect().top
-            const velocity = scrolled ? top - previous.top : 0
+            const dy = top - previous.top
+            if (dt <= 0 || dt > 60 || Math.abs(dy) > h * 0.5) continue
+            const velocity = dy * (1000 / 60) / Math.max(4, dt)
             const prior = ledgeVelocity.get(previous.ledge) ?? 0
             if (velocity !== 0 && r) nextVelocity.set(r.ledge, velocity)
             if (modal || !previous.ledge.el.isConnected) continue
             const acceleration = velocity - prior
             const inheritedVelocity = Math.max(-9, Math.min(9, prior))
+            coverDirty ||= dy !== 0
             if (acceleration > BODY_RELEASE_ACCELERATION) {
               for (const b of balls) {
                 if (b.ledge !== previous.ledge || b.held || b === grab || ballHidden(b)) continue
@@ -691,7 +819,7 @@ export function MouseEffects() {
                 if (depth < 0.7 || binCovered(previous.ledge, i)) continue
                 const x = binCenter(previous, i)
                 const y = snowTop(previous, x)
-                if (y < -10 || y > h) continue
+                if (!ledgeVisibleAt(previous, previous.left + x, y)) continue
                 const amount = depth * Math.min(0.65, (acceleration - POWDER_RELEASE_ACCELERATION) / 24)
                 hs[i] = depth - amount
                 particles.push({ x: previous.left + x, y: y - 1, vx: (Math.random() - 0.5) * 0.8,
@@ -728,7 +856,7 @@ export function MouseEffects() {
             const i = binAt(r, x)
             if (binCovered(r.ledge, i)) continue
             const y = snowTop(r, x)
-            if (p.y <= y && ny >= y && (!hit || y < hit.y)) hit = { r, i, y }
+            if (ledgeVisibleAt(r, nx, y) && p.y <= y && ny >= y && (!hit || y < hit.y)) hit = { r, i, y }
           }
           if (hit && !holdsSnow(hit.r, hit.i)) {
             // 가파른 모서리에 닿은 눈은 바깥쪽으로 미끄러진다.
@@ -835,6 +963,7 @@ export function MouseEffects() {
             if ((hs[i] ?? 0) > 0.05) any = true
           }
           // 덮이지 않은 칸끼리 이어 그린다 (덮인 칸에서 끊는다)
+          const ctx = attachedContext(r)
           ctx.beginPath()
           let start = -1
           for (let i = 0; i <= hs.length; i++) {
@@ -921,7 +1050,7 @@ export function MouseEffects() {
           }
           const p = ballPos(b)
           if (!p || b.r <= 0 || ballHidden(b)) continue
-          drawBall(ctx, p.x, p.y, b.r, b.spin)
+          drawBall(b.held ? ctx : attachedContext(rectOf(b.ledge)), p.x, p.y, b.r, b.spin)
         }
         for (let i = balls.length - 1; i >= 0; i--) if (balls[i].r <= 0) balls.splice(i, 1)
         for (let mi = snowmen.length - 1; mi >= 0; mi--) {
@@ -966,14 +1095,15 @@ export function MouseEffects() {
           }
           const ps = manParts(m)
           if (!ps || manHidden(m)) continue
+          const ctxForMan = m.held ? ctx : attachedContext(rectOf(m.ledge))
           ps.forEach((q, k) => {
-            drawBall(ctx, q.x, q.y, q.r, 0)
+            drawBall(ctxForMan, q.x, q.y, q.r, 0)
             if (k === ps.length - 1) {
               // 머리: 마우스를 바라본다
               const d = Math.hypot(mouse.x - q.x, mouse.y - q.y) || 1
               const look = mouse.seen ? Math.min(1, d / 80) : 0
-              drawFace(ctx, q.x, q.y, q.r, ((mouse.x - q.x) / d) * look, ((mouse.y - q.y) / d) * look)
-            } else if (k === ps.length - 2) drawButtons(ctx, q.x, q.y, q.r)
+              drawFace(ctxForMan, q.x, q.y, q.r, ((mouse.x - q.x) / d) * look, ((mouse.y - q.y) / d) * look)
+            } else if (k === ps.length - 2) drawButtons(ctxForMan, q.x, q.y, q.r)
           })
         }
         if (grabMan) moving = true
@@ -999,7 +1129,8 @@ export function MouseEffects() {
     }
     const onResize = () => {
       resize()
-      rectsAt = -Infinity
+      previousFrameAt = 0
+      ledgeVelocity.clear()
       coverDirty = true
     }
     // 오브젝트를 만졌을 때 부탁받은 알갱이
@@ -1025,6 +1156,7 @@ export function MouseEffects() {
       window.removeEventListener('scroll', scroll, { capture: true })
       window.removeEventListener('resize', onResize)
       observer.disconnect()
+      for (const [el, snow] of cardSnow) removeCardSnow(el, snow)
       clearTimeout(checkTimer)
       clearTimeout(checkTimer2)
       canvas.style.zIndex = '60'
