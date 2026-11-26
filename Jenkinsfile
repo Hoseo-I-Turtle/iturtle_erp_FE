@@ -1,4 +1,4 @@
-// main 검증과 GHCR 게시를 마친 뒤 기존 배포 절차를 실행한다.
+// main 검증을 마친 뒤 기존 GHCR 배포 절차를 실행한다.
 // GitHub 푸시 이벤트로 실행하며 기존 pollSCM도 유지한다.
 // 문서만 바뀐 경우 자동 배포를 생략한다.
 // 되돌릴 때는 손으로 돌린다 (IMAGE_TAG 에 커밋 SHA 또는 main).
@@ -48,9 +48,9 @@ pipeline {
                         return
                     }
                     withCiVault {
-                        sh 'bash jenkins/build-publish.sh'
+                        sh 'bash jenkins/validate-main.sh'
                     }
-                    deploy(env.GIT_COMMIT, 0)
+                    deploy(env.GIT_COMMIT, 900)
                 }
             }
         }
