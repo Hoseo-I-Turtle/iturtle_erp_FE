@@ -65,7 +65,7 @@ def onlyDocsChanged() {
             paths.addAll(entry.affectedPaths)
         }
     }
-    return !paths.isEmpty() && paths.every { it.startsWith('docs/') || it.endsWith('.md') || it.startsWith('jenkins/') || it == 'Jenkinsfile' }
+    return !paths.isEmpty() && paths.every { it.startsWith('docs/') || it.endsWith('.md') }
 }
 
 def deploy(String tag, int waitSeconds) {
