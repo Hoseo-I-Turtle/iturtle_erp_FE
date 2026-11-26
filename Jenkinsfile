@@ -1,7 +1,5 @@
-// Build on the lab CI engine, then deploy its local image.
-// GitHub 푸시 이벤트로 실행하며 기존 pollSCM도 유지한다.
-// 문서만 바뀐 경우 자동 배포를 생략한다.
-// 되돌릴 때는 손으로 돌린다 (IMAGE_TAG 에 커밋 SHA 또는 main).
+// Main deploys use the image built and tested on the lab CI engine.
+// Leave IMAGE_TAG blank to build this checkout or specify a historical registry tag.
 
 pipeline {
     agent { label 'lab-build' }
@@ -17,7 +15,7 @@ pipeline {
     }
 
     parameters {
-        string(name: 'IMAGE_TAG', defaultValue: '', description: '손으로 돌릴 때만 쓴다. 비우면 main(최신). 되돌릴 때는 커밋 SHA')
+        string(name: 'IMAGE_TAG', defaultValue: '', description: 'Blank builds and deploys the checked-out main revision. An explicit tag deploys that historical registry image.')
     }
 
     stages {
@@ -28,7 +26,12 @@ pipeline {
             }
             steps {
                 script {
-                    deploy(params.IMAGE_TAG?.trim() ?: 'main', 0)
+                    def tag = params.IMAGE_TAG?.trim()
+                    if (tag) {
+                        deploy(tag, 0)
+                    } else {
+                        deployLocalFrontend()
+                    }
                 }
             }
         }
@@ -47,14 +50,7 @@ pipeline {
                         echo '문서만 바뀌어 배포하지 않는다'
                         return
                     }
-                    withEnv(["LAB_CI_IMAGE_ARCHIVE=.lab-ci/erp-fe-${env.GIT_COMMIT}.tar"]) {
-                        try {
-                            sh 'bash /run/lab-ci-artifacts/build-local.sh erp-fe "$LAB_CI_IMAGE_ARCHIVE"'
-                            deploy(env.GIT_COMMIT, 0)
-                        } finally {
-                            sh 'rm -f -- "$LAB_CI_IMAGE_ARCHIVE"'
-                        }
-                    }
+                    deployLocalFrontend()
                 }
             }
         }
@@ -70,6 +66,20 @@ def onlyDocsChanged() {
         }
     }
     return !paths.isEmpty() && paths.every { it.startsWith('docs/') || it.endsWith('.md') }
+}
+
+def deployLocalFrontend() {
+    if (env.BRANCH_NAME != 'main') {
+        error('Local frontend CI deployment is available on main only')
+    }
+    withEnv(["LAB_CI_IMAGE_ARCHIVE=.lab-ci/erp-fe-${env.GIT_COMMIT}.tar"]) {
+        try {
+            sh 'bash /run/lab-ci-artifacts/build-local.sh erp-fe "$LAB_CI_IMAGE_ARCHIVE"'
+            deploy(env.GIT_COMMIT, 0)
+        } finally {
+            sh 'rm -f -- "$LAB_CI_IMAGE_ARCHIVE"'
+        }
+    }
 }
 
 def deploy(String tag, int waitSeconds) {
