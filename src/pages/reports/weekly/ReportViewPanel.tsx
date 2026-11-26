@@ -6,9 +6,9 @@ import { ApiError } from '../../../api/client'
 import { whenLive } from '../../../api/useResource'
 import { useMe } from '../../../api/members'
 import { GithubBox } from './GithubBox'
+import { AdditionalProjectActivity } from './ProjectActivity'
 import { SectionCard } from './SectionCard'
 import { SectionComments } from './SectionComments'
-import { TaskBox } from './TaskBox'
 import s from '../WeeklyReportPage.module.css'
 
 /**
@@ -44,17 +44,17 @@ export function ReportViewPanel({ reportId }: { reportId: number }) {
 function ReportBody({ r, busy, error, onConfirm }: { r: ReportView; busy: boolean; error: string; onConfirm: () => void }) {
   const me = useMe().data
   const gh = useGithubActivity(r.weekStartOn, r.memberId)
-  const sectionKeys = new Set(r.sections.map((x) => x.projectKey))
-  const otherTasks = r.tasks.filter((t) => !sectionKeys.has(t.projectKey))
+  const github = gh.loading || gh.error ? undefined : gh.data
   return (
     <div className={s.reportView}>
       {r.sections.map((x) => (
-        <SectionCard key={x.projectKey} section={x} report={r} github={gh.data} editable={false} readOnly>
+        <SectionCard key={x.projectKey} section={x} report={r} github={github} editable={false} readOnly>
           {r.status !== 'DRAFT' && (
             <SectionComments reportId={r.reportId} projectKey={x.projectKey} meName={me?.name ?? '나'} canWrite={r.canComment} />
           )}
         </SectionCard>
       ))}
+      <AdditionalProjectActivity report={r} github={github} readOnly />
       {r.hiddenSectionCount > 0 && <Note icon={Lock}>볼 수 없는 프로젝트의 칸 {r.hiddenSectionCount}개는 내용을 숨겼어요.</Note>}
       {r.note && (
         <div className={s.field}>
@@ -62,7 +62,6 @@ function ReportBody({ r, busy, error, onConfirm }: { r: ReportView; busy: boolea
           <p className={s.readonly}>{r.note}</p>
         </div>
       )}
-      {otherTasks.length > 0 && <TaskBox tasks={otherTasks} readOnly />}
       <Loadable resource={gh} label="GitHub 활동">
         {(g) => <GithubBox g={g} />}
       </Loadable>

@@ -655,7 +655,7 @@ type GithubActivityResponse = {
   rows: {
     member: MemberRef | null
     authorLogin: string | null
-    repository: { repositoryId: number; fullName: string; projectKey: string } | null
+    repository: { repositoryId: number; fullName: string; projectKey: string | null } | null
     hidden: boolean
     commitCount: number
     mergeCommitCount: number
@@ -875,23 +875,35 @@ export function useGithubActivity(weekStartOn: string, memberId: number | null |
       mergeCount: 1,
     }),
     async () => {
+      if (memberId == null) {
+        return { fetchedAgo: '아직 받지 않음', rows: [], totals: { c: 0, add: 0, del: 0 }, mergeCount: 0 }
+      }
       const res = await api<GithubActivityResponse>('/weekly-reports/github-activity', {
-        query: { weekStartOn, memberId: memberId ?? undefined },
+        query: { weekStartOn, memberId },
       })
       return {
         fetchedAgo: res.lastFetchedAt ? ago(res.lastFetchedAt) : '아직 받지 않음',
-        rows: res.rows.flatMap((r) =>
-          r.hidden || !r.repository
-            ? [{ repo: '비공개 저장소', branch: '', commits: r.commitCount, add: r.additions, del: r.deletions, projectKey: null as string | null }]
-            : r.branches.map((b) => ({
-                repo: r.repository!.fullName,
-                branch: b.branch,
-                commits: b.commitCount,
-                add: b.additions,
-                del: b.deletions,
-                projectKey: r.repository!.projectKey,
-              })),
-        ),
+        rows: res.rows.flatMap((r): GithubActivity['rows'] => {
+          const repository = r.hidden ? null : r.repository
+          if (!repository || r.branches.length === 0) {
+            return [{
+              repo: repository?.fullName ?? '비공개 저장소',
+              branch: '',
+              commits: r.commitCount,
+              add: r.additions,
+              del: r.deletions,
+              projectKey: repository?.projectKey ?? null,
+            }]
+          }
+          return r.branches.map((b) => ({
+            repo: repository.fullName,
+            branch: b.branch,
+            commits: b.commitCount,
+            add: b.additions,
+            del: b.deletions,
+            projectKey: repository.projectKey,
+          }))
+        }),
         // 브랜치 합은 같은 커밋을 여러 번 셀 수 있어 합계는 서버 값을 쓴다
         totals: { c: res.totals.commitCount, add: res.totals.additions, del: res.totals.deletions },
         mergeCount: res.totals.mergeCommitCount,

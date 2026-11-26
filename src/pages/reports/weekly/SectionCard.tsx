@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, FolderKanban } from 'lucide-react'
 import { Chip } from '../../../components/ui'
 import type { GithubActivity, MyWeekReport, ReportFields, ReportSectionView } from '../../../api/content'
 import { FIELDS, sectionReady } from './constants'
-import { TaskBox } from './TaskBox'
+import { ProjectActivity } from './ProjectActivity'
 import s from '../WeeklyReportPage.module.css'
 
 /**
@@ -76,23 +76,14 @@ export function SectionCard({
               </label>
             ),
           )}
-          {(tasks.length > 0 || excluded.length > 0) && (
-            <TaskBox tasks={tasks} excluded={excluded} onRemove={onRemoveTask} onRestore={onRestoreTask} readOnly={readOnly} />
-          )}
-          {rows.length > 0 && (
-            <ul className={s.sectionGithub}>
-              {rows.map((r) => (
-                <li key={r.repo + r.branch}>
-                  <span>
-                    {r.repo} <span className={s.branch}>{r.branch}</span>
-                  </span>
-                  <span>커밋 {r.commits}</span>
-                  <span className={s.add}>+{r.add}</span>
-                  <span className={s.del}>−{r.del}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ProjectActivity
+            tasks={tasks}
+            excluded={excluded}
+            githubRows={rows}
+            onRemoveTask={onRemoveTask}
+            onRestoreTask={onRestoreTask}
+            readOnly={readOnly}
+          />
           {children}
         </div>
       )}
