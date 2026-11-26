@@ -297,10 +297,12 @@
   color: var(--text-primary);
   font: inherit;
   text-align: left;
+}
+button.sectionHead {
   cursor: pointer;
 }
-div.sectionHead {
-  cursor: default;
+h3.sectionHead {
+  margin: 0;
 }
 .sectionHead strong {
   font-weight: 600;

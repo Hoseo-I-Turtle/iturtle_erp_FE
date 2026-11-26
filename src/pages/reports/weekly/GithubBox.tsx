@@ -2,13 +2,14 @@ import { GitBranch, GitCommitHorizontal, RefreshCw } from 'lucide-react'
 import type { GithubActivity } from '../../../api/content'
 import s from '../WeeklyReportPage.module.css'
 
-/** GitHub 활동: 저장소 · 브랜치별 커밋 · 줄 수. onRefresh 가 없으면(읽기 전용, ERP-39) 새로 받기 단추를 숨긴다 */
+/** GitHub 전체 합계와 프로젝트 칸에 표시할 수 없는 활동 */
 export function GithubBox({ g, onRefresh }: { g: GithubActivity; onRefresh?: () => void }) {
+  const otherRows = g.rows.filter((row) => row.projectKey === null)
   return (
     <div className={s.github}>
       <div className={s.boxHead}>
         <GitBranch size={18} />
-        <strong>GitHub 활동</strong>
+        <strong>GitHub 활동 전체 합계</strong>
         <span className={s.grow} />
         <small>마지막으로 받은 시각 · {g.fetchedAgo}</small>
         {onRefresh && (
@@ -20,17 +21,17 @@ export function GithubBox({ g, onRefresh }: { g: GithubActivity; onRefresh?: () 
       <table className={s.table}>
         <thead>
           <tr>
-            <th>저장소 / 브랜치</th>
+            <th>범위</th>
             <th>커밋</th>
             <th>추가</th>
             <th>삭제</th>
           </tr>
         </thead>
         <tbody>
-          {g.rows.map((r) => (
-            <tr key={r.repo + r.branch}>
+          {otherRows.map((r) => (
+            <tr key={JSON.stringify([r.repo, r.branch])}>
               <td>
-                <GitBranch size={14} /> {r.repo} <span className={s.branch}>{r.branch}</span>
+                <GitBranch size={14} /> {r.repo} {r.branch && <span className={s.branch}>{r.branch}</span>}
               </td>
               <td>{r.commits}</td>
               <td className={s.add}>+{r.add}</td>

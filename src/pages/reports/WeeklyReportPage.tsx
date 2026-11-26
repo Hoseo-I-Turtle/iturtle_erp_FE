@@ -21,10 +21,10 @@ import {
 } from '../../api/content'
 import { sectionReady } from './weekly/constants'
 import { GithubBox } from './weekly/GithubBox'
+import { AdditionalProjectActivity } from './weekly/ProjectActivity'
 import { SectionCard } from './weekly/SectionCard'
 import { LastWeekCommentCard, SubmissionSummaryCard } from './weekly/SideCards'
 import { MemberReportList, SubmissionStatusList } from './weekly/SubmissionLists'
-import { TaskBox } from './weekly/TaskBox'
 import s from './WeeklyReportPage.module.css'
 
 type Tab = 'mine' | 'status' | 'members'
@@ -51,6 +51,7 @@ export function WeeklyReportPage() {
   const subs = useWeekSubmissions(week.weekStartOn)
   const last = useLastWeek(currentWeek)
   const gh = useGithubActivity(week.weekStartOn, mine.data?.meId)
+  const github = gh.loading || gh.error ? undefined : gh.data
 
   /** 내 보고를 바꾼다 (목업은 주를 옮겨도 남게 기억) */
   const setMine = (f: (r: MyWeekReport) => MyWeekReport) =>
@@ -229,9 +230,6 @@ export function WeeklyReportPage() {
             {tab === 'mine' && (
               <Loadable resource={mine} label="내 보고">
                 {(r) => {
-                  const sectionKeys = new Set(r.sections.map((x) => x.projectKey))
-                  const otherTasks = r.tasks.filter((t) => !sectionKeys.has(t.projectKey))
-                  const otherExcluded = r.excluded.filter((t) => !sectionKeys.has(t.projectKey))
                   return isCurrent ? (
                     <>
                       <p className={s.hint}>
@@ -242,22 +240,19 @@ export function WeeklyReportPage() {
                           key={x.projectKey}
                           section={x}
                           report={r}
-                          github={gh.data}
+                          github={github}
                           editable={r.editable}
                           onEdit={editSection}
                           onRemoveTask={removeTask}
                           onRestoreTask={restoreTask}
                         />
                       ))}
+                      <AdditionalProjectActivity report={r} github={github} onRemoveTask={removeTask} onRestoreTask={restoreTask} />
 
                       <label className={s.field}>
                         <span>공통 메모 · 프로젝트 밖 일 (선택)</span>
                         <textarea value={r.note} rows={2} readOnly={!r.editable} onChange={(e) => editNote(e.target.value)} />
                       </label>
-
-                      {(otherTasks.length > 0 || otherExcluded.length > 0) && (
-                        <TaskBox tasks={otherTasks} excluded={otherExcluded} onRemove={removeTask} onRestore={restoreTask} />
-                      )}
 
                       <Loadable resource={gh} label="GitHub 활동">
                         {(g) => <GithubBox g={g} onRefresh={() => refreshGithub(gh)} />}
@@ -267,15 +262,15 @@ export function WeeklyReportPage() {
                     // 지난 주: 칸마다 그 주 작업 · GitHub 활동까지 읽기만 (ERP-39)
                     <>
                       {r.sections.map((x) => (
-                        <SectionCard key={x.projectKey} section={x} report={r} github={gh.data} editable={false} readOnly />
+                        <SectionCard key={x.projectKey} section={x} report={r} github={github} editable={false} readOnly />
                       ))}
+                      <AdditionalProjectActivity report={r} github={github} readOnly />
                       {r.note && (
                         <div className={s.field}>
                           <span>공통 메모</span>
                           <p className={s.readonly}>{r.note}</p>
                         </div>
                       )}
-                      {otherTasks.length > 0 && <TaskBox tasks={otherTasks} readOnly />}
                       <Loadable resource={gh} label="GitHub 활동">
                         {(g) => <GithubBox g={g} />}
                       </Loadable>
