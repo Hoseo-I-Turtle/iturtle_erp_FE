@@ -1,5 +1,5 @@
 // Main deploys use the image built and tested on the lab CI engine.
-// Leave IMAGE_TAG blank to build this checkout or specify a historical registry tag.
+// Leave IMAGE_TAG blank to use the latest successfully deployed local image.
 
 pipeline {
     agent { label 'lab-build' }
@@ -15,7 +15,7 @@ pipeline {
     }
 
     parameters {
-        string(name: 'IMAGE_TAG', defaultValue: '', description: 'Blank builds and deploys the checked-out main revision. An explicit tag deploys that historical registry image.')
+        string(name: 'IMAGE_TAG', defaultValue: '', description: 'Blank selects the latest deployed local image. A full SHA must match the retained image.')
     }
 
     stages {
@@ -26,12 +26,7 @@ pipeline {
             }
             steps {
                 script {
-                    def tag = params.IMAGE_TAG?.trim()
-                    if (tag) {
-                        deploy(tag, 0)
-                    } else {
-                        deployLocalFrontend()
-                    }
+                    deployStoredFrontend(params.IMAGE_TAG?.trim() ?: '')
                 }
             }
         }
@@ -75,16 +70,26 @@ def deployLocalFrontend() {
     withEnv(["LAB_CI_IMAGE_ARCHIVE=.lab-ci/erp-fe-${env.GIT_COMMIT}.tar"]) {
         try {
             sh 'bash /run/lab-ci-artifacts/build-local.sh erp-fe "$LAB_CI_IMAGE_ARCHIVE"'
-            deploy(env.GIT_COMMIT, 0)
+            deploy(env.GIT_COMMIT)
+            sh 'bash /run/lab-ci-artifacts/local-images.sh retain erp-fe "$GIT_COMMIT" "$LAB_CI_IMAGE_ARCHIVE"'
         } finally {
             sh 'rm -f -- "$LAB_CI_IMAGE_ARCHIVE"'
         }
     }
 }
 
-def deploy(String tag, int waitSeconds) {
+def deployStoredFrontend(String requested) {
+    withEnv(["LAB_CI_IMAGE_REQUEST=${requested}"]) {
+        def archive = sh(returnStdout: true, script: 'bash /run/lab-ci-artifacts/local-images.sh resolve erp-fe "${LAB_CI_IMAGE_REQUEST:-}"').trim()
+        withEnv(["LAB_CI_IMAGE_ARCHIVE=${archive}"]) {
+            deploy(archive.tokenize('/').last().take(40))
+        }
+    }
+}
+
+def deploy(String tag) {
     currentBuild.description = "erp-fe · ${tag.take(12)}"
-    withEnv(["DEPLOY_TAG=${tag}", "WAIT_FOR_IMAGE=${waitSeconds}"]) {
+    withEnv(["DEPLOY_TAG=${tag}"]) {
         withCiVault {
             sh 'bash jenkins/deploy.sh "$DEPLOY_TAG"'
         }
