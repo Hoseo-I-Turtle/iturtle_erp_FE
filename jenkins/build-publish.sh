@@ -75,4 +75,4 @@ printf 'FROM scratch\nCOPY dist /dist\n' | docker build --network=none -f - \
 BUILD
 
 printf '%s\n' "$publish_token" |
-    ssh "${ssh_opts[@]}" "$target" "set -eu; export DOCKER_CONFIG='$remote_tmp/docker'; mkdir -m 700 \"\$DOCKER_CONFIG\"; docker login ghcr.io -u '$publish_user' --password-stdin >/dev/null; docker push '$image'"
+    ssh "${ssh_opts[@]}" "$target" "set -eu; export DOCKER_CONFIG='$remote_tmp/docker'; mkdir -m 700 \"\$DOCKER_CONFIG\"; docker login ghcr.io -u '$publish_user' --password-stdin >/dev/null; docker push '$image'; for tag in main latest; do docker tag '$image' '${image%:*}':\"\$tag\"; docker push '${image%:*}':\"\$tag\"; done"
