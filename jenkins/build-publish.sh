@@ -5,7 +5,7 @@ set -euo pipefail
 [[ $GIT_COMMIT =~ ^[0-9a-f]{40}$ ]] || exit 2
 image="ghcr.io/hoseo-i-turtle/iturtle_erp_fe:$GIT_COMMIT"
 vault_cacert=${VAULT_CACERT:-/etc/ssl/vault/vault.crt}
-known_hosts=${KNOWN_HOSTS:-/home/jenkins/agent/known_hosts}
+known_hosts="$(dirname -- "${BASH_SOURCE[0]}")/build-known-hosts"
 local_tmp=$(mktemp -d)
 remote_tmp=''
 cleanup() {
@@ -27,7 +27,7 @@ target="$(jq -er '.SSH_USER | select(length > 0)' <<<"$deploy")@$(jq -er '.SSH_H
 (umask 077; jq -er '.SSH_PRIVATE_KEY | select(length > 0)' <<<"$deploy" | tr -d '\r' >"$local_tmp/key")
 unset deploy
 ssh_opts=(-i "$local_tmp/key" -o BatchMode=yes -o IdentitiesOnly=yes
-    -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known_hosts")
+    -o StrictHostKeyChecking=yes -o HostKeyAlgorithms=ssh-ed25519 -o "UserKnownHostsFile=$known_hosts")
 
 # Check the Vault policy before spending time on a build. Keep the credential out of the build container.
 publish=$(vault_read iturtle_erp/cicd/lab/registry-publish)
