@@ -25,6 +25,7 @@ type Particle = {
   kind: 'bubble' | 'snow' | 'spark' | 'puff' | 'z'
   hue?: string
   sky?: boolean
+  snowDepth?: number
   /** 부서진 눈덩이 조각: 중력을 받는다 */
   g?: number
 }
@@ -62,6 +63,8 @@ type Snowman = {
 const BALL_BREAK_V = 9 // 이 속도(px/프레임) 이상으로 떨어지면 눈덩이가 부서진다 (≈ 80px 넘게 떨어졌을 때)
 const SNOWMAN_BREAK_V = 11 // 눈사람은 이 속도 이상이면 눈덩이로 흩어진다
 const CHUNK_G = 0.28
+const POWDER_RELEASE_ACCELERATION = 3
+const BODY_RELEASE_ACCELERATION = 7
 
 /** 눈이 쌓이는 자리 하나: 카드 윗변(el) 또는 화면 바닥(el = null). 높이는 그 자리 왼쪽부터 BIN 간격 */
 /** cover: 이 자리 위를 다른 것(메뉴 · 팝오버 · 알림 · 붙은 막대 등)이 덮고 있는 칸 (COVER_STEP 간격, 1 = 덮임) */
@@ -138,28 +141,75 @@ function coveredAt(el: Element | null, x: number, top: number, h: number) {
 /** 쌓인 눈의 i 번째 칸(BIN)이 덮여 있는지 */
 const binCovered = (l: Ledge, i: number) => !!l.cover?.[Math.floor((i * BIN) / COVER_STEP)]
 
+type Radius = [x: number, y: number]
+type LedgeRect = {
+  ledge: Ledge
+  left: number
+  top: number
+  width: number
+  leftRadius: Radius
+  rightRadius: Radius
+}
+
+function cornerRadius(value: string, width: number, height: number): Radius {
+  const [x, y = x] = value.split(' ')
+  const px = (part: string, basis: number) =>
+    (parseFloat(part) || 0) * (part.endsWith('%') ? basis / 100 : 1)
+  return [px(x, width), px(y, height)]
+}
+
+function ledgeTop(r: LedgeRect, x: number) {
+  const [rx, ry] = x < r.leftRadius[0] ? r.leftRadius : r.rightRadius
+  const edge = x < r.leftRadius[0] ? x : r.width - x
+  if (rx === 0 || edge >= rx) return r.top
+  const t = 1 - Math.max(0, edge) / rx
+  return r.top + ry * (1 - Math.sqrt(1 - t * t))
+}
+
+const binCount = (r: LedgeRect) => Math.ceil(r.width / BIN)
+const binCenter = (r: LedgeRect, i: number) => (i * BIN + Math.min((i + 1) * BIN, r.width)) / 2
+const binAt = (r: LedgeRect, x: number) => Math.min(binCount(r) - 1, Math.floor(x / BIN))
+const snowTop = (r: LedgeRect, x: number) => ledgeTop(r, x) - (r.ledge.h[binAt(r, x)] ?? 0)
+
+// 접선이 너무 가파른 곳에서는 눈이 머물지 않고 가장자리 너머로 떨어진다.
+function holdsSnow(r: LedgeRect, i: number) {
+  const x = binCenter(r, i)
+  return Math.abs(ledgeTop(r, x - 0.5) - ledgeTop(r, x + 0.5)) <= 0.9
+}
+
 /** 지금 화면에 보이는 카드 윗변 + 화면 바닥 */
 function ledgeRects(ledges: Map<Element | null, Ledge>, w: number, h: number) {
-  const out: { ledge: Ledge; left: number; top: number; width: number }[] = []
+  const out: LedgeRect[] = []
   for (const el of document.querySelectorAll('[data-snow-ledge]')) {
     const r = el.getBoundingClientRect()
-    if (r.width < 40 || r.bottom < 0 || r.top > h) continue
+    if (r.width < 40 || r.height === 0 || r.bottom < 0 || r.top > h) continue
     let l = ledges.get(el)
     if (!l) ledges.set(el, (l = { el, h: [] }))
-    out.push({ ledge: l, left: r.left, top: r.top, width: r.width })
+    const style = getComputedStyle(el)
+    const tl = cornerRadius(style.borderTopLeftRadius, r.width, r.height)
+    const tr = cornerRadius(style.borderTopRightRadius, r.width, r.height)
+    const bl = cornerRadius(style.borderBottomLeftRadius, r.width, r.height)
+    const br = cornerRadius(style.borderBottomRightRadius, r.width, r.height)
+    // CSS reduces all radii by the same factor when adjacent corners overlap.
+    const scale = Math.min(1, r.width / (tl[0] + tr[0]), r.width / (bl[0] + br[0]),
+      r.height / (tl[1] + bl[1]), r.height / (tr[1] + br[1]))
+    out.push({ ledge: l, left: r.left, top: r.top, width: r.width,
+      leftRadius: [tl[0] * scale, tl[1] * scale], rightRadius: [tr[0] * scale, tr[1] * scale] })
   }
   let floor = ledges.get(null)
   if (!floor) ledges.set(null, (floor = { el: null, h: [] }))
-  out.push({ ledge: floor, left: 0, top: h, width: w })
+  out.push({ ledge: floor, left: 0, top: h, width: w, leftRadius: [0, 0], rightRadius: [0, 0] })
   return out
 }
 
 /** 쌓인 눈이 옆보다 너무 높으면 흘러내린다 */
-function settle(hs: number[]) {
+function settle(r: LedgeRect) {
+  const hs = r.ledge.h
   for (let i = 0; i < hs.length - 1; i++) {
-    const d = (hs[i] ?? 0) - (hs[i + 1] ?? 0)
+    if (!holdsSnow(r, i) || !holdsSnow(r, i + 1)) continue
+    const d = snowTop(r, binCenter(r, i + 1)) - snowTop(r, binCenter(r, i))
     if (Math.abs(d) > 4) {
-      const m = d * 0.2
+      const m = d > 0 ? Math.min(hs[i] ?? 0, d * 0.2) : Math.max(-(hs[i + 1] ?? 0), d * 0.2)
       hs[i] = (hs[i] ?? 0) - m
       hs[i + 1] = (hs[i + 1] ?? 0) + m
     }
@@ -314,6 +364,8 @@ export function MouseEffects() {
     let lastSnowAt = 0
     let rects: ReturnType<typeof ledgeRects> = []
     let rectsAt = 0
+    let scrolled = false
+    let ledgeVelocity = new Map<Ledge, number>()
     const balls: Ball[] = []
     let skyTick = 0
     const snowmen: Snowman[] = []
@@ -331,10 +383,10 @@ export function MouseEffects() {
         const n = Math.ceil(r.width / COVER_STEP)
         const c = new Uint8Array(n)
         for (let k = 0; k < n; k++) {
-          // 카드의 둥근 모서리 밖을 짚지 않게 양 끝에서 12px 안쪽으로
-          const x = Math.max(r.left + 12, Math.min(r.left + r.width - 12, r.left + k * COVER_STEP + COVER_STEP / 2))
+          // 실제 곡선 아래에서 가려진 곳을 확인한다
+          const x = r.left + Math.min(r.width - 1, k * COVER_STEP + COVER_STEP / 2)
           if (x < 0 || x >= w) continue
-          c[k] = coveredAt(r.ledge.el, x, r.top, h) ? 1 : 0
+          c[k] = coveredAt(r.ledge.el, x, ledgeTop(r, x - r.left), h) ? 1 : 0
         }
         r.ledge.cover = c
       }
@@ -379,8 +431,7 @@ export function MouseEffects() {
       let best: { r: (typeof rects)[number]; top: number } | null = null
       for (const r of rects) {
         if (x < r.left || x > r.left + r.width) continue
-        const i = Math.floor((x - r.left) / BIN)
-        const top = r.top - (r.ledge.h[i] ?? 0)
+        const top = snowTop(r, x - r.left)
         if (top >= y - 2 && (!best || top < best.top)) best = { r, top }
       }
       return best
@@ -389,8 +440,7 @@ export function MouseEffects() {
       if (b.held || !b.ledge) return { x: b.hx, y: b.hy }
       const r = rectOf(b.ledge)
       if (!r) return null
-      const i = Math.floor(b.x / BIN)
-      return { x: r.left + b.x, y: r.top - (b.ledge.h[i] ?? 0) - b.r }
+      return { x: r.left + b.x, y: snowTop(r, b.x) - b.r }
     }
     /** 눈덩이가 부서진다: 크기만큼 눈 조각이 튀어 흩어지고, 내려앉은 조각은 다시 쌓인다 */
     const shatter = (x: number, y: number, r: number) => {
@@ -406,7 +456,7 @@ export function MouseEffects() {
       if (m.held || !m.ledge) return { x: m.hx, y: m.hy }
       const r = rectOf(m.ledge)
       if (!r) return null
-      return { x: r.left + m.x, y: r.top - (m.ledge.h[Math.floor(m.x / BIN)] ?? 0) }
+      return { x: r.left + m.x, y: snowTop(r, m.x) }
     }
     /** 눈사람 각 눈덩이의 가운데 (흔들림 반영) */
     const manParts = (m: Snowman) => {
@@ -457,9 +507,11 @@ export function MouseEffects() {
       // 2) 충분히 쌓인 눈 위를 누르면 새 눈덩이를 굴리기 시작한다
       for (const r of rects) {
         if (e.clientX < r.left || e.clientX > r.left + r.width) continue
-        const i = Math.floor((e.clientX - r.left) / BIN)
+        const x = e.clientX - r.left
+        const i = binAt(r, x)
+        const top = ledgeTop(r, x)
         const depth = r.ledge.h[i] ?? 0
-        if (depth >= ROLL_MIN_DEPTH && !hiddenBin(r.ledge, i) && e.clientY >= r.top - depth - 6 && e.clientY <= r.top + 4) {
+        if (depth >= ROLL_MIN_DEPTH && !hiddenBin(r.ledge, i) && e.clientY >= top - depth - 6 && e.clientY <= top + 4) {
           const b: Ball = { ledge: r.ledge, x: e.clientX - r.left, r: BALL_START_R, held: false, hx: 0, hy: 0, vx: 0, vy: 0, rolling: true, spin: 0 }
           balls.push(b)
           grab = b
@@ -475,6 +527,10 @@ export function MouseEffects() {
       if (grabMan) {
         const g = grabMan
         if (!g.moved && Math.hypot(e.clientX - g.sx, e.clientY - g.sy) > 4) {
+          const base = manBase(g.m)
+          if (!base) return
+          g.m.hx = base.x
+          g.m.hy = base.y
           g.moved = true
           g.m.held = true
           g.m.ledge = null
@@ -549,7 +605,7 @@ export function MouseEffects() {
         for (const m of snowmen) {
           const r = m.ledge && rectOf(m.ledge)
           if (!r || !m.ledge || m.parts.length >= 3) continue
-          const baseY = r.top - (m.ledge.h[Math.floor(m.x / BIN)] ?? 0)
+          const baseY = snowTop(r, m.x)
           const topY = baseY - m.parts.reduce((a, c) => a + c * 2 * 0.85, 0)
           if (Math.abs(b.hx - (r.left + m.x)) < b.r + m.parts[m.parts.length - 1] && Math.abs(b.hy - topY) < b.r * 2 + 10) {
             m.parts.push(b.r)
@@ -594,11 +650,60 @@ export function MouseEffects() {
 
       const now = performance.now()
       const piling = active === 'christmas'
-      if (piling && now - rectsAt > 120) {
-        const before = rects.length
+      if (piling && (scrolled || ledgeVelocity.size > 0 || now - rectsAt > 120)) {
+        const before = rects
         rects = ledgeRects(ledges, w, h)
         rectsAt = now
-        if (rects.length !== before || rects.some((r) => !r.ledge.cover)) coverDirty = true
+        if (scrolled || ledgeVelocity.size > 0) {
+          const nextVelocity = new Map<Ledge, number>()
+          const current = new Map(rects.map((r) => [r.ledge, r]))
+          for (const previous of before) {
+            if (!previous.ledge.el) continue
+            const r = current.get(previous.ledge)
+            const top = r?.top ?? previous.ledge.el.getBoundingClientRect().top
+            const velocity = scrolled ? top - previous.top : 0
+            const prior = ledgeVelocity.get(previous.ledge) ?? 0
+            if (velocity !== 0 && r) nextVelocity.set(r.ledge, velocity)
+            if (modal || !previous.ledge.el.isConnected) continue
+            const acceleration = velocity - prior
+            const inheritedVelocity = Math.max(-9, Math.min(9, prior))
+            if (acceleration > BODY_RELEASE_ACCELERATION) {
+              for (const b of balls) {
+                if (b.ledge !== previous.ledge || b.held || b === grab || ballHidden(b)) continue
+                b.hx = previous.left + b.x
+                b.hy = snowTop(previous, b.x) - b.r
+                b.vy = inheritedVelocity
+                b.ledge = null
+              }
+              for (const m of snowmen) {
+                if (m.ledge !== previous.ledge || m.held || m === grabMan?.m || manHidden(m)) continue
+                m.hx = previous.left + m.x
+                m.hy = snowTop(previous, m.x)
+                m.vy = inheritedVelocity
+                m.ledge = null
+              }
+            }
+            // 지지면이 급히 아래로 가속하면 눈은 직전 속도를 유지한 채 떨어진다.
+            if (acceleration > POWDER_RELEASE_ACCELERATION) {
+              const hs = previous.ledge.h
+              for (let i = 0; i < hs.length && particles.length < MAX_PARTICLES; i++) {
+                const depth = hs[i] ?? 0
+                if (depth < 0.7 || binCovered(previous.ledge, i)) continue
+                const x = binCenter(previous, i)
+                const y = snowTop(previous, x)
+                if (y < -10 || y > h) continue
+                const amount = depth * Math.min(0.65, (acceleration - POWDER_RELEASE_ACCELERATION) / 24)
+                hs[i] = depth - amount
+                particles.push({ x: previous.left + x, y: y - 1, vx: (Math.random() - 0.5) * 0.8,
+                  vy: inheritedVelocity, r: Math.min(3, 1 + amount * 0.45),
+                  life: 8, max: 100000, kind: 'snow', g: CHUNK_G, snowDepth: amount })
+              }
+            }
+          }
+          ledgeVelocity = nextVelocity
+        }
+        scrolled = false
+        if (rects.length !== before.length || rects.some((r) => !r.ledge.cover)) coverDirty = true
       }
       if (piling && !modal && (coverDirty ? now - coverAt > COVER_MIN_MS : now - coverAt > COVER_EVERY_MS)) {
         computeCover()
@@ -614,19 +719,34 @@ export function MouseEffects() {
         // 떨어지는 눈: 아래에 있는 카드 윗변(또는 화면 바닥)에 닿으면 그 자리에 쌓인다
         // 창이 열려 있으면 쌓이지 않고 그대로 지나간다. 덮인 칸에도 쌓이지 않는다
         if (piling && !modal && p.kind === 'snow') {
-          const ny = p.y + p.vy
+          const nx = p.x + p.vx
+          const ny = p.y + p.vy + (p.g ?? 0)
+          let hit: { r: LedgeRect; i: number; y: number } | undefined
           for (const r of rects) {
-            if (p.x < r.left || p.x > r.left + r.width) continue
-            const i = Math.floor((p.x - r.left) / BIN)
+            const x = nx - r.left
+            if (x < 0 || x > r.width) continue
+            const i = binAt(r, x)
             if (binCovered(r.ledge, i)) continue
-            const surface = r.top - (r.ledge.h[i] ?? 0)
-            if (p.y <= surface && ny >= surface) {
-              const amt = p.r * (p.sky ? SKY_DEPOSIT : 1)
-              for (let k = -1; k <= 1; k++) r.ledge.h[i + k] = Math.min(PILE_MAX, (r.ledge.h[i + k] ?? 0) + amt * (k === 0 ? 0.55 : 0.25))
-              p.life = p.max
-              if (!p.sky) lastSnowAt = now
-              break
+            const y = snowTop(r, x)
+            if (p.y <= y && ny >= y && (!hit || y < hit.y)) hit = { r, i, y }
+          }
+          if (hit && !holdsSnow(hit.r, hit.i)) {
+            // 가파른 모서리에 닿은 눈은 바깥쪽으로 미끄러진다.
+            const x = binCenter(hit.r, hit.i)
+            p.vx = x < hit.r.leftRadius[0] ? -1.3 : 1.3
+            p.vy = 0.8
+            p.g = CHUNK_G
+            p.y = hit.y - 1
+          } else if (hit) {
+            const { r, i } = hit
+            const amt = p.snowDepth ?? p.r * (p.sky ? SKY_DEPOSIT : 1)
+            for (let k = -1; k <= 1; k++) {
+              const j = i + k
+              if (j < 0 || j >= binCount(r) || !holdsSnow(r, j) || binCovered(r.ledge, j)) continue
+              r.ledge.h[j] = Math.min(PILE_MAX, (r.ledge.h[j] ?? 0) + amt * (k === 0 ? 0.5 : 0.25))
             }
+            p.life = p.max
+            if (!p.sky) lastSnowAt = now
           }
           if (p.life >= p.max) continue
         }
@@ -704,7 +824,11 @@ export function MouseEffects() {
         for (const r of rects) {
           const hs = r.ledge.h
           if (hs.length === 0) continue
-          settle(hs)
+          hs.length = Math.min(hs.length, binCount(r))
+          if (!modal) {
+            for (let i = 0; i < hs.length; i++) if (!holdsSnow(r, i)) hs[i] = 0
+            settle(r)
+          }
           let any = false
           for (let i = 0; i < hs.length; i++) {
             if (melting && hs[i]) hs[i] = Math.max(0, hs[i] - MELT_PER_FRAME)
@@ -712,18 +836,25 @@ export function MouseEffects() {
           }
           // 덮이지 않은 칸끼리 이어 그린다 (덮인 칸에서 끊는다)
           ctx.beginPath()
-          let open = false
+          let start = -1
           for (let i = 0; i <= hs.length; i++) {
-            const show = i < hs.length && !hiddenBin(r.ledge, i)
-            if (show && !open) {
-              ctx.moveTo(r.left + i * BIN, r.top)
-              open = true
-            }
-            if (show) ctx.lineTo(r.left + i * BIN + BIN / 2, r.top - (hs[i] ?? 0))
-            else if (open) {
-              ctx.lineTo(r.left + i * BIN, r.top)
+            const show = (hs[i] ?? 0) > 0.05 && !hiddenBin(r.ledge, i)
+            if (show) {
+              if (start < 0) {
+                start = i
+                ctx.moveTo(r.left + i * BIN, ledgeTop(r, i * BIN))
+              }
+              const x = binCenter(r, i)
+              ctx.lineTo(r.left + x, snowTop(r, x))
+            } else if (start >= 0) {
+              const end = Math.min(i * BIN, r.width)
+              ctx.lineTo(r.left + end, ledgeTop(r, end))
+              for (let j = i - 1; j >= start; j--) {
+                const x = binCenter(r, j)
+                ctx.lineTo(r.left + x, ledgeTop(r, x))
+              }
               ctx.closePath()
-              open = false
+              start = -1
             }
           }
           ctx.fillStyle = 'rgba(255,255,255,0.95)'
@@ -768,8 +899,8 @@ export function MouseEffects() {
             const r = rectOf(b.ledge)
             if (r) {
               const hs = b.ledge.h
-              const at = (x: number) => hs[Math.floor(x / BIN)] ?? 0
-              const slope = (at(b.x - b.r * 0.6) - at(b.x + b.r * 0.6)) / Math.max(b.r * 1.2, 1) // 오른쪽이 낮으면 +
+              const at = (x: number) => snowTop(r, Math.max(0, Math.min(r.width, x)))
+              const slope = (at(b.x + b.r * 0.6) - at(b.x - b.r * 0.6)) / Math.max(b.r * 1.2, 1) // 오른쪽이 낮으면 +
               b.vx = (b.vx + slope * SLOPE_G) * ROLL_FRICTION
               if (Math.abs(b.vx) < 0.35 && Math.abs(slope) < ROLL_STOP_SLOPE) b.vx = 0
               if (b.vx !== 0) {
@@ -781,7 +912,7 @@ export function MouseEffects() {
                 if (b.x < 0 || b.x > r.width) {
                   // 가장자리를 넘었다: 떨어진다
                   b.hx = r.left + b.x
-                  b.hy = r.top - b.r
+                  b.hy = ledgeTop(r, Math.max(0, Math.min(r.width, b.x))) - b.r
                   b.ledge = null
                   b.vy = -1
                 }
@@ -853,9 +984,9 @@ export function MouseEffects() {
       if (particles.length > 0 || snowLeft || moving || piling) raf = requestAnimationFrame(frame)
     }
 
-    // 스크롤하면 카드와 함께 쌓인 눈도 움직여야 해서 다시 그린다
     const scroll = () => {
-      rectsAt = 0
+      if (active !== 'christmas') return
+      scrolled = true
       coverDirty = true
       if (!raf) raf = requestAnimationFrame(frame)
     }
@@ -868,6 +999,7 @@ export function MouseEffects() {
     }
     const onResize = () => {
       resize()
+      rectsAt = -Infinity
       coverDirty = true
     }
     // 오브젝트를 만졌을 때 부탁받은 알갱이
