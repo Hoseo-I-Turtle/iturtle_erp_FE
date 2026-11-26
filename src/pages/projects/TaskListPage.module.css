@@ -39,12 +39,9 @@
   border-color: var(--brand-200);
   background: var(--surface-tint);
 }
-.pick select,
-.bulk select {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
+.bulk:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 .search {
   display: flex;

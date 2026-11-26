@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ChevronDown, Clock, MessageCircle, Search } from 'lucide-react'
 import { Avatar, Card, Checkbox, Empty, Loadable } from '../../components/ui'
+import { Dropdown } from '../../components/ui/Dropdown'
 import { LoadMore } from '../../components/ui/LoadMore'
 import { ApiError } from '../../api/client'
 import { useLoadMore, type LoadMoreState } from '../../api/useLoadMore'
@@ -366,41 +367,37 @@ function Pick({
   const current = options.find((x) => x.value === value)
   const active = on ?? !!value
   return (
-    <label className={`${s.pick} ${active ? s.pickOn : ''}`}>
-      <span>{current ? `${prefix}${current.label}` : label}</span>
-      <ChevronDown size={14} />
-      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}>
-        {all && <option value="">{label}: 전체</option>}
-        {options.map((x) => (
-          <option key={x.value} value={x.value}>
-            {x.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <Dropdown
+      value={value}
+      options={all ? [{ value: '', label: `${label}: 전체` }, ...options] : options}
+      onChange={onChange}
+      label={label}
+      triggerClassName={`${s.pick} ${active ? s.pickOn : ''}`}
+      trigger={() => (
+        <>
+          <span>{current ? `${prefix}${current.label}` : label}</span>
+          <ChevronDown size={14} />
+        </>
+      )}
+    />
   )
 }
 
 function BulkPick({ label, options, onPick, disabled }: { label: string; options: { value: string; label: string }[]; onPick: (v: string) => void; disabled?: boolean }) {
   return (
-    <label className={s.bulk}>
-      <ChevronDown size={14} />
-      <span>{label}</span>
-      <select
-        value=""
-        disabled={disabled}
-        aria-label={`고른 작업 ${label} 바꾸기`}
-        onChange={(e) => {
-          if (e.target.value) onPick(e.target.value)
-        }}
-      >
-        <option value="">{label} 바꾸기</option>
-        {options.map((x) => (
-          <option key={x.value} value={x.value}>
-            {x.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <Dropdown
+      value=""
+      options={options}
+      onChange={onPick}
+      disabled={disabled}
+      label={`고른 작업 ${label} 바꾸기`}
+      triggerClassName={s.bulk}
+      trigger={() => (
+        <>
+          <ChevronDown size={14} />
+          <span>{label}</span>
+        </>
+      )}
+    />
   )
 }
