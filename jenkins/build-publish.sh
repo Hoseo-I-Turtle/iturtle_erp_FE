@@ -67,8 +67,8 @@ docker run --rm --cap-drop=ALL --security-opt=no-new-privileges \
         mv dist /output/dist
     '
 
-printf 'FROM scratch\nCOPY dist /dist\n' >"$work/Dockerfile"
-docker build --network=none -f "$work/Dockerfile" \
+
+printf 'FROM scratch\nCOPY dist /dist\n' | docker build --network=none -f - \
     --label org.opencontainers.image.source=https://github.com/Hoseo-I-Turtle/iturtle_erp_FE \
     --label "org.opencontainers.image.revision=$revision" \
     -t "$image" "$work/output"
