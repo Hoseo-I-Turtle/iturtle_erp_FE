@@ -46,7 +46,7 @@ export type PolicyEvidence = {
   kind: EvidenceKind | null
   /** owner/repo */
   repository: string | null
-  /** 파일의 GitHub 링크 (모르거나 BROKEN 이면 null) */
+  /** CODE 근거의 파일 링크 (경로가 없거나 BROKEN 이면 null) */
   url: string | null
   /** 근거 파일을 바꾼 커밋의 GitHub 링크 */
   lastChangeUrl: string | null
@@ -179,6 +179,8 @@ export type PolicyInput = {
   version?: number
 }
 
+export const isCommitSha = (ref: string) => /^[0-9a-f]{7,40}$/.test(ref)
+
 // ─────────────── 목업 ───────────────
 
 const ME: MemberRef = { memberId: 1, name: '박제민', memberType: 'STUDENT', status: 'ACTIVE', photoUrl: null }
@@ -203,8 +205,8 @@ const mockEvidence = (
   lastChangeRef,
   kind,
   repository: REPO,
-  url: state === 'BROKEN' ? null : `https://github.com/${REPO}/blob/main/${path}`,
-  lastChangeUrl: lastChangeRef ? `https://github.com/${REPO}/commit/${lastChangeRef}` : null,
+  url: kind === 'CODE' && path && state !== 'BROKEN' ? `https://github.com/${REPO}/blob/main/${path}` : null,
+  lastChangeUrl: lastChangeRef && isCommitSha(lastChangeRef) ? `https://github.com/${REPO}/commit/${lastChangeRef}` : null,
 })
 
 const mockPolicy = (key: string, no: number, title: string, rule: string, category: PolicyCategory, extra: Partial<Policy> = {}): Policy => ({
