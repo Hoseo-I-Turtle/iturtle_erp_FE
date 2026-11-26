@@ -167,7 +167,6 @@ type CardSnow = {
   positioned: boolean
 }
 
-const SNOW_PAD_X = BALL_MAX_R + 6
 const SNOW_PAD_TOP = BALL_MAX_R * 6
 const SNOW_PAD_BOTTOM = BALL_MAX_R + 6
 
@@ -513,18 +512,16 @@ export function MouseEffects() {
       const sx = r.width / Math.max(1, el.offsetWidth)
       const shape = shapes.get(el)
       const sy = (shape?.height ?? el.offsetHeight) / Math.max(1, el.offsetHeight)
-      const width = el.offsetWidth + 2 * SNOW_PAD_X
-      const height = SNOW_PAD_TOP + SNOW_PAD_BOTTOM + Math.ceil(Math.max(r.leftRadius[1], r.rightRadius[1]) / sy)
-      const left = -SNOW_PAD_X - el.clientLeft
+      // 카드 옆이나 아래로 캔버스 영역이 튀어나오면 스크롤바가 생겨 카드 좌표가 다시 움직인다.
+      const width = el.clientWidth
+      const height = SNOW_PAD_TOP + Math.min(el.clientHeight, SNOW_PAD_BOTTOM + Math.ceil(Math.max(r.leftRadius[1], r.rightRadius[1]) / sy))
       const top = -SNOW_PAD_TOP - el.clientTop
-      if (layer.style.left !== `${left}px`) layer.style.left = `${left}px`
       if (layer.style.top !== `${top}px`) layer.style.top = `${top}px`
-      if (layer.style.width !== `${width}px`) layer.style.width = `${width}px`
       if (layer.style.height !== `${height}px`) layer.style.height = `${height}px`
       if (layer.width !== Math.ceil(width * dpr)) layer.width = Math.ceil(width * dpr)
       if (layer.height !== Math.ceil(height * dpr)) layer.height = Math.ceil(height * dpr)
       snow.ctx.setTransform(dpr / sx, 0, 0, dpr / sy,
-        dpr * (SNOW_PAD_X - r.left / sx), dpr * (SNOW_PAD_TOP - r.top / sy))
+        dpr * (-el.clientLeft - r.left / sx), dpr * (SNOW_PAD_TOP - r.top / sy))
       frameContexts.set(r.ledge, snow.ctx)
       return snow.ctx
     }
@@ -1139,7 +1136,9 @@ export function MouseEffects() {
           }
           const p = ballPos(b)
           if (!p || b.r <= 0 || ballHidden(b)) continue
-          drawBall(b.held ? ctx : attachedContext(rectOf(b.ledge)), p.x, p.y, b.r, b.spin)
+          const r = rectOf(b.ledge)
+          const overhang = r && (p.x - b.r < r.left || p.x + b.r > r.left + r.width)
+          drawBall(b.held || overhang ? ctx : attachedContext(r), p.x, p.y, b.r, b.spin)
         }
         for (let i = balls.length - 1; i >= 0; i--) if (balls[i].r <= 0) balls.splice(i, 1)
         for (let mi = snowmen.length - 1; mi >= 0; mi--) {
@@ -1184,7 +1183,9 @@ export function MouseEffects() {
           }
           const ps = manParts(m)
           if (!ps || manHidden(m)) continue
-          const ctxForMan = m.held ? ctx : attachedContext(rectOf(m.ledge))
+          const r = rectOf(m.ledge)
+          const overhang = r && ps.some((p) => p.x - p.r < r.left || p.x + p.r > r.left + r.width)
+          const ctxForMan = m.held || overhang ? ctx : attachedContext(r)
           ps.forEach((q, k) => {
             drawBall(ctxForMan, q.x, q.y, q.r, 0)
             if (k === ps.length - 1) {
