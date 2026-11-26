@@ -1,6 +1,6 @@
-// 프론트 배포 파이프라인. 빌드 · 이미지 푸시는 GitHub Actions 가 한다 — 볼트가 떠 있는 이 호스트에서 npm 패키지 코드를 돌리지 않는다.
-// 젠킨스가 사설망(WARP) 안에 있어 GitHub webhook 을 받을 수 없으므로 2분마다 main 을 확인한다(pollSCM).
-// main 에 새 커밋이 오면 그 커밋 이미지가 GHCR 에 올라올 때까지 기다렸다가 연구실 서버(~/workspace/erp-fe/dist)에 놓는다. 문서만 바뀌면 배포하지 않는다.
+// main 검증과 GHCR 게시를 마친 뒤 기존 배포 절차를 실행한다.
+// GitHub 푸시 이벤트로 실행하며 기존 pollSCM도 유지한다.
+// 문서만 바뀐 경우 자동 배포를 생략한다.
 // 되돌릴 때는 손으로 돌린다 (IMAGE_TAG 에 커밋 SHA 또는 main).
 
 pipeline {
@@ -36,7 +36,10 @@ pipeline {
         stage('Auto') {
             when {
                 beforeAgent true
-                not { triggeredBy 'UserIdCause' }
+                allOf {
+                    branch 'main'
+                    not { triggeredBy 'UserIdCause' }
+                }
             }
             steps {
                 script {
@@ -44,7 +47,10 @@ pipeline {
                         echo '문서만 바뀌어 배포하지 않는다'
                         return
                     }
-                    deploy(env.GIT_COMMIT, 900)
+                    withCiVault {
+                        sh 'bash jenkins/build-publish.sh'
+                    }
+                    deploy(env.GIT_COMMIT, 0)
                 }
             }
         }
@@ -65,12 +71,18 @@ def onlyDocsChanged() {
 def deploy(String tag, int waitSeconds) {
     currentBuild.description = "erp-fe · ${tag.take(12)}"
     withEnv(["DEPLOY_TAG=${tag}", "WAIT_FOR_IMAGE=${waitSeconds}"]) {
-        withCredentials([[
-            $class: 'VaultTokenCredentialBinding',
-            credentialsId: 'jenkins-cicd-approle',
-            vaultAddr: 'https://vault:8200',
-        ]]) {
+        withCiVault {
             sh 'bash jenkins/deploy.sh "$DEPLOY_TAG"'
         }
+    }
+}
+
+def withCiVault(Closure body) {
+    withCredentials([[
+        $class: 'VaultTokenCredentialBinding',
+        credentialsId: 'jenkins-cicd-approle',
+        vaultAddr: 'https://vault:8200',
+    ]]) {
+        body()
     }
 }
