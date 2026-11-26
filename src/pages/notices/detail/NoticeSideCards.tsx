@@ -7,21 +7,20 @@ import s from '../NoticeDetailPage.module.css'
 
 type ReadSummary = NonNullable<NoticeView['read']>
 
-/** 읽음 확인: 비율 막대 · 안 읽은 사람 (명단은 작성자 · content-manage 에게만 온다) */
+/** 읽음 확인: 비율 막대 · 작성자에게만 내려오는 미확인 명단 */
 export function ReadCheckCard({ read }: { read: ReadSummary }) {
   const readPct = read.total ? Math.round((read.readCount / read.total) * 100) : 0
   return (
     <Card className={s.sideCard}>
       <SectionHead icon={Eye} title="읽음 확인" />
-      {read.unread && <span className={s.privateChip}>작성자에게만 보여요</span>}
       <Progress value={readPct} color="var(--status-positive)" track="var(--status-negative-bg)" />
       <div className={s.readNums}>
         <span className={s.readYes}>읽음 {read.readCount}명</span>
         <span className={s.readNo}>안 읽음 {read.total - read.readCount}명</span>
       </div>
-      {/* 명단은 작성자 · content-manage 에게만 온다 */}
-      {read.unread && (
+      {read.unread && read.unread.length > 0 && (
         <>
+          <span className={s.privateChip}>명단은 작성자에게만 보여요</span>
           <div className={s.overline}>안 읽은 사람</div>
           <ul className={s.people}>
             {read.unread.map((p) => (
