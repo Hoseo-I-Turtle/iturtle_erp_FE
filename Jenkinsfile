@@ -1,10 +1,10 @@
-// main 검증과 GHCR 게시를 마친 뒤 기존 배포 절차를 실행한다.
+// Build on the lab CI engine, then deploy its local image.
 // GitHub 푸시 이벤트로 실행하며 기존 pollSCM도 유지한다.
 // 문서만 바뀐 경우 자동 배포를 생략한다.
 // 되돌릴 때는 손으로 돌린다 (IMAGE_TAG 에 커밋 SHA 또는 main).
 
 pipeline {
-    agent { label 'builder-1' }
+    agent { label 'lab-build' }
 
     triggers {
         pollSCM('H/2 * * * *')
@@ -47,10 +47,14 @@ pipeline {
                         echo '문서만 바뀌어 배포하지 않는다'
                         return
                     }
-                    withCiVault {
-                        sh 'bash jenkins/build-publish.sh'
+                    withEnv(["LAB_CI_IMAGE_ARCHIVE=.lab-ci/erp-fe-${env.GIT_COMMIT}.tar"]) {
+                        try {
+                            sh 'bash /run/lab-ci-artifacts/build-local.sh erp-fe "$LAB_CI_IMAGE_ARCHIVE"'
+                            deploy(env.GIT_COMMIT, 0)
+                        } finally {
+                            sh 'rm -f -- "$LAB_CI_IMAGE_ARCHIVE"'
+                        }
                     }
-                    deploy(env.GIT_COMMIT, 0)
                 }
             }
         }

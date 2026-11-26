@@ -67,6 +67,63 @@ deploy_json=$(vault_read deploy)
 ssh_host=$(field "$deploy_json" SSH_HOST)
 ssh_user=$(field "$deploy_json" SSH_USER)
 ( umask 077 && field "$deploy_json" SSH_PRIVATE_KEY | tr -d '\r' > "$WORK/key" )
+if [[ -n "${LAB_CI_IMAGE_ARCHIVE:-}" ]]; then
+  if [[ ! "$IMAGE_TAG" =~ ^[0-9a-f]{40}$ || ! -s "$LAB_CI_IMAGE_ARCHIVE" ||
+        ! "$ssh_host" =~ ^[A-Za-z0-9.:-]+$ || ! "$ssh_user" =~ ^[A-Za-z0-9._-]+$ ||
+        ! -s "$WORK/key" ]]; then
+    echo 'Invalid frontend CI artifact or deployment destination' >&2
+    exit 2
+  fi
+  ssh_opts=(-i "$WORK/key" -o BatchMode=yes -o IdentitiesOnly=yes
+    -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$KNOWN_HOSTS")
+  target="$ssh_user@$ssh_host"
+  image="local/erp-fe:main-$IMAGE_TAG"
+  ssh "${ssh_opts[@]}" "$target" docker image load < "$LAB_CI_IMAGE_ARCHIVE"
+  ssh "${ssh_opts[@]}" "$target" bash -s -- "$REMOTE_DIR" "$image" "$IMAGE_TAG" "$ssh_host" <<'LOCAL_DEPLOY'
+set -euo pipefail
+cd "$1"
+image=$2
+revision=$3
+host=$4
+exec 9>.deployment.lock
+flock -x 9
+labels=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}} {{index .Config.Labels "org.iturtle.ci.branch"}} {{index .Config.Labels "org.iturtle.ci.service"}}' "$image")
+[[ "$labels" == "$revision main erp-fe" ]] || { echo 'Invalid frontend image labels' >&2; exit 1; }
+
+stage=$(mktemp -d .dist-ci.XXXXXXXX)
+container=
+cleanup() {
+  if [ -n "$container" ]; then docker rm "$container" >/dev/null 2>&1 || true; fi
+  if [ -n "$stage" ]; then rm -rf -- "$stage"; fi
+}
+trap cleanup EXIT
+container=$(docker create "$image" /none)
+docker cp "$container:/dist/." "$stage"
+test -s "$stage/index.html"
+chmod -R a+rX "$stage"
+rm -rf dist.prev
+if [ -d dist ]; then mv dist dist.prev; fi
+mv "$stage" dist
+if ! curl -fsS --retry 3 --resolve "lab.iturtle.win:443:$host" https://lab.iturtle.win/ \
+    | cmp -s dist/index.html -; then
+  mv dist "$stage"
+  if [ -d dist.prev ]; then mv dist.prev dist; fi
+  echo 'Frontend health check failed' >&2
+  exit 1
+fi
+stage=
+docker rm "$container" >/dev/null
+container=
+while IFS= read -r reference; do
+  if [[ "$reference" == local/erp-fe:main-* && "$reference" != "$image" ]]; then
+    docker image rm "$reference" || true
+  fi
+done < <(docker image ls --filter label=org.iturtle.ci.branch=main \
+         --filter label=org.iturtle.ci.service=erp-fe --format '{{.Repository}}:{{.Tag}}')
+printf 'Deployment verified: %s\n' "$image"
+LOCAL_DEPLOY
+  exit 0
+fi
 registry_json=$(vault_read registry)
 GHCR_USER=$(field "$registry_json" GHCR_USER)
 GHCR_TOKEN=$(field "$registry_json" GHCR_TOKEN)
