@@ -64,12 +64,20 @@ type Snowman = {
 const BALL_BREAK_V = 9 // 이 속도(px/프레임) 이상으로 떨어지면 눈덩이가 부서진다 (≈ 80px 넘게 떨어졌을 때)
 const SNOWMAN_BREAK_V = 11 // 눈사람은 이 속도 이상이면 눈덩이로 흩어진다
 const CHUNK_G = 0.28
-const POWDER_RELEASE_ACCELERATION = 3
+const POWDER_RELEASE_ACCELERATION = 9
+const POWDER_SLIDE_ACCELERATION = 2.5
+const POWDER_FRICTION = 0.88
 const BODY_RELEASE_ACCELERATION = 7
+const BALL_SLIDE_ACCELERATION = 2.5
 
 /** 눈이 쌓이는 자리 하나: 카드 윗변(el) 또는 화면 바닥(el = null). 높이는 그 자리 왼쪽부터 BIN 간격 */
 /** cover: 이 자리 위를 다른 것(메뉴 · 팝오버 · 알림 · 붙은 막대 등)이 덮고 있는 칸 (COVER_STEP 간격, 1 = 덮임) */
-type Ledge = { el: Element | null; h: number[]; cover?: Uint8Array }
+type Ledge = {
+  el: Element | null
+  h: number[]
+  cover?: Uint8Array
+  powder?: { looseness: number; drift: number }
+}
 
 /* ---------- 덮인 자리 (크리스마스) ----------
  * 캔버스는 본문 위에 깔려 있어, 그냥 두면 카드 위에 뜬 메뉴 · 팝오버 · 창 위로 눈 줄이 그어진다.
@@ -252,6 +260,12 @@ function ledgeRects(ledges: Map<Element | null, Ledge>, shapes: WeakMap<Element,
   return out
 }
 
+function snowSlope(r: LedgeRect, x: number, radius: number) {
+  const left = Math.max(0, x - radius * 0.6)
+  const right = Math.min(r.width, x + radius * 0.6)
+  return (snowTop(r, right) - snowTop(r, left)) / Math.max(1, right - left)
+}
+
 function ledgeVisibleAt(r: LedgeRect, x: number, y: number) {
   const c = r.clip
   return !c || (x >= c.left && x <= c.right && y >= c.top && y <= c.bottom)
@@ -268,6 +282,44 @@ function settle(r: LedgeRect) {
       hs[i] = (hs[i] ?? 0) - m
       hs[i + 1] = (hs[i + 1] ?? 0) + m
     }
+  }
+}
+
+/** Move depth between bins while loose snow still has support. At an unsupported edge it becomes a particle. */
+function slidePowder(r: LedgeRect, elapsed: number, spill: (i: number, depth: number, velocity: number) => boolean) {
+  const { h, powder } = r.ledge
+  if (!powder) return
+  const damping = POWDER_FRICTION ** elapsed
+  powder.looseness *= damping
+  powder.drift *= damping
+  if (powder.looseness < 0.025 && Math.abs(powder.drift) < 0.04) {
+    r.ledge.powder = undefined
+    return
+  }
+  const count = binCount(r)
+  const change = Array<number>(Math.min(count, h.length + 1)).fill(0)
+  for (let i = 0; i < change.length; i++) {
+    const depth = h[i] ?? 0
+    if (depth < 0.07 || binCovered(r.ledge, i)) continue
+    const x = binCenter(r, i)
+    const y = snowTop(r, x)
+    const left = i > 0 ? snowTop(r, binCenter(r, i - 1)) : y + BIN
+    const right = i + 1 < count ? snowTop(r, binCenter(r, i + 1)) : y + BIN
+    const slope = Math.max(-1.5, Math.min(1.5, (right - left) / (2 * BIN)))
+    const velocity = powder.drift + slope * powder.looseness * 2.4
+    if (Math.abs(velocity) < 0.12) continue
+    const next = i + Math.sign(velocity)
+    const amount = depth * Math.min(0.5, Math.abs(velocity) * elapsed / BIN)
+    if (next < 0 || next >= count || !holdsSnow(r, next)) {
+      if (spill(i, amount, velocity)) change[i] -= amount
+    } else if (!binCovered(r.ledge, next)) {
+      const accepted = Math.max(0, Math.min(amount, PILE_MAX - (h[next] ?? 0) - change[next]))
+      change[i] -= accepted
+      change[next] += accepted
+    }
+  }
+  for (let i = 0; i < change.length; i++) {
+    if (change[i]) h[i] = Math.max(0, (h[i] ?? 0) + change[i])
   }
 }
 
@@ -424,7 +476,7 @@ export function MouseEffects() {
     let previousFrameAt = 0
     let previousRects: LedgeRect[] = []
     let scrolled = false
-    let ledgeVelocity = new Map<Ledge, number>()
+    let ledgeVelocity = new Map<Ledge, { x: number; y: number; scroll: boolean }>()
     const balls: Ball[] = []
     let skyTick = 0
     const snowmen: Snowman[] = []
@@ -780,55 +832,90 @@ export function MouseEffects() {
             cardSnow.delete(el)
           }
         }
-        if (scrolled || ledgeVelocity.size > 0) {
-          const nextVelocity = new Map<Ledge, number>()
-          for (const previous of before) {
-            if (!previous.ledge.el) continue
-            const r = current.get(previous.ledge)
-            const top = r?.top ?? previous.ledge.el.getBoundingClientRect().top
-            const dy = top - previous.top
-            if (dt <= 0 || dt > 60 || Math.abs(dy) > h * 0.5) continue
-            const velocity = dy * (1000 / 60) / Math.max(4, dt)
-            const prior = ledgeVelocity.get(previous.ledge) ?? 0
-            if (velocity !== 0 && r) nextVelocity.set(r.ledge, velocity)
-            if (modal || !previous.ledge.el.isConnected) continue
-            const acceleration = velocity - prior
-            const inheritedVelocity = Math.max(-9, Math.min(9, prior))
-            coverDirty ||= dy !== 0
-            if (acceleration > BODY_RELEASE_ACCELERATION) {
-              for (const b of balls) {
-                if (b.ledge !== previous.ledge || b.held || b === grab || ballHidden(b)) continue
+        const elapsed = Math.max(0.25, dt / (1000 / 60))
+        const nextVelocity = new Map<Ledge, { x: number; y: number; scroll: boolean }>()
+        for (const previous of before) {
+          const el = previous.ledge.el
+          if (!el?.isConnected || modal || dt <= 0 || dt > 60) continue
+          const r = current.get(previous.ledge)
+          const position = r ?? el.getBoundingClientRect()
+          const dx = position.left - previous.left
+          const dy = position.top - previous.top
+          if (Math.abs(position.width - previous.width) > 1 || Math.abs(dx) > w * 0.5 || Math.abs(dy) > h * 0.5) continue
+          const vx = dx / elapsed
+          const vy = dy / elapsed
+          const prior = ledgeVelocity.get(previous.ledge)
+          if ((vx !== 0 || vy !== 0) && r) nextVelocity.set(r.ledge, { x: vx, y: vy, scroll: scrolled })
+          coverDirty ||= dx !== 0 || dy !== 0
+          const ax = (vx - (prior?.x ?? 0)) / elapsed
+          const ay = (vy - (prior?.y ?? 0)) / elapsed
+          const inheritedVelocity = Math.max(-9, Math.min(9, prior?.y ?? 0))
+          const strongest = Math.max(Math.abs(ax), Math.abs(ay))
+          const releases = (scrolled || prior?.scroll) && ay > BODY_RELEASE_ACCELERATION
+          if (strongest > BALL_SLIDE_ACCELERATION || releases) {
+            for (const b of balls) {
+              if (b.ledge !== previous.ledge || b.held || b === grab || ballHidden(b)) continue
+              if (releases) {
                 b.hx = previous.left + b.x
                 b.hy = snowTop(previous, b.x) - b.r
+                b.vx = Math.max(-12, Math.min(12, b.vx + (prior?.x ?? 0)))
                 b.vy = inheritedVelocity
                 b.ledge = null
-              }
-              for (const m of snowmen) {
-                if (m.ledge !== previous.ledge || m.held || m === grabMan?.m || manHidden(m)) continue
-                m.hx = previous.left + m.x
-                m.hy = snowTop(previous, m.x)
-                m.vy = inheritedVelocity
-                m.ledge = null
-              }
-            }
-            // 지지면이 급히 아래로 가속하면 눈은 직전 속도를 유지한 채 떨어진다.
-            if (acceleration > POWDER_RELEASE_ACCELERATION) {
-              const hs = previous.ledge.h
-              for (let i = 0; i < hs.length && particles.length < MAX_PARTICLES; i++) {
-                const depth = hs[i] ?? 0
-                if (depth < 0.7 || binCovered(previous.ledge, i)) continue
-                const x = binCenter(previous, i)
-                const y = snowTop(previous, x)
-                if (!ledgeVisibleAt(previous, previous.left + x, y)) continue
-                const amount = depth * Math.min(0.65, (acceleration - POWDER_RELEASE_ACCELERATION) / 24)
-                hs[i] = depth - amount
-                particles.push({ x: previous.left + x, y: y - 1, vx: (Math.random() - 0.5) * 0.8,
-                  vy: inheritedVelocity, r: Math.min(3, 1 + amount * 0.45),
-                  life: 8, max: 100000, kind: 'snow', g: CHUNK_G, snowDepth: amount })
+              } else if (r) {
+                const slope = snowSlope(r, b.x, b.r)
+                const impulse = -ax * 0.24 + Math.max(-1, Math.min(1, slope)) * Math.abs(ay) * 0.3
+                b.vx = Math.max(-9, Math.min(9, b.vx + impulse))
               }
             }
           }
-          ledgeVelocity = nextVelocity
+          if (releases) {
+            for (const m of snowmen) {
+              if (m.ledge !== previous.ledge || m.held || m === grabMan?.m || manHidden(m)) continue
+              m.hx = previous.left + m.x
+              m.hy = snowTop(previous, m.x)
+              m.vy = inheritedVelocity
+              m.ledge = null
+            }
+          }
+          if (r && r.ledge.h.length && strongest > POWDER_SLIDE_ACCELERATION) {
+            const powder = r.ledge.powder ??= { looseness: 0, drift: 0 }
+            powder.looseness = Math.min(1, powder.looseness + (strongest - POWDER_SLIDE_ACCELERATION) / 10)
+            powder.drift = Math.max(-2.5, Math.min(2.5, powder.drift - ax * 0.18))
+          }
+          // A rapidly dropping support leaves some powder airborne. The rest slides in card coordinates.
+          if (ay > POWDER_RELEASE_ACCELERATION) {
+            const hs = previous.ledge.h
+            const fraction = Math.min(0.32, (ay - POWDER_RELEASE_ACCELERATION) / 45)
+            for (let i = 0; i < hs.length && particles.length < MAX_PARTICLES; i++) {
+              const depth = hs[i] ?? 0
+              if (depth < 0.7 || binCovered(previous.ledge, i)) continue
+              const x = previous.left + binCenter(previous, i)
+              const y = snowTop(previous, x - previous.left)
+              if (!ledgeVisibleAt(previous, x, y)) continue
+              const amount = depth * fraction
+              hs[i] = depth - amount
+              particles.push({ x, y: y - 1, vx: Math.max(-6, Math.min(6, prior?.x ?? 0)),
+                vy: inheritedVelocity, r: Math.min(3, 1 + amount * 0.45),
+                life: 8, max: 100000, kind: 'snow', g: CHUNK_G, snowDepth: amount })
+            }
+          }
+        }
+        ledgeVelocity = nextVelocity
+        if (!modal) {
+          for (const r of rects) {
+            slidePowder(r, Math.min(2, elapsed), (i, depth, velocity) => {
+              if (particles.length >= MAX_PARTICLES) return false
+              const localX = binCenter(r, i)
+              const x = r.left + localX
+              const y = snowTop(r, localX)
+              if (!ledgeVisibleAt(r, x, y)) return false
+              const support = ledgeVelocity.get(r.ledge)
+              const vx = Math.sign(velocity) * Math.max(1.3, Math.abs(velocity)) + (support?.x ?? 0)
+              particles.push({ x: x + Math.sign(velocity) * (BIN / 2), y: y - 0.5, vx, vy: Math.max(-9, Math.min(9, support?.y ?? 0)),
+                r: Math.min(3, 1 + depth * 0.45), life: 8, max: 100000, kind: 'snow', g: CHUNK_G, snowDepth: depth })
+              return true
+            })
+          }
         }
         scrolled = false
         if (rects.length !== before.length || rects.some((r) => !r.ledge.cover)) coverDirty = true
@@ -1014,6 +1101,7 @@ export function MouseEffects() {
                 continue
               }
               b.ledge = sfc.r.ledge
+              b.vx = Math.max(-9, Math.min(9, b.vx - (ledgeVelocity.get(b.ledge)?.x ?? 0)))
               b.x = Math.max(0, Math.min(sfc.r.width, b.hx - sfc.r.left))
               b.vy = 0
             } else if (ny > h + 60) {
@@ -1028,8 +1116,7 @@ export function MouseEffects() {
             const r = rectOf(b.ledge)
             if (r) {
               const hs = b.ledge.h
-              const at = (x: number) => snowTop(r, Math.max(0, Math.min(r.width, x)))
-              const slope = (at(b.x + b.r * 0.6) - at(b.x - b.r * 0.6)) / Math.max(b.r * 1.2, 1) // 오른쪽이 낮으면 +
+              const slope = snowSlope(r, b.x, b.r)
               b.vx = (b.vx + slope * SLOPE_G) * ROLL_FRICTION
               if (Math.abs(b.vx) < 0.35 && Math.abs(slope) < ROLL_STOP_SLOPE) b.vx = 0
               if (b.vx !== 0) {
@@ -1042,8 +1129,10 @@ export function MouseEffects() {
                   // 가장자리를 넘었다: 떨어진다
                   b.hx = r.left + b.x
                   b.hy = ledgeTop(r, Math.max(0, Math.min(r.width, b.x))) - b.r
+                  const support = ledgeVelocity.get(b.ledge)
+                  b.vx += support?.x ?? 0
+                  b.vy = Math.max(-9, Math.min(9, (support?.y ?? 0) - 1))
                   b.ledge = null
-                  b.vy = -1
                 }
               }
             }
