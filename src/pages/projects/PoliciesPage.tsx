@@ -43,6 +43,7 @@ import {
   STATUS_LABEL,
   changePolicyStatus,
   createPolicy,
+  isCommitSha,
   isSpecEmpty,
   specOf,
   updatePolicy,
@@ -513,14 +514,14 @@ function EvidenceCard({ evidence }: { evidence: PolicyEvidence[] }) {
                         <i /> {state.label}
                       </span>
                       {e.verification !== 'VERIFIED' && <small>{e.verification === 'PENDING' ? '확인 중' : '확인 안 됨'}</small>}
-                      {e.state === 'REVIEW_NEEDED' && e.lastChangeUrl && e.lastChangeRef && (
+                      {e.state === 'REVIEW_NEEDED' && e.lastChangeUrl && e.lastChangeRef && isCommitSha(e.lastChangeRef) && (
                         <a href={e.lastChangeUrl} target="_blank" rel="noreferrer" className={s.changeLink}>
                           바꾼 커밋 <code>{shortSha(e.lastChangeRef)}</code>
                         </a>
                       )}
                     </div>
                   </div>
-                  {e.url && (
+                  {kind === 'CODE' && e.url && (
                     <a href={e.url} target="_blank" rel="noreferrer" className={s.ext} aria-label="GitHub 에서 열기" title="GitHub 에서 열기">
                       <ExternalLink size={14} />
                     </a>

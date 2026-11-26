@@ -299,7 +299,9 @@ function noticeFromDto(d: NoticeDetailDto, me: Me): NoticeView {
       ? {
           total: d.readSummary.readCount + d.readSummary.unreadCount,
           readCount: d.readSummary.readCount,
-          unread: d.readSummary.unreaders ? d.readSummary.unreaders.map((m) => ({ name: m.name, role: roleName(m) })) : null,
+          unread: d.author.memberId === me.memberId && d.readSummary.unreaders
+            ? d.readSummary.unreaders.map((m) => ({ name: m.name, role: roleName(m) }))
+            : null,
         }
       : null,
     info,
