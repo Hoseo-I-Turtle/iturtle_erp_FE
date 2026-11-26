@@ -122,6 +122,5 @@ REMOTE
 
 # nginx 가 새 파일을 내주는지 확인한다 (서버 안에서 lab.iturtle.win 으로 — nginx 는 서버 사설 IP 의 443 에만 붙어 있다)
 ssh "${ssh_opts[@]}" "$target" "curl -fsS -o /dev/null --resolve lab.iturtle.win:443:$ssh_host https://lab.iturtle.win/ && echo '응답 확인: https://lab.iturtle.win/'" \
-  || echo "경고: lab.iturtle.win/ 응답을 확인하지 못했다 (nginx 가 아직 프론트를 서빙하지 않으면 정상)" >&2
 
 echo "배포 끝: ghcr.io/$IMAGE_PATH:$IMAGE_TAG"
