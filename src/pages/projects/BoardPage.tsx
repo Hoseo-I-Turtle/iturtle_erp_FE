@@ -10,6 +10,36 @@ import { openTaskCreate, useTasksChanged } from '../../api/tasks'
 import s from './BoardPage.module.css'
 
 const COLUMNS: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE']
+const TASK_AREAS = ['백엔드', '화면', '앱'] as const
+const AREAS = ['전체', ...TASK_AREAS] as const
+type Area = (typeof AREAS)[number]
+type TaskArea = (typeof TASK_AREAS)[number]
+
+const AREA_LABELS: Record<TaskArea, string[]> = {
+  백엔드: ['백엔드', 'backend'],
+  화면: ['화면', '프론트엔드', 'frontend', 'admin'],
+  앱: ['앱', 'app', 'mobile'],
+}
+
+// 분야 라벨이나 제목 머리말이 없는 기존 데프미 작업의 분야.
+const LEGACY_AREAS: Partial<Record<string, TaskArea>> = {
+  'DEFME-1': '화면',
+  'DEFME-6': '앱',
+  'DEFME-7': '앱',
+  'DEFME-8': '백엔드',
+}
+
+function matchesArea(task: BoardTask, area: TaskArea) {
+  const labels = task.labels.map((label) => label.trim().toLowerCase())
+  const assigned = TASK_AREAS.filter((name) =>
+    AREA_LABELS[name].some((label) => labels.includes(label)),
+  )
+  if (assigned.length) return assigned.includes(area)
+
+  const prefix = task.title.match(/^\s*\((백엔드|화면|앱)\)/)?.[1]
+  return (prefix ?? LEGACY_AREAS[task.taskKey]) === area
+}
+
 const COLUMN_NOTE: Partial<Record<TaskStatus, string>> = {
   REVIEW: '요청자 · 프로젝트 관리자가 완료',
   DONE: '최근 14일',
@@ -27,7 +57,7 @@ export function BoardPage() {
   useTasksChanged(board.reload)
   return (
     <Loadable resource={board} label="보드">
-      {(d) => <BoardView d={d} board={board} />}
+      {(d) => <BoardView key={d.projectKey} d={d} board={board} />}
     </Loadable>
   )
 }
@@ -45,6 +75,7 @@ function placeBefore(list: BoardTask[], dragged: BoardTask, beforeKey: string | 
 
 function BoardView({ d, board }: { d: BoardData; board: Resource<BoardData> }) {
   const { tasks, me } = d
+  const [area, setArea] = useState<Area>('전체')
   const [people, setPeople] = useState<string[]>([])
   const [label, setLabel] = useState('')
   const [milestone, setMilestone] = useState('')
@@ -62,6 +93,7 @@ function BoardView({ d, board }: { d: BoardData; board: Resource<BoardData> }) {
 
   const visible = tasks.filter(
     (x) =>
+      (area === '전체' || matchesArea(x, area)) &&
       (people.length === 0 || (x.assignee && people.includes(x.assignee))) &&
       (!label || x.labels.includes(label)) &&
       (!milestone || x.milestone === milestone) &&
@@ -153,6 +185,19 @@ function BoardView({ d, board }: { d: BoardData; board: Resource<BoardData> }) {
   return (
     <>
       <div className={s.filters}>
+        <div className={s.areas} role="group" aria-label="작업 분야">
+          {AREAS.map((name) => (
+            <button
+              key={name}
+              type="button"
+              className={s.area}
+              aria-pressed={name === area}
+              onClick={() => setArea(name)}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
         <div className={s.people} role="group" aria-label="담당자로 거르기">
           {memberNames.map((n) => (
             <button
