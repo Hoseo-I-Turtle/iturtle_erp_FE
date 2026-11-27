@@ -726,7 +726,14 @@ export function toTask(x: TaskCardDto): BoardTask {
   }
 }
 
-export type BoardData = { tasks: BoardTask[]; memberNames: string[]; me: string; isManager: boolean; projectKey: string }
+type ProjectLabel = { labelId: number; name: string; color: string }
+
+export async function getProjectLabels(key: string) {
+  const response = await api<{ labels: ProjectLabel[] }>(`/projects/${encodeURIComponent(key)}/labels`)
+  return response.labels
+}
+
+export type BoardData = { tasks: BoardTask[]; labelNames: string[]; memberNames: string[]; me: string; isManager: boolean; projectKey: string }
 
 /** 칸반 보드: T-1 (보드 순서 · 완료는 14일) + P-3 (참여자 · 내 권한) */
 export function useBoard(key: string | undefined) {
@@ -734,15 +741,23 @@ export function useBoard(key: string | undefined) {
     ['board', key],
     () => ({
       tasks: mockTasks,
+      labelNames: [...new Set(mockTasks.flatMap((task) => task.labels))].sort(),
       memberNames: projectDetail.members.map((m) => m.name),
       me: MOCK_ME,
       isManager: projectDetail.members.some((m) => m.name === MOCK_ME && m.role === 'MANAGER'),
       projectKey: findProject(key).projectKey,
     }),
     async () => {
-      const [d, me, cards] = await Promise.all([getProject(key ?? ''), api<MemberRef>('/members/me'), fetchBoardTasks(key ?? '')])
+      const projectKey = key ?? ''
+      const [d, me, cards, labels] = await Promise.all([
+        getProject(projectKey),
+        api<MemberRef>('/members/me'),
+        fetchBoardTasks(projectKey),
+        getProjectLabels(projectKey),
+      ])
       return {
         tasks: cards.map(toTask),
+        labelNames: labels.map((label) => label.name),
         memberNames: toMembers(d).map((m) => m.name),
         me: me.name,
         // PM 급 = PM 또는 project-manage (canManage 가 둘 다 참)

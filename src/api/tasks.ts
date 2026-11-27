@@ -6,7 +6,7 @@ import type { MemberRef } from './types'
 import { useResource } from './useResource'
 import { appendUnique, mergeNext, NOT_PAGED, pagedOf, type Paged } from './useLoadMore'
 import { getDataMode } from '../lib/dataMode'
-import { getProject, toMembers, toTask, type BoardTask, type TaskCardDto, type TaskListResponse } from './projects'
+import { getProject, getProjectLabels, toMembers, toTask, type BoardTask, type TaskCardDto, type TaskListResponse } from './projects'
 import { projectDetail } from '../mocks/projectDetail'
 import { findProject } from '../mocks/projects'
 import { tasks as mockTasks, TYPE_NAME, type TaskPriority, type TaskStatus, type TaskType } from '../mocks/tasks'
@@ -68,7 +68,6 @@ export type TaskFormOptions = {
 }
 
 type MilestoneListDto = { milestones: { milestoneId: number; name: string; status: 'OPEN' | 'CLOSED' }[] }
-type LabelListDto = { labels: { labelId: number; name: string; color: string; taskCount: number }[] }
 
 export function useTaskFormOptions(key: string | undefined, enabled = true) {
   return useResource<TaskFormOptions | null>(
@@ -95,7 +94,7 @@ export function useTaskFormOptions(key: string | undefined, enabled = true) {
         getProject(key),
         api<MemberRef>('/members/me'),
         api<MilestoneListDto>(`/projects/${k}/milestones`),
-        api<LabelListDto>(`/projects/${k}/labels`),
+        getProjectLabels(key),
         api<TypeOption[]>('/codes/TASK_TYPE'),
       ])
       return {
@@ -104,7 +103,7 @@ export function useTaskFormOptions(key: string | undefined, enabled = true) {
         me: { id: me.memberId, name: me.name },
         members: toMembers(d).map((m) => ({ id: m.memberId, name: m.name, tags: m.tags ?? [], photoUrl: fileUrl(m.photoUrl), role: m.role })),
         milestones: ms.milestones.filter((m) => m.status === 'OPEN').map((m) => ({ id: m.milestoneId, name: m.name })),
-        labels: ls.labels.map((l) => ({ id: l.labelId, name: l.name, color: l.color })),
+        labels: ls.map((l) => ({ id: l.labelId, name: l.name, color: l.color })),
         types,
         canWrite: d.permissions.canWriteTasks,
         isManager: d.permissions.canManage,
