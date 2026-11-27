@@ -4,6 +4,27 @@
   align-items: center;
   gap: 8px;
 }
+.areas {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-card);
+}
+.area {
+  padding: 4px 9px;
+  border-radius: 7px;
+  color: var(--text-body);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.area[aria-pressed='true'] {
+  background: var(--surface-tint);
+  color: var(--text-primary);
+  font-weight: 700;
+}
 .grow {
   flex: 1;
 }
